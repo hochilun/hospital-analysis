@@ -11,6 +11,7 @@ type DeptFilter = Department | '全部';
 export default function Home() {
   const [hospitals, setHospitals] = useState<Hospital[]>(HOSPITALS);
   const [selectedDept, setSelectedDept] = useState<DeptFilter>('全部');
+  const [selectedHospital, setSelectedHospital] = useState<string>('全部');
   const [view, setView] = useState<'hospitals' | 'weekly'>('weekly');
   const [updating, setUpdating] = useState<string | null>(null);
 
@@ -76,8 +77,8 @@ export default function Home() {
       </div>
 
       <div className="max-w-6xl mx-auto px-6 py-6">
-        <div className="flex items-center gap-3 mb-6">
-          <span className="text-sm text-gray-500">重點科別：</span>
+        <div className="flex flex-wrap items-center gap-3 mb-3">
+          <span className="text-sm text-gray-500">科別：</span>
           {(['全部', ...TARGET_DEPARTMENTS] as DeptFilter[]).map(dept => (
             <button
               key={dept}
@@ -89,6 +90,23 @@ export default function Home() {
               }`}
             >
               {dept}
+            </button>
+          ))}
+        </div>
+
+        <div className="flex flex-wrap items-center gap-3 mb-6">
+          <span className="text-sm text-gray-500">醫院：</span>
+          {['全部', ...hospitals.map(h => h.shortName)].map(name => (
+            <button
+              key={name}
+              onClick={() => setSelectedHospital(name)}
+              className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${
+                selectedHospital === name
+                  ? 'bg-gray-900 text-white'
+                  : 'bg-white border border-gray-200 text-gray-600 hover:border-gray-400'
+              }`}
+            >
+              {name}
             </button>
           ))}
           <div className="ml-auto flex gap-2">
@@ -108,7 +126,10 @@ export default function Home() {
         </div>
 
         {view === 'weekly' ? (
-          <WeeklyView hospitals={hospitals} selectedDept={selectedDept} />
+          <WeeklyView
+            hospitals={selectedHospital === '全部' ? hospitals : hospitals.filter(h => h.shortName === selectedHospital)}
+            selectedDept={selectedDept}
+          />
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {hospitals.map(hospital => (
