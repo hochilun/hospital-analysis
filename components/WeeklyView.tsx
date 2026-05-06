@@ -3,11 +3,9 @@
 import { Hospital, Department } from '@/types';
 import { DAY_LABELS, SESSION_LABELS, TARGET_DEPARTMENTS } from '@/data/hospitals';
 
-type DeptFilter = Department | '全部';
-
 type Props = {
   hospitals: Hospital[];
-  selectedDept: DeptFilter;
+  selectedDepts: Set<Department>;
 };
 
 const DEPT_COLOR: Record<string, string> = {
@@ -22,28 +20,24 @@ const DEPT_DOT: Record<string, string> = {
   '一般外科': 'bg-green-400',
 };
 
-export default function WeeklyView({ hospitals, selectedDept }: Props) {
-  const activeDepts: Department[] = selectedDept === '全部'
-    ? [...TARGET_DEPARTMENTS] as Department[]
-    : [selectedDept];
-
-  const getDayCount = (day: number) => {
-    return hospitals.filter(h =>
-      h.clinics.some(c => c.dayOfWeek === day && activeDepts.includes(c.department))
+export default function WeeklyView({ hospitals, selectedDepts }: Props) {
+  const getDayCount = (day: number) =>
+    hospitals.filter(h =>
+      h.clinics.some(c => c.dayOfWeek === day && selectedDepts.has(c.department))
     ).length;
-  };
 
   const getSlots = (day: number, session: string) => {
     const result: { hospital: Hospital; doctor: string; department: Department }[] = [];
     hospitals.forEach(h => {
       h.clinics
-        .filter(c => c.dayOfWeek === day && c.session === session && activeDepts.includes(c.department))
+        .filter(c => c.dayOfWeek === day && c.session === session && selectedDepts.has(c.department))
         .forEach(c => result.push({ hospital: h, doctor: c.doctor, department: c.department }));
     });
     return result;
   };
 
   const hasAnyData = hospitals.some(h => h.clinics.length > 0);
+  const showDeptLabel = selectedDepts.size > 1;
 
   if (!hasAnyData) {
     return (
@@ -60,19 +54,15 @@ export default function WeeklyView({ hospitals, selectedDept }: Props) {
       {/* 推薦拜訪日 */}
       <div className="bg-white rounded-xl border border-gray-200 p-4">
         <div className="flex items-center justify-between mb-3">
-          <h2 className="text-sm font-semibold text-gray-700">
-            本週推薦拜訪日（{selectedDept}）
-          </h2>
-          {selectedDept === '全部' && (
-            <div className="flex items-center gap-3 text-xs text-gray-500">
-              {TARGET_DEPARTMENTS.map(d => (
-                <span key={d} className="flex items-center gap-1">
-                  <span className={`w-2 h-2 rounded-full inline-block ${DEPT_DOT[d]}`} />
-                  {d}
-                </span>
-              ))}
-            </div>
-          )}
+          <h2 className="text-sm font-semibold text-gray-700">本週推薦拜訪日</h2>
+          <div className="flex items-center gap-3 text-xs text-gray-500">
+            {TARGET_DEPARTMENTS.filter(d => selectedDepts.has(d as Department)).map(d => (
+              <span key={d} className="flex items-center gap-1">
+                <span className={`w-2 h-2 rounded-full inline-block ${DEPT_DOT[d]}`} />
+                {d}
+              </span>
+            ))}
+          </div>
         </div>
         <div className="grid grid-cols-7 gap-2">
           {DAY_LABELS.map((label, day) => {
@@ -132,7 +122,7 @@ export default function WeeklyView({ hospitals, selectedDept }: Props) {
                           >
                             <div className="font-medium">{s.hospital.shortName}</div>
                             <div>{s.doctor}</div>
-                            {selectedDept === '全部' && (
+                            {showDeptLabel && (
                               <div className="opacity-60 text-[10px]">{s.department}</div>
                             )}
                           </div>

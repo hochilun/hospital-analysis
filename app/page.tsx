@@ -6,12 +6,10 @@ import { HOSPITALS, TARGET_DEPARTMENTS } from '@/data/hospitals';
 import HospitalCard from '@/components/HospitalCard';
 import WeeklyView from '@/components/WeeklyView';
 
-type DeptFilter = Department | '全部';
-
 export default function Home() {
   const [hospitals, setHospitals] = useState<Hospital[]>(HOSPITALS);
-  const [selectedDept, setSelectedDept] = useState<DeptFilter>('全部');
-  const [selectedHospital, setSelectedHospital] = useState<string>('全部');
+  const [selectedDepts, setSelectedDepts] = useState<Set<Department>>(new Set(TARGET_DEPARTMENTS));
+  const [selectedHospitals, setSelectedHospitals] = useState<Set<string>>(new Set());
   const [view, setView] = useState<'hospitals' | 'weekly'>('weekly');
   const [updating, setUpdating] = useState<string | null>(null);
 
@@ -26,6 +24,26 @@ export default function Home() {
     setHospitals(data);
     localStorage.setItem('hospitals-data', JSON.stringify(data));
   };
+
+  const toggleDept = (dept: Department) => {
+    setSelectedDepts(prev => {
+      const next = new Set(prev);
+      next.has(dept) ? next.delete(dept) : next.add(dept);
+      return next.size === 0 ? new Set(TARGET_DEPARTMENTS) : next;
+    });
+  };
+
+  const toggleHospital = (shortName: string) => {
+    setSelectedHospitals(prev => {
+      const next = new Set(prev);
+      next.has(shortName) ? next.delete(shortName) : next.add(shortName);
+      return next;
+    });
+  };
+
+  const filteredHospitals = selectedHospitals.size === 0
+    ? hospitals
+    : hospitals.filter(h => selectedHospitals.has(h.shortName));
 
   const handleUpdate = async (hospitalId: string) => {
     setUpdating(hospitalId);
@@ -53,9 +71,7 @@ export default function Home() {
   };
 
   const handleUpdateAll = async () => {
-    for (const h of hospitals) {
-      await handleUpdate(h.id);
-    }
+    for (const h of hospitals) await handleUpdate(h.id);
   };
 
   return (
@@ -77,16 +93,17 @@ export default function Home() {
       </div>
 
       <div className="max-w-6xl mx-auto px-6 py-6">
-        <div className="flex flex-wrap items-center gap-3 mb-3">
-          <span className="text-sm text-gray-500">科別：</span>
-          {(['全部', ...TARGET_DEPARTMENTS] as DeptFilter[]).map(dept => (
+        {/* 科別複選 */}
+        <div className="flex flex-wrap items-center gap-2 mb-3">
+          <span className="text-sm text-gray-500 w-10">科別</span>
+          {TARGET_DEPARTMENTS.map(dept => (
             <button
               key={dept}
-              onClick={() => setSelectedDept(dept)}
+              onClick={() => toggleDept(dept as Department)}
               className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${
-                selectedDept === dept
+                selectedDepts.has(dept as Department)
                   ? 'bg-blue-600 text-white'
-                  : 'bg-white border border-gray-200 text-gray-600 hover:border-blue-300'
+                  : 'bg-white border border-gray-200 text-gray-400 hover:border-blue-300'
               }`}
             >
               {dept}
@@ -94,21 +111,30 @@ export default function Home() {
           ))}
         </div>
 
-        <div className="flex flex-wrap items-center gap-3 mb-6">
-          <span className="text-sm text-gray-500">醫院：</span>
-          {['全部', ...hospitals.map(h => h.shortName)].map(name => (
+        {/* 醫院複選 */}
+        <div className="flex flex-wrap items-center gap-2 mb-6">
+          <span className="text-sm text-gray-500 w-10">醫院</span>
+          {hospitals.map(h => (
             <button
-              key={name}
-              onClick={() => setSelectedHospital(name)}
+              key={h.id}
+              onClick={() => toggleHospital(h.shortName)}
               className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${
-                selectedHospital === name
+                selectedHospitals.has(h.shortName)
                   ? 'bg-gray-900 text-white'
-                  : 'bg-white border border-gray-200 text-gray-600 hover:border-gray-400'
+                  : 'bg-white border border-gray-200 text-gray-400 hover:border-gray-400'
               }`}
             >
-              {name}
+              {h.shortName}
             </button>
           ))}
+          {selectedHospitals.size > 0 && (
+            <button
+              onClick={() => setSelectedHospitals(new Set())}
+              className="text-xs text-gray-400 hover:text-gray-600 underline ml-1"
+            >
+              清除
+            </button>
+          )}
           <div className="ml-auto flex gap-2">
             <button
               onClick={() => setView('weekly')}
@@ -126,17 +152,14 @@ export default function Home() {
         </div>
 
         {view === 'weekly' ? (
-          <WeeklyView
-            hospitals={selectedHospital === '全部' ? hospitals : hospitals.filter(h => h.shortName === selectedHospital)}
-            selectedDept={selectedDept}
-          />
+          <WeeklyView hospitals={filteredHospitals} selectedDepts={selectedDepts} />
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {hospitals.map(hospital => (
               <HospitalCard
                 key={hospital.id}
                 hospital={hospital}
-                selectedDept={selectedDept === '全部' ? '婦產科' : selectedDept}
+                selectedDept={selectedDepts.size > 0 ? Array.from(selectedDepts)[0] : '婦產科'}
                 onUpdate={() => handleUpdate(hospital.id)}
                 updating={updating === hospital.id}
               />
