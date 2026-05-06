@@ -8,6 +8,7 @@ const execAsync = promisify(exec);
 // 有 Python 解析器的醫院
 const PYTHON_PARSERS: Record<string, string> = {
   eck: 'parse_eck.py',
+  sph: 'parse_sph.py',
 };
 
 export async function POST(req: NextRequest) {
