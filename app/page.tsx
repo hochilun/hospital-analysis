@@ -6,9 +6,11 @@ import { HOSPITALS, TARGET_DEPARTMENTS } from '@/data/hospitals';
 import HospitalCard from '@/components/HospitalCard';
 import WeeklyView from '@/components/WeeklyView';
 
+type DeptFilter = Department | '全部';
+
 export default function Home() {
   const [hospitals, setHospitals] = useState<Hospital[]>(HOSPITALS);
-  const [selectedDept, setSelectedDept] = useState<Department>('婦產科');
+  const [selectedDept, setSelectedDept] = useState<DeptFilter>('全部');
   const [view, setView] = useState<'hospitals' | 'weekly'>('weekly');
   const [updating, setUpdating] = useState<string | null>(null);
 
@@ -76,10 +78,10 @@ export default function Home() {
       <div className="max-w-6xl mx-auto px-6 py-6">
         <div className="flex items-center gap-3 mb-6">
           <span className="text-sm text-gray-500">重點科別：</span>
-          {TARGET_DEPARTMENTS.map(dept => (
+          {(['全部', ...TARGET_DEPARTMENTS] as DeptFilter[]).map(dept => (
             <button
               key={dept}
-              onClick={() => setSelectedDept(dept as Department)}
+              onClick={() => setSelectedDept(dept)}
               className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${
                 selectedDept === dept
                   ? 'bg-blue-600 text-white'
@@ -113,7 +115,7 @@ export default function Home() {
               <HospitalCard
                 key={hospital.id}
                 hospital={hospital}
-                selectedDept={selectedDept}
+                selectedDept={selectedDept === '全部' ? '婦產科' : selectedDept}
                 onUpdate={() => handleUpdate(hospital.id)}
                 updating={updating === hospital.id}
               />

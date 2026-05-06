@@ -1,11 +1,13 @@
 'use client';
 
 import { Hospital, Department } from '@/types';
-import { DAY_LABELS, SESSION_LABELS } from '@/data/hospitals';
+import { DAY_LABELS, SESSION_LABELS, TARGET_DEPARTMENTS } from '@/data/hospitals';
+
+type DeptFilter = Department | '全部';
 
 type Props = {
   hospitals: Hospital[];
-  selectedDept: Department;
+  selectedDept: DeptFilter;
 };
 
 const DEPT_COLOR: Record<string, string> = {
@@ -14,21 +16,29 @@ const DEPT_COLOR: Record<string, string> = {
   '一般外科': 'bg-green-100 text-green-800 border-green-200',
 };
 
+const DEPT_DOT: Record<string, string> = {
+  '婦產科': 'bg-pink-400',
+  '泌尿外科': 'bg-blue-400',
+  '一般外科': 'bg-green-400',
+};
+
 export default function WeeklyView({ hospitals, selectedDept }: Props) {
-  // 統計每天有門診的醫院數
+  const activeDepts: Department[] = selectedDept === '全部'
+    ? [...TARGET_DEPARTMENTS] as Department[]
+    : [selectedDept];
+
   const getDayCount = (day: number) => {
     return hospitals.filter(h =>
-      h.clinics.some(c => c.dayOfWeek === day && c.department === selectedDept)
+      h.clinics.some(c => c.dayOfWeek === day && activeDepts.includes(c.department))
     ).length;
   };
 
-  // 取得某天某時段的所有門診
   const getSlots = (day: number, session: string) => {
-    const result: { hospital: Hospital; doctor: string }[] = [];
+    const result: { hospital: Hospital; doctor: string; department: Department }[] = [];
     hospitals.forEach(h => {
       h.clinics
-        .filter(c => c.dayOfWeek === day && c.session === session && c.department === selectedDept)
-        .forEach(c => result.push({ hospital: h, doctor: c.doctor }));
+        .filter(c => c.dayOfWeek === day && c.session === session && activeDepts.includes(c.department))
+        .forEach(c => result.push({ hospital: h, doctor: c.doctor, department: c.department }));
     });
     return result;
   };
@@ -49,7 +59,21 @@ export default function WeeklyView({ hospitals, selectedDept }: Props) {
     <div className="space-y-4">
       {/* 推薦拜訪日 */}
       <div className="bg-white rounded-xl border border-gray-200 p-4">
-        <h2 className="text-sm font-semibold text-gray-700 mb-3">本週推薦拜訪日（{selectedDept}）</h2>
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-sm font-semibold text-gray-700">
+            本週推薦拜訪日（{selectedDept}）
+          </h2>
+          {selectedDept === '全部' && (
+            <div className="flex items-center gap-3 text-xs text-gray-500">
+              {TARGET_DEPARTMENTS.map(d => (
+                <span key={d} className="flex items-center gap-1">
+                  <span className={`w-2 h-2 rounded-full inline-block ${DEPT_DOT[d]}`} />
+                  {d}
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
         <div className="grid grid-cols-7 gap-2">
           {DAY_LABELS.map((label, day) => {
             const count = getDayCount(day);
@@ -67,10 +91,7 @@ export default function WeeklyView({ hospitals, selectedDept }: Props) {
                 <div className={`text-xs font-medium ${isWeekend ? 'text-gray-400' : count >= 3 ? 'text-white' : 'text-gray-500'}`}>
                   週{label}
                 </div>
-                <div className={`text-lg font-bold mt-1 ${
-                  isWeekend ? 'text-gray-300' :
-                  count >= 3 ? 'text-white' : 'text-blue-600'
-                }`}>
+                <div className={`text-lg font-bold mt-1 ${isWeekend ? 'text-gray-300' : count >= 3 ? 'text-white' : 'text-blue-600'}`}>
                   {isWeekend ? '-' : count}
                 </div>
                 {!isWeekend && count > 0 && (
@@ -107,10 +128,13 @@ export default function WeeklyView({ hospitals, selectedDept }: Props) {
                         {slots.map((s, i) => (
                           <div
                             key={i}
-                            className={`text-xs px-2 py-1 rounded border ${DEPT_COLOR[selectedDept]}`}
+                            className={`text-xs px-2 py-1 rounded border ${DEPT_COLOR[s.department]}`}
                           >
                             <div className="font-medium">{s.hospital.shortName}</div>
-                            <div className="text-opacity-80">{s.doctor}</div>
+                            <div>{s.doctor}</div>
+                            {selectedDept === '全部' && (
+                              <div className="opacity-60 text-[10px]">{s.department}</div>
+                            )}
                           </div>
                         ))}
                       </div>
