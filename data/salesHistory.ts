@@ -7,7 +7,7 @@ export type HospitalSales = Record<string, SalesEntry>;
 // 各醫院有銷售紀錄的產品 ID（依銷售報表完整對應）
 export const HOSPITAL_PRODUCT_IDS: Record<string, string[]> = {
   tucheng: ['seed_宮安康', 'seed_止血顆粒', 'seed_賀邁補', 'seed_速巴定'],
-  tzuchi:  ['seed_宮安康', 'seed_止血顆粒', 'seed_賀邁補', 'seed_速巴定', 'seed_3DMAX'],
+  tzuchi:  ['seed_宮安康', 'seed_止血顆粒', 'seed_賀邁補', 'seed_速巴定', 'seed_3DMAX', 'seed_塞納斯', 'seed_愛沛斯'],
   sph:     ['seed_宮安康', 'seed_止血顆粒', 'seed_賀邁補'],
   grace:   ['seed_止血顆粒', 'seed_賀邁補'],
   eck:     ['seed_宮安康', 'seed_止血顆粒', 'seed_速巴定', 'seed_3DMAX'],
