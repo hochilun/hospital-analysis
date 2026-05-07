@@ -65,7 +65,8 @@ function VariantRow({ v, onChange, onRemove, showRemove }: {
 }
 
 export default function EditProductPage() {
-  const { id } = useParams<{ id: string }>();
+  const params = useParams<{ id: string }>();
+  const id = decodeURIComponent(params.id);
   const router = useRouter();
   const [name, setName] = useState('');
   const [hospitalId, setHospitalId] = useState('');
