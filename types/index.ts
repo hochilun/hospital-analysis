@@ -72,9 +72,12 @@ export type ProductVariant = {
   unit: string;
 };
 
+export type ProductCategory = 'Hemostasis' | 'Adhesion Prevention' | 'Hernia' | 'Urinary Incontinence' | '';
+
 export type Product = {
   id: string;
   name: string;
+  category?: ProductCategory;
   hospitalId: string;
   hospitalName: string;
   variants: ProductVariant[];

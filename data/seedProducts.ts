@@ -1,5 +1,5 @@
 // 從銷售報表自動生成的產品資料（含各醫院個別單價）
-import { Product, ProductVariant } from '@/types';
+import { Product, ProductVariant, ProductCategory } from '@/types';
 
 function uid(seed: string) {
   return 'seed_' + seed.replace(/\s+/g, '_').slice(0, 20);
@@ -27,6 +27,7 @@ export const SEED_PRODUCTS: Product[] = [
   {
     id: 'seed_宮安康',
     name: '宮安康 MateRegen Gel',
+    category: 'Adhesion Prevention' as ProductCategory,
     hospitalId: '',
     hospitalName: '',
     notes: '宮腔用可吸收防沾黏凝膠，婦產科主力產品',
@@ -47,6 +48,7 @@ export const SEED_PRODUCTS: Product[] = [
   {
     id: 'seed_止血顆粒',
     name: '巴德亞瑞絲達 可吸收止血顆粒',
+    category: 'Hemostasis' as ProductCategory,
     hospitalId: '',
     hospitalName: '',
     notes: '多科別適用，另有配套塗佈器',
@@ -84,6 +86,7 @@ export const SEED_PRODUCTS: Product[] = [
   {
     id: 'seed_愛沛斯',
     name: '愛沛斯 懸吊/骨盆底系統',
+    category: 'Urinary Incontinence' as ProductCategory,
     hospitalId: '',
     hospitalName: '',
     notes: '婦產科/泌尿外科，尿失禁與骨盆底重建',
@@ -98,6 +101,7 @@ export const SEED_PRODUCTS: Product[] = [
   {
     id: 'seed_塞納斯',
     name: '塞納斯 PureRegen Gel Sinus',
+    category: 'Adhesion Prevention' as ProductCategory,
     hospitalId: '',
     hospitalName: '',
     notes: '鼻腔阻隔物交聯透明質酸凝膠，耳鼻喉科',
@@ -109,6 +113,7 @@ export const SEED_PRODUCTS: Product[] = [
   {
     id: 'seed_速巴定',
     name: '巴德速巴定 可吸收固定系統',
+    category: 'Hernia' as ProductCategory,
     hospitalId: '',
     hospitalName: '',
     notes: '疝氣修補固定，一般外科',
@@ -124,6 +129,7 @@ export const SEED_PRODUCTS: Product[] = [
   {
     id: 'seed_賀邁補',
     name: '豪爾亞賀邁補 Hermesh 8 修補網片',
+    category: 'Hernia' as ProductCategory,
     hospitalId: '',
     hospitalName: '',
     notes: '疝氣修補，一般外科',
@@ -146,6 +152,7 @@ export const SEED_PRODUCTS: Product[] = [
   {
     id: 'seed_3DMAX',
     name: '巴德 3DMAX LIGHT 立體修補網',
+    category: 'Hernia' as ProductCategory,
     hospitalId: '',
     hospitalName: '',
     notes: '腹腔鏡疝氣修補，一般外科',
