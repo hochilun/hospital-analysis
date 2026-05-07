@@ -114,7 +114,7 @@ export const SEED_PRODUCTS: Product[] = [
       }),
       v('SM0002-USA', '3公克', 12499, {
         selfPayCode: 'TTZ030696002', patientPrice: 21000,
-        hospitalPrices: { tucheng:12171, tzuchi:14000, eck:15238, grace:15381, tmuh:14762, clinic:13810 },
+        hospitalPrices: { tucheng:13810, sph:13810, tzuchi:14000, eck:15238, grace:15381, tmuh:14762, clinic:13810 },
         hospitalInfo: {
           tucheng: { hospitalCode:'84-286-SM0002', patientPrice:21000, purchasePrice:14200 },
           sph:     { hospitalCode:'84-286-SM0002', patientPrice:21000, purchasePrice:14200 },
@@ -127,7 +127,7 @@ export const SEED_PRODUCTS: Product[] = [
       }),
       v('SM0007-USA', '5公克', 24595, {
         selfPayCode: 'TTZ030696003', patientPrice: 35000,
-        hospitalPrices: { tucheng:22381, tzuchi:23333, grace:25714, tmuh:23429, clinic:23333 },
+        hospitalPrices: { tucheng:22381, sph:22381, tzuchi:23333, grace:25714, tmuh:23429, clinic:23333 },
         hospitalInfo: {
           tucheng: { hospitalCode:'84-286-SM0007', patientPrice:33750, purchasePrice:23500 },
           sph:     { hospitalCode:'84-286-SM0007', patientPrice:33750, purchasePrice:23500 },
@@ -148,7 +148,7 @@ export const SEED_PRODUCTS: Product[] = [
       }),
       v('AM0005', '38cm 加長型塗佈器', 2033, {
         selfPayCode: 'TTZ030696005', patientPrice: 3000,
-        hospitalPrices: { grace:2286, eck:1486, tmuh:1905, clinic:1810 },
+        hospitalPrices: { grace:2286, eck:1857, tmuh:1905, clinic:1810 },
         hospitalInfo: {
           eck:    { hospitalCode:'97U1152',    patientPrice:3000, purchasePrice:1950 },
           grace:  { patientPrice:3000,          purchasePrice:2400 },
@@ -172,7 +172,7 @@ export const SEED_PRODUCTS: Product[] = [
     variants: [
       v('0113115', '15釘', 6296, {
         nhiCode: 'FSPF122345BA', patientPrice: 11034,
-        hospitalPrices: { tucheng:7356, sph:7356, tzuchi:6805, eck:6490, tmuh:7619 },
+        hospitalPrices: { tucheng:7356, sph:7356, tzuchi:6805, eck:8095, tmuh:7619 },
         hospitalInfo: {
           tucheng: { hospitalCode:'84-301-113082', patientPrice:11034, purchasePrice:7724 },
           sph:     { hospitalCode:'84-301-113082', patientPrice:11034, purchasePrice:7724 },
@@ -213,7 +213,7 @@ export const SEED_PRODUCTS: Product[] = [
       }),
       v('Hermesh 8 15×15', '15×15 cm', 1103, {
         nhiCode: 'FSP6181515QH', patientPrice: 1603,
-        hospitalPrices: { tucheng:1069, tzuchi:1114, sph:1059, tmuh:1143, clinic:1143 },
+        hospitalPrices: { tucheng:1069, tzuchi:1114, sph:1069, tmuh:1143, clinic:1143 },
         hospitalInfo: {
           tucheng: { hospitalCode:'84-286-H81515', patientPrice:1603, purchasePrice:1122 },
           sph:     { hospitalCode:'84-286-H81515', patientPrice:1603, purchasePrice:1122 },
@@ -226,7 +226,7 @@ export const SEED_PRODUCTS: Product[] = [
       }),
       v('Hertra Kit #30', 'Hertra Kit #30', 2533, {
         nhiCode: 'FSP62H6T23QH', patientPrice: 3800,
-        hospitalPrices: { clinic:2579 },
+        hospitalPrices: { tucheng:2533, sph:2533, clinic:2579 },
         hospitalInfo: {
           tucheng: { hospitalCode:'84-286-6T25H3', patientPrice:3800, purchasePrice:2660 },
           sph:     { hospitalCode:'84-286-6T25H3', patientPrice:3800, purchasePrice:2660 },
@@ -236,7 +236,7 @@ export const SEED_PRODUCTS: Product[] = [
       }),
       v('Hertra Kit #31', 'Hertra Kit #31', 2533, {
         nhiCode: 'FSP62H6T23QH', patientPrice: 3800,
-        hospitalPrices: { clinic:2579 },
+        hospitalPrices: { tucheng:2533, sph:2533, clinic:2579 },
         hospitalInfo: {
           tucheng: { hospitalCode:'84-286-6T27H3', patientPrice:3800, purchasePrice:2660 },
           sph:     { hospitalCode:'84-286-6T27H3', patientPrice:3800, purchasePrice:2660 },
@@ -317,7 +317,7 @@ export const SEED_PRODUCTS: Product[] = [
       }),
       v('5954680', '6"×8" (15.2×20.3cm)', 12857, {
         nhiCode: 'FSP6454680BA', patientPrice: 27098,
-        hospitalPrices: { grace:23227 },
+        hospitalPrices: { tucheng:12857, sph:12857, grace:23227 },
         hospitalInfo: {
           tucheng: { hospitalCode:'84-286-954680', patientPrice:27098, purchasePrice:13500 },
           sph:     { hospitalCode:'84-286-954680', patientPrice:27098, purchasePrice:13500 },
@@ -352,7 +352,7 @@ export const SEED_PRODUCTS: Product[] = [
     variants: [
       v('IS-M1', '迷你懸吊手術系統', 21861, {
         selfPayCode: 'FSZ031551001', patientPrice: 35000,
-        hospitalPrices: { tucheng:20952, tzuchi:22667, tmuh:25238, clinic:24762 },
+        hospitalPrices: { tucheng:20952, sph:20952, tzuchi:22667, tmuh:25238, clinic:24762 },
         hospitalInfo: {
           tucheng: { hospitalCode:'84-301-ISM100', patientPrice:35000, purchasePrice:22000 },
           sph:     { hospitalCode:'84-301-ISM100', patientPrice:35000, purchasePrice:22000 },
@@ -365,7 +365,7 @@ export const SEED_PRODUCTS: Product[] = [
       }),
       v('IS-TOMS-1', 'Toms 懸吊系統（健保）', 66667, {
         nhiCode: 'FSP72STMS142', patientPrice: 100000,
-        hospitalPrices: { tucheng:66667, tzuchi:73333 },
+        hospitalPrices: { tucheng:66667, sph:66667, eck:71429, tzuchi:73333 },
         hospitalInfo: {
           tucheng: { purchasePrice:70000 },
           sph:     { purchasePrice:70000 },
@@ -376,7 +376,7 @@ export const SEED_PRODUCTS: Product[] = [
       }),
       v('IS-1', '懸吊帶系統（健保）', 8988, {
         nhiCode: 'FSP71ST10042', patientPrice: 13482,
-        hospitalPrices: { tucheng:8988, tzuchi:10015, tmuh:9453, clinic:9524 },
+        hospitalPrices: { tucheng:8988, sph:8988, eck:9453, tzuchi:10015, tmuh:9453, clinic:9524 },
         hospitalInfo: {
           tucheng: { hospitalCode:'84-301-IS1000', patientPrice:13482, purchasePrice:9437 },
           sph:     { hospitalCode:'84-301-IS1000', patientPrice:13482, purchasePrice:9437 },
@@ -389,7 +389,7 @@ export const SEED_PRODUCTS: Product[] = [
       }),
       v('IS-6', '懸吊帶系統 IS-6（健保）', 8988, {
         nhiCode: 'FSP71ST10042', patientPrice: 13482,
-        hospitalPrices: { tucheng:8988, tzuchi:10015, tmuh:9453, clinic:9524 },
+        hospitalPrices: { tucheng:8988, sph:8988, eck:9453, tzuchi:10015, tmuh:9453, clinic:9524 },
         hospitalInfo: {
           tucheng: { hospitalCode:'84-301-IS6000', patientPrice:13482, purchasePrice:9437 },
           sph:     { hospitalCode:'84-301-IS6000', patientPrice:13482, purchasePrice:9437 },
@@ -401,7 +401,7 @@ export const SEED_PRODUCTS: Product[] = [
       }),
       v('IS-HELICO-01', '懸吊帶系統 HELICO（健保）', 8988, {
         nhiCode: 'FSP71ST10042', patientPrice: 13482,
-        hospitalPrices: { tucheng:8988, tzuchi:10015, tmuh:9453, clinic:9524 },
+        hospitalPrices: { tucheng:8988, sph:8988, eck:9453, tzuchi:10015, tmuh:9453, clinic:9524 },
         hospitalInfo: {
           tucheng: { hospitalCode:'84-301-ISHE01', patientPrice:13482, purchasePrice:9437 },
           sph:     { hospitalCode:'84-301-ISHE01', patientPrice:13482, purchasePrice:9437 },
@@ -414,7 +414,7 @@ export const SEED_PRODUCTS: Product[] = [
       }),
       v('P-STOP-8', '骨盆底修護網片 40×185+65×180', 36381, {
         patientPrice: 58725,
-        hospitalPrices: { tucheng:36381, tzuchi:41524, tmuh:37143 },
+        hospitalPrices: { tucheng:36381, sph:36381, tzuchi:41524, tmuh:37143 },
         hospitalInfo: {
           tucheng: { hospitalCode:'84-286-PSTOP8', patientPrice:55000, purchasePrice:38200 },
           sph:     { hospitalCode:'84-286-PSTOP8', patientPrice:55000, purchasePrice:38200 },
