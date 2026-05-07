@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Hospital, Department } from '@/types';
 import { HOSPITALS, TARGET_DEPARTMENTS } from '@/data/hospitals';
+import Link from 'next/link';
 import HospitalCard from '@/components/HospitalCard';
 import WeeklyView from '@/components/WeeklyView';
 import PersonalCalendar from '@/components/PersonalCalendar';
@@ -83,13 +84,17 @@ export default function Home() {
             <h1 className="text-xl font-bold text-gray-900">醫院分析表</h1>
             <p className="text-sm text-gray-500">門診分佈 · 行程規劃</p>
           </div>
-          <button
-            onClick={handleUpdateAll}
-            disabled={!!updating}
-            className="text-sm px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
-          >
-            {updating ? '更新中...' : '全部更新'}
-          </button>
+          <div className="flex items-center gap-3">
+            <Link href="/customers" className="text-sm text-gray-600 hover:text-blue-600 font-medium">客戶</Link>
+            <Link href="/products" className="text-sm text-gray-600 hover:text-blue-600 font-medium">產品</Link>
+            <button
+              onClick={handleUpdateAll}
+              disabled={!!updating}
+              className="text-sm px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+            >
+              {updating ? '更新中...' : '全部更新'}
+            </button>
+          </div>
         </div>
       </div>
 

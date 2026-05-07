@@ -24,3 +24,52 @@ export type NewsItem = {
   date: string;
   url?: string;
 };
+
+// ── 客戶資料庫 ──────────────────────────────────────────
+
+export type ProductTarget = {
+  productId: string;
+  productName: string;
+  targetQty: number;
+  actualQty: number;
+  unit: string;
+};
+
+export type Doctor = {
+  id: string;
+  name: string;
+  hospitalId: string;
+  hospitalName: string;
+  department: string;
+  title: string;
+  phone: string;
+  habits: string;
+  attitude: string;
+  visitPlan: string;
+  productTargets: ProductTarget[];
+  monthlyInvestment: number;
+  createdAt: string;
+};
+
+export type VisitRecord = {
+  id: string;
+  doctorId: string;
+  date: string;
+  content: string;
+  nextAction: string;
+};
+
+// ── 產品資料庫 ──────────────────────────────────────────
+
+export type Product = {
+  id: string;
+  name: string;
+  modelNumber: string;
+  hospitalId: string;
+  hospitalName: string;
+  hospitalPrice: number;
+  patientPrice: number;
+  unit: string;
+  notes: string;
+  createdAt: string;
+};
