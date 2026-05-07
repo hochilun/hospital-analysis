@@ -87,6 +87,7 @@ export default function Home() {
           <div className="flex items-center gap-3">
             <Link href="/customers" className="text-sm text-gray-600 hover:text-blue-600 font-medium">客戶</Link>
             <Link href="/products" className="text-sm text-gray-600 hover:text-blue-600 font-medium">產品</Link>
+            <Link href="/sales" className="text-sm text-gray-600 hover:text-blue-600 font-medium">業績</Link>
             <button
               onClick={handleUpdateAll}
               disabled={!!updating}

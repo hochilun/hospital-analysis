@@ -4,8 +4,9 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 
 import { Product } from '@/types';
-import { getProducts, deleteProduct } from '@/lib/storage';
+import { getProducts, deleteProduct, saveProduct } from '@/lib/storage';
 import { HOSPITALS } from '@/data/hospitals';
+import { SEED_PRODUCTS } from '@/data/seedProducts';
 
 export default function ProductsPage() {
   const [products, setProducts] = useState<Product[]>([]);
@@ -30,6 +31,16 @@ export default function ProductsPage() {
     setProducts(getProducts());
   };
 
+  const handleImport = () => {
+    const existing = getProducts().map(p => p.id);
+    let count = 0;
+    SEED_PRODUCTS.forEach(p => {
+      if (!existing.includes(p.id)) { saveProduct(p); count++; }
+    });
+    setProducts(getProducts());
+    alert(count > 0 ? `已匯入 ${count} 個產品` : '產品已是最新，無需重複匯入');
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="bg-white border-b border-gray-200 px-6 py-4">
@@ -38,10 +49,16 @@ export default function ProductsPage() {
             <Link href="/" className="text-gray-400 hover:text-gray-600 text-sm">← 返回</Link>
             <h1 className="text-xl font-bold text-gray-900">產品資料庫</h1>
           </div>
-          <Link href="/products/new"
-            className="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700">
-            ＋ 新增產品
-          </Link>
+          <div className="flex gap-2">
+            <button onClick={handleImport}
+              className="px-4 py-2 bg-gray-100 text-gray-700 text-sm rounded-lg hover:bg-gray-200">
+              匯入報表產品
+            </button>
+            <Link href="/products/new"
+              className="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700">
+              ＋ 新增產品
+            </Link>
+          </div>
         </div>
       </div>
 
