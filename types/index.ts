@@ -44,6 +44,7 @@ export type Doctor = {
   title: string;
   phone: string;
   habits: string;
+  visitHabit: string;
   attitude: string;
   visitPlan: string;
   productTargets: ProductTarget[];

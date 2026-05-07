@@ -75,6 +75,7 @@ export default function CustomerDetailPage() {
             <div><span className="text-gray-400">月投資</span><span className="ml-2 text-gray-800">{doctor.monthlyInvestment ? `NT$${doctor.monthlyInvestment.toLocaleString()}` : '—'}</span></div>
           </div>
           {doctor.habits && <div className="mt-3 pt-3 border-t border-gray-100"><p className="text-xs text-gray-400 mb-1">手術習慣 / 偏好</p><p className="text-sm text-gray-700 whitespace-pre-wrap">{doctor.habits}</p></div>}
+          {doctor.visitHabit && <div className="mt-3 pt-3 border-t border-gray-100"><p className="text-xs text-gray-400 mb-1">🗓 拜訪習慣模式</p><p className="text-sm text-blue-700 whitespace-pre-wrap font-medium">{doctor.visitHabit}</p></div>}
           {doctor.attitude && <div className="mt-3 pt-3 border-t border-gray-100"><p className="text-xs text-gray-400 mb-1">對產品的態度</p><p className="text-sm text-gray-700 whitespace-pre-wrap">{doctor.attitude}</p></div>}
           {doctor.visitPlan && <div className="mt-3 pt-3 border-t border-gray-100"><p className="text-xs text-gray-400 mb-1">拜訪目標 / 策略</p><p className="text-sm text-gray-700 whitespace-pre-wrap">{doctor.visitPlan}</p></div>}
         </div>

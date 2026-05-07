@@ -13,7 +13,7 @@ export default function NewCustomerPage() {
   const router = useRouter();
   const [form, setForm] = useState({
     name: '', hospitalId: '', department: '', title: '', phone: '',
-    habits: '', attitude: '', visitPlan: '', monthlyInvestment: '',
+    habits: '', visitHabit: '', attitude: '', visitPlan: '', monthlyInvestment: '',
   });
   const [targets, setTargets] = useState<ProductTarget[]>([]);
 
@@ -36,6 +36,7 @@ export default function NewCustomerPage() {
       title: form.title,
       phone: form.phone,
       habits: form.habits,
+      visitHabit: form.visitHabit,
       attitude: form.attitude,
       visitPlan: form.visitPlan,
       productTargets: targets,
@@ -98,6 +99,10 @@ export default function NewCustomerPage() {
             <div>
               <label className="text-xs text-gray-500">手術習慣 / 個人偏好</label>
               <textarea className="input-field mt-1 h-20" placeholder="例：習慣使用腹腔鏡、偏好國產器械..." value={form.habits} onChange={e => set('habits', e.target.value)} />
+            </div>
+            <div>
+              <label className="text-xs text-gray-500">拜訪習慣模式</label>
+              <textarea className="input-field mt-1 h-20" placeholder="例：每週四早上門診前，可以買早餐過去給他..." value={form.visitHabit} onChange={e => set('visitHabit', e.target.value)} />
             </div>
             <div>
               <label className="text-xs text-gray-500">對產品的態度</label>
