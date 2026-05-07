@@ -62,15 +62,21 @@ export type VisitRecord = {
 
 // ── 產品資料庫 ──────────────────────────────────────────
 
-export type Product = {
+export type ProductVariant = {
   id: string;
-  name: string;
   modelNumber: string;
-  hospitalId: string;
-  hospitalName: string;
+  description: string;
   hospitalPrice: number;
   patientPrice: number;
   unit: string;
+};
+
+export type Product = {
+  id: string;
+  name: string;
+  hospitalId: string;
+  hospitalName: string;
+  variants: ProductVariant[];
   notes: string;
   createdAt: string;
 };

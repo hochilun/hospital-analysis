@@ -3,65 +3,113 @@
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Product } from '@/types';
+import { Product, ProductVariant } from '@/types';
 import { getProducts, saveProduct } from '@/lib/storage';
 import { HOSPITALS } from '@/data/hospitals';
+
+function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2); }
+function emptyVariant(): ProductVariant {
+  return { id: uid(), modelNumber: '', description: '', hospitalPrice: 0, patientPrice: 0, unit: '個' };
+}
+
+function VariantRow({ v, onChange, onRemove, showRemove }: {
+  v: ProductVariant;
+  onChange: (k: keyof ProductVariant, val: string | number) => void;
+  onRemove: () => void;
+  showRemove: boolean;
+}) {
+  const markup = v.hospitalPrice > 0
+    ? Math.round(((v.patientPrice - v.hospitalPrice) / v.hospitalPrice) * 100) : null;
+  return (
+    <div className="border border-gray-100 rounded-lg p-4 space-y-3 bg-gray-50">
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className="text-xs text-gray-500">型號</label>
+          <input className="input mt-1" value={v.modelNumber}
+            onChange={e => onChange('modelNumber', e.target.value)} />
+        </div>
+        <div>
+          <label className="text-xs text-gray-500">描述</label>
+          <input className="input mt-1" placeholder="例：1克裝" value={v.description}
+            onChange={e => onChange('description', e.target.value)} />
+        </div>
+        <div>
+          <label className="text-xs text-gray-500">醫院售價（NT$）</label>
+          <input className="input mt-1" type="number" value={v.hospitalPrice || ''}
+            onChange={e => onChange('hospitalPrice', parseFloat(e.target.value) || 0)} />
+        </div>
+        <div>
+          <label className="text-xs text-gray-500">病人售價（NT$）</label>
+          <input className="input mt-1" type="number" value={v.patientPrice || ''}
+            onChange={e => onChange('patientPrice', parseFloat(e.target.value) || 0)} />
+        </div>
+      </div>
+      <div className="flex items-center gap-4">
+        <div className="w-24">
+          <label className="text-xs text-gray-500">單位</label>
+          <input className="input mt-1" value={v.unit}
+            onChange={e => onChange('unit', e.target.value)} />
+        </div>
+        {markup !== null && (
+          <div className="text-xs text-gray-600 mt-4">
+            加成 <span className={`font-bold ${markup >= 0 ? 'text-green-600' : 'text-red-500'}`}>+{markup}%</span>
+            <span className="text-gray-400 ml-1">（差 NT${(v.patientPrice - v.hospitalPrice).toLocaleString()}）</span>
+          </div>
+        )}
+        {showRemove && (
+          <button onClick={onRemove} className="mt-4 ml-auto text-xs text-red-400 hover:text-red-600">✕ 移除</button>
+        )}
+      </div>
+    </div>
+  );
+}
 
 export default function EditProductPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
-  const [form, setForm] = useState({
-    name: '', modelNumber: '', hospitalId: '',
-    hospitalPrice: '', patientPrice: '', unit: '個', notes: '',
-  });
+  const [name, setName] = useState('');
+  const [hospitalId, setHospitalId] = useState('');
+  const [notes, setNotes] = useState('');
+  const [variants, setVariants] = useState<ProductVariant[]>([emptyVariant()]);
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
     const p = getProducts().find(x => x.id === id);
     if (!p) { router.push('/products'); return; }
-    setForm({
-      name: p.name,
-      modelNumber: p.modelNumber,
-      hospitalId: p.hospitalId,
-      hospitalPrice: p.hospitalPrice ? String(p.hospitalPrice) : '',
-      patientPrice: p.patientPrice ? String(p.patientPrice) : '',
-      unit: p.unit,
-      notes: p.notes,
-    });
+    setName(p.name);
+    setHospitalId(p.hospitalId);
+    setNotes(p.notes);
+    setVariants(p.variants?.length ? p.variants : [emptyVariant()]);
     setLoaded(true);
   }, [id]);
 
-  const set = (k: string, v: string) => setForm(f => ({ ...f, [k]: v }));
+  const updateVariant = (i: number, k: keyof ProductVariant, v: string | number) =>
+    setVariants(prev => prev.map((x, j) => j === i ? { ...x, [k]: v } : x));
+  const addVariant = () => setVariants(prev => [...prev, emptyVariant()]);
+  const removeVariant = (i: number) => setVariants(prev => prev.filter((_, j) => j !== i));
 
   const handleSave = () => {
-    if (!form.name.trim()) { alert('請輸入產品名稱'); return; }
-    const hospital = HOSPITALS.find(h => h.id === form.hospitalId);
+    if (!name.trim()) { alert('請輸入產品名稱'); return; }
+    const hospital = HOSPITALS.find(h => h.id === hospitalId);
     const p: Product = {
       id,
-      name: form.name.trim(),
-      modelNumber: form.modelNumber.trim(),
-      hospitalId: form.hospitalId,
+      name: name.trim(),
+      hospitalId,
       hospitalName: hospital?.name ?? '',
-      hospitalPrice: parseFloat(form.hospitalPrice) || 0,
-      patientPrice: parseFloat(form.patientPrice) || 0,
-      unit: form.unit,
-      notes: form.notes,
+      variants: variants.filter(v => v.modelNumber.trim()),
+      notes,
       createdAt: new Date().toISOString(),
     };
     saveProduct(p);
     router.push('/products');
   };
 
-  const hospitalPrice = parseFloat(form.hospitalPrice) || 0;
-  const patientPrice = parseFloat(form.patientPrice) || 0;
-  const markup = hospitalPrice > 0 ? Math.round(((patientPrice - hospitalPrice) / hospitalPrice) * 100) : null;
-
   if (!loaded) return null;
 
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="bg-white border-b border-gray-200 px-6 py-4">
-        <div className="max-w-xl mx-auto flex items-center justify-between">
+        <div className="max-w-2xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Link href="/products" className="text-gray-400 hover:text-gray-600 text-sm">← 返回</Link>
             <h1 className="text-xl font-bold text-gray-900">編輯產品</h1>
@@ -71,49 +119,39 @@ export default function EditProductPage() {
         </div>
       </div>
 
-      <div className="max-w-xl mx-auto px-6 py-6">
+      <div className="max-w-2xl mx-auto px-6 py-6 space-y-5">
         <div className="bg-white rounded-xl border border-gray-200 p-5 space-y-4">
           <div>
             <label className="text-xs text-gray-500">產品名稱 *</label>
-            <input className="input mt-1" value={form.name} onChange={e => set('name', e.target.value)} />
-          </div>
-          <div>
-            <label className="text-xs text-gray-500">型號</label>
-            <input className="input mt-1" value={form.modelNumber} onChange={e => set('modelNumber', e.target.value)} />
+            <input className="input mt-1" value={name} onChange={e => setName(e.target.value)} />
           </div>
           <div>
             <label className="text-xs text-gray-500">所屬醫院</label>
-            <select className="input mt-1" value={form.hospitalId} onChange={e => set('hospitalId', e.target.value)}>
+            <select className="input mt-1" value={hospitalId} onChange={e => setHospitalId(e.target.value)}>
               <option value="">請選擇（可留空）</option>
               {HOSPITALS.map(h => <option key={h.id} value={h.id}>{h.name}</option>)}
             </select>
           </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="text-xs text-gray-500">醫院售價（NT$）</label>
-              <input className="input mt-1" type="number" value={form.hospitalPrice}
-                onChange={e => set('hospitalPrice', e.target.value)} />
-            </div>
-            <div>
-              <label className="text-xs text-gray-500">病人售價（NT$）</label>
-              <input className="input mt-1" type="number" value={form.patientPrice}
-                onChange={e => set('patientPrice', e.target.value)} />
-            </div>
-          </div>
-          {markup !== null && (
-            <div className="text-sm text-gray-600 bg-gray-50 rounded-lg px-3 py-2">
-              醫院加成率：<span className={`font-bold ${markup >= 0 ? 'text-green-600' : 'text-red-500'}`}>+{markup}%</span>
-              <span className="text-gray-400 text-xs ml-2">（差價 NT${(patientPrice - hospitalPrice).toLocaleString()}）</span>
-            </div>
-          )}
-          <div>
-            <label className="text-xs text-gray-500">單位</label>
-            <input className="input mt-1 w-24" value={form.unit} onChange={e => set('unit', e.target.value)} />
-          </div>
           <div>
             <label className="text-xs text-gray-500">備注</label>
-            <textarea className="input mt-1 h-20 resize-none" value={form.notes}
-              onChange={e => set('notes', e.target.value)} />
+            <textarea className="input mt-1 h-16 resize-none" value={notes}
+              onChange={e => setNotes(e.target.value)} />
+          </div>
+        </div>
+
+        <div className="bg-white rounded-xl border border-gray-200 p-5">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-sm font-semibold text-gray-700">型號 / 規格</h2>
+            <button onClick={addVariant} className="text-xs text-blue-600 hover:underline">＋ 新增型號</button>
+          </div>
+          <div className="space-y-3">
+            {variants.map((v, i) => (
+              <VariantRow key={v.id} v={v}
+                onChange={(k, val) => updateVariant(i, k, val)}
+                onRemove={() => removeVariant(i)}
+                showRemove={variants.length > 1}
+              />
+            ))}
           </div>
         </div>
       </div>
