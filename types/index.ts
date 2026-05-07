@@ -62,13 +62,22 @@ export type VisitRecord = {
 
 // ── 產品資料庫 ──────────────────────────────────────────
 
+export type HospitalVariantInfo = {
+  hospitalCode?: string;   // 院內碼
+  patientPrice?: number;   // 末端售價（含稅，病人付）
+  purchasePrice?: number;  // 採購價（含稅）= hospitalPrice × 1.05
+};
+
 export type ProductVariant = {
   id: string;
   modelNumber: string;
   description: string;
-  hospitalPrice: number;        // 預設價（或平均價）
-  patientPrice: number;
-  hospitalPrices?: Record<string, number>; // 各醫院個別售價 {hospitalId: price}
+  selfPayCode?: string;    // 自費碼
+  nhiCode?: string;        // 健保碼
+  hospitalPrice: number;        // 預設採購價（未稅）
+  patientPrice: number;         // 預設末端售價
+  hospitalPrices?: Record<string, number>;          // hospitalId -> 採購價(未稅)
+  hospitalInfo?: Record<string, HospitalVariantInfo>; // hospitalId -> {院內碼, 末端售價}
   unit: string;
 };
 

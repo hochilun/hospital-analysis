@@ -156,41 +156,51 @@ export default function ProductsPage() {
                                 <tr className="text-xs text-gray-400 border-b border-gray-50">
                                   <th className="text-left py-2 px-4">型號</th>
                                   <th className="text-left py-2 px-4">描述</th>
+                                  {filterHospital && <th className="text-left py-2 px-3">院內碼</th>}
+                                  <th className="text-left py-2 px-3">自費碼/健保碼</th>
                                   <th className="text-right py-2 px-4">
-                                    {filterHospital ? `${selectedHospital?.shortName} 售價` : '參考售價'}
+                                    {filterHospital ? `採購價（未稅）` : '參考採購價'}
                                   </th>
-                                  <th className="text-right py-2 px-4">病人售價</th>
-                                  <th className="text-right py-2 px-4">加成率</th>
+                                  <th className="text-right py-2 px-4">末端售價</th>
                                 </tr>
                               </thead>
                               <tbody>
                                 {p.variants.map(v => {
+                                  const info = filterHospital ? v.hospitalInfo?.[filterHospital] : undefined;
                                   const displayPrice = filterHospital && v.hospitalPrices?.[filterHospital]
                                     ? v.hospitalPrices[filterHospital]
                                     : v.hospitalPrice;
-                                  const isSpecific = !!(filterHospital && v.hospitalPrices?.[filterHospital]);
-                                  const markup = displayPrice > 0 && v.patientPrice > 0
-                                    ? Math.round(((v.patientPrice - displayPrice) / displayPrice) * 100) : null;
+                                  const patientPriceDisplay = info?.patientPrice ?? v.patientPrice;
+                                  const code = v.selfPayCode || v.nhiCode;
+                                  const codeType = v.nhiCode ? '健' : v.selfPayCode ? '自' : '';
                                   return (
                                     <tr key={v.id} className="border-b border-gray-50 last:border-0">
                                       <td className="py-2.5 px-4 font-medium text-gray-700">{v.modelNumber}</td>
                                       <td className="py-2.5 px-4 text-gray-500">{v.description || '—'}</td>
+                                      {filterHospital && (
+                                        <td className="py-2.5 px-3 text-gray-500 font-mono text-xs">
+                                          {info?.hospitalCode ?? '—'}
+                                        </td>
+                                      )}
+                                      <td className="py-2.5 px-3 text-xs">
+                                        {code ? (
+                                          <span className="flex items-center gap-1">
+                                            <span className={`px-1 py-0.5 rounded text-[10px] font-bold ${codeType === '健' ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'}`}>
+                                              {codeType}
+                                            </span>
+                                            <span className="text-gray-500 font-mono">{code}</span>
+                                          </span>
+                                        ) : '—'}
+                                      </td>
                                       <td className="py-2.5 px-4 text-right">
                                         {displayPrice ? (
-                                          <span className={isSpecific ? 'text-blue-700 font-medium' : 'text-gray-700'}>
+                                          <span className={filterHospital && v.hospitalPrices?.[filterHospital] ? 'text-blue-700 font-medium' : 'text-gray-700'}>
                                             NT${displayPrice.toLocaleString()}
                                           </span>
                                         ) : '—'}
                                       </td>
                                       <td className="py-2.5 px-4 text-right text-gray-700">
-                                        {v.patientPrice ? `NT$${v.patientPrice.toLocaleString()}` : '—'}
-                                      </td>
-                                      <td className="py-2.5 px-4 text-right">
-                                        {markup !== null && (
-                                          <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${markup >= 0 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                                            +{markup}%
-                                          </span>
-                                        )}
+                                        {patientPriceDisplay ? `NT$${patientPriceDisplay.toLocaleString()}` : '—'}
                                       </td>
                                     </tr>
                                   );
