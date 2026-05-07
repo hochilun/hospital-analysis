@@ -46,7 +46,9 @@ export const SEED_PRODUCTS: Product[] = [
         patientPrice: 17000,
         hospitalPrices: { tucheng:10476, tzuchi:12381, sph:10476, eck:11619, tmuh:11429 },
         hospitalInfo: {
-          tzuchi: { hospitalCode:'6ZWDD01057', patientPrice:17000, purchasePrice:13000 },
+          tucheng: { hospitalCode:'84-286-076206',  patientPrice:16800, purchasePrice:10999 },
+          sph:     { hospitalCode:'84-286-076206',  patientPrice:16800, purchasePrice:10999 },
+          tzuchi:  { hospitalCode:'6ZWDD01057',     patientPrice:17000, purchasePrice:13000 },
         },
       }),
       v('MateRegen Gel 3ml', '3ml版', 11047, {
@@ -73,7 +75,7 @@ export const SEED_PRODUCTS: Product[] = [
     variants: [
       v('PureRegen Gel Sinus', '鼻腔阻隔物（滅菌）', 12288, {
         patientPrice: 17000,
-        hospitalPrices: { tzuchi: Math.round(12000/1.05) },
+        hospitalPrices: { tzuchi: 11429 },
         hospitalInfo: {
           tzuchi: { hospitalCode:'6ZWDD01080', patientPrice:17000, purchasePrice:12000 },
         },
@@ -95,8 +97,10 @@ export const SEED_PRODUCTS: Product[] = [
         patientPrice: 10500,
         hospitalPrices: { tucheng:6933, tzuchi:8095, sph:6933, eck:7429, tmuh:7000 },
         hospitalInfo: {
-          tzuchi: { hospitalCode:'6ZWDD01028', patientPrice:10500, purchasePrice:8500 },
-          eck:    { hospitalCode:'97U1153',    patientPrice:10500, purchasePrice:7800 },
+          tucheng: { hospitalCode:'84-286-SM0005', patientPrice:10400,  purchasePrice:7280 },
+          sph:     { hospitalCode:'84-286-SM0005', patientPrice:10400,  purchasePrice:7280 },
+          tzuchi:  { hospitalCode:'6ZWDD01028',    patientPrice:10500,  purchasePrice:8500 },
+          eck:     { hospitalCode:'97U1153',        patientPrice:10500,  purchasePrice:7800 },
         },
       }),
       v('SM0002-USA', '3公克', 12499, {
@@ -104,8 +108,10 @@ export const SEED_PRODUCTS: Product[] = [
         patientPrice: 21000,
         hospitalPrices: { tucheng:12171, tzuchi:14000, eck:15238, grace:15381, tmuh:14762 },
         hospitalInfo: {
-          tzuchi: { hospitalCode:'6ZWDD01047', patientPrice:21000, purchasePrice:14700 },
-          eck:    { hospitalCode:'97U1150',    patientPrice:21000, purchasePrice:16000 },
+          tucheng: { hospitalCode:'84-286-SM0002', patientPrice:21000, purchasePrice:14200 },
+          sph:     { hospitalCode:'84-286-SM0002', patientPrice:21000, purchasePrice:14200 },
+          tzuchi:  { hospitalCode:'6ZWDD01047',    patientPrice:21000, purchasePrice:14700 },
+          eck:     { hospitalCode:'97U1150',        patientPrice:21000, purchasePrice:16000 },
         },
       }),
       v('SM0007-USA', '5公克', 24595, {
@@ -113,7 +119,9 @@ export const SEED_PRODUCTS: Product[] = [
         patientPrice: 35000,
         hospitalPrices: { tucheng:22381, tzuchi:23333, grace:25714, tmuh:23429, clinic:23333 },
         hospitalInfo: {
-          tzuchi: { hospitalCode:'6ZWDD01048', patientPrice:35000, purchasePrice:24500 },
+          tucheng: { hospitalCode:'84-286-SM0007', patientPrice:33750, purchasePrice:23500 },
+          sph:     { hospitalCode:'84-286-SM0007', patientPrice:33750, purchasePrice:23500 },
+          tzuchi:  { hospitalCode:'6ZWDD01048',    patientPrice:35000, purchasePrice:24500 },
         },
       }),
       v('TTZ030696004', '14cm 塗佈器 ×2', 1857, {
@@ -148,7 +156,9 @@ export const SEED_PRODUCTS: Product[] = [
         patientPrice: 11034,
         hospitalPrices: { tucheng:5885, tzuchi:6805, eck:6490 },
         hospitalInfo: {
-          eck: { hospitalCode:'9710320', patientPrice:11034, purchasePrice:8500 },
+          tucheng: { hospitalCode:'84-301-113082', patientPrice:11034, purchasePrice:7724 },
+          sph:     { hospitalCode:'84-301-113082', patientPrice:11034, purchasePrice:7724 },
+          eck:     { hospitalCode:'9710320',        patientPrice:11034, purchasePrice:8500 },
         },
         unit: '組',
       }),
@@ -172,17 +182,41 @@ export const SEED_PRODUCTS: Product[] = [
         nhiCode: 'FSP6180815QH',
         patientPrice: 1459,
         hospitalPrices: { tucheng:948, sph:948, grace:1043, clinic:1143 },
+        hospitalInfo: {
+          tucheng: { hospitalCode:'84-286-H81015', patientPrice:1459, purchasePrice:1079 },
+          sph:     { hospitalCode:'84-286-H81015', patientPrice:1459, purchasePrice:1079 },
+        },
         unit: '片',
       }),
       v('Hermesh 8 15×15', '15×15 cm', 1103, {
         nhiCode: 'FSP6181515QH',
         patientPrice: 1603,
-        hospitalPrices: { tzuchi:1114, sph:1059, tmuh:1143 },
+        hospitalPrices: { tucheng:1069, tzuchi:1114, sph:1059, tmuh:1143 },
         hospitalInfo: {
-          tzuchi: { hospitalCode:'6FSP610048', patientPrice:1603, purchasePrice:1170 },
-          eck:    { patientPrice:1603, purchasePrice:1202 },
+          tucheng: { hospitalCode:'84-286-H81515', patientPrice:1603, purchasePrice:1122 },
+          sph:     { hospitalCode:'84-286-H81515', patientPrice:1603, purchasePrice:1122 },
+          tzuchi:  { hospitalCode:'6FSP610048',    patientPrice:1603, purchasePrice:1170 },
+          eck:     { patientPrice:1603, purchasePrice:1202 },
         },
         unit: '片',
+      }),
+      v('Hertra Kit #30', 'Hertra Kit #30', 2533, {
+        nhiCode: 'FSP62H6T23QH',
+        patientPrice: 3800,
+        hospitalInfo: {
+          tucheng: { hospitalCode:'84-286-6T25H3', patientPrice:3800, purchasePrice:2660 },
+          sph:     { hospitalCode:'84-286-6T25H3', patientPrice:3800, purchasePrice:2660 },
+        },
+        unit: '組',
+      }),
+      v('Hertra Kit #31', 'Hertra Kit #31', 2533, {
+        nhiCode: 'FSP62H6T23QH',
+        patientPrice: 3800,
+        hospitalInfo: {
+          tucheng: { hospitalCode:'84-286-6T27H3', patientPrice:3800, purchasePrice:2660 },
+          sph:     { hospitalCode:'84-286-6T27H3', patientPrice:3800, purchasePrice:2660 },
+        },
+        unit: '組',
       }),
     ],
     createdAt: new Date().toISOString(),
@@ -225,6 +259,25 @@ export const SEED_PRODUCTS: Product[] = [
     ],
     createdAt: new Date().toISOString(),
   },
+  {
+    id: 'seed_ventralight',
+    name: '巴德 Ventralight ST Mesh 凡萃拉絲提鋼片',
+    category: 'Hernia' as ProductCategory,
+    hospitalId: '', hospitalName: '',
+    notes: '腹腔鏡疝氣修補，114/6/1 起轉健保',
+    variants: [
+      v('5954680', '6"×8" (15.2×20.3cm)', 12857, {
+        nhiCode: 'FSP6454680BA',
+        patientPrice: 27098,
+        hospitalInfo: {
+          tucheng: { hospitalCode:'84-286-954680', patientPrice:27098, purchasePrice:13500 },
+          sph:     { hospitalCode:'84-286-954680', patientPrice:27098, purchasePrice:13500 },
+        },
+        unit: '片',
+      }),
+    ],
+    createdAt: new Date().toISOString(),
+  },
 
   // ── URINARY INCONTINENCE ─────────────────────────────
   {
@@ -236,53 +289,65 @@ export const SEED_PRODUCTS: Product[] = [
     variants: [
       v('IS-M1', '迷你懸吊手術系統', 21861, {
         selfPayCode: 'FSZ031551001', patientPrice: 35000,
-        hospitalPrices: { tzuchi:22667 },
+        hospitalPrices: { tucheng:20952, tzuchi:22667 },
         hospitalInfo: {
-          eck:    { hospitalCode:'97U0627',    patientPrice:35000, purchasePrice:25000 },
-          tzuchi: { hospitalCode:'6ZFSP71031', patientPrice:35000, purchasePrice:23800 },
+          tucheng: { hospitalCode:'84-301-ISM100', patientPrice:35000, purchasePrice:22000 },
+          sph:     { hospitalCode:'84-301-ISM100', patientPrice:35000, purchasePrice:22000 },
+          eck:     { hospitalCode:'97U0627',        patientPrice:35000, purchasePrice:25000 },
+          tzuchi:  { hospitalCode:'6ZFSP71031',     patientPrice:35000, purchasePrice:23800 },
         },
         unit: '組',
       }),
-      v('IS-TOMS-1', 'Toms 懸吊系統（健保）', 71429, {
+      v('IS-TOMS-1', 'Toms 懸吊系統（健保）', 66667, {
         nhiCode: 'FSP72STMS142', patientPrice: 100000,
-        hospitalPrices: { tzuchi:73333 },
+        hospitalPrices: { tucheng:66667, tzuchi:73333 },
         hospitalInfo: {
-          eck:    { hospitalCode:'97U0628',    patientPrice:100000, purchasePrice:75000 },
-          tzuchi: { hospitalCode:'6ZFSP72002', patientPrice:100000, purchasePrice:77000 },
+          tucheng: { purchasePrice:70000 },
+          sph:     { purchasePrice:70000 },
+          eck:     { hospitalCode:'97U0628',    patientPrice:100000, purchasePrice:75000 },
+          tzuchi:  { hospitalCode:'6ZFSP72002', patientPrice:100000, purchasePrice:77000 },
         },
         unit: '組',
       }),
-      v('IS-1', '懸吊帶系統（健保）', 9453, {
+      v('IS-1', '懸吊帶系統（健保）', 8988, {
         nhiCode: 'FSP71ST10042', patientPrice: 13482,
-        hospitalPrices: { tzuchi:10015 },
+        hospitalPrices: { tucheng:8988, tzuchi:10015 },
         hospitalInfo: {
-          eck:    { hospitalCode:'97Y6002',    patientPrice:13482, purchasePrice:9926 },
-          tzuchi: { hospitalCode:'6ZFSP71037', patientPrice:13482, purchasePrice:10516 },
+          tucheng: { hospitalCode:'84-301-IS1000', patientPrice:13482, purchasePrice:9437 },
+          sph:     { hospitalCode:'84-301-IS1000', patientPrice:13482, purchasePrice:9437 },
+          eck:     { hospitalCode:'97Y6002',        patientPrice:13482, purchasePrice:9926 },
+          tzuchi:  { hospitalCode:'6ZFSP71037',     patientPrice:13482, purchasePrice:10516 },
         },
         unit: '組',
       }),
-      v('IS-6', '懸吊帶系統 IS-6（健保）', 9734, {
+      v('IS-6', '懸吊帶系統 IS-6（健保）', 8988, {
         nhiCode: 'FSP71ST10042', patientPrice: 13482,
-        hospitalPrices: { tzuchi:10015 },
+        hospitalPrices: { tucheng:8988, tzuchi:10015 },
         hospitalInfo: {
-          tzuchi: { hospitalCode:'6ZFSP71036', patientPrice:13482, purchasePrice:10516 },
+          tucheng: { hospitalCode:'84-301-IS6000', patientPrice:13482, purchasePrice:9437 },
+          sph:     { hospitalCode:'84-301-IS6000', patientPrice:13482, purchasePrice:9437 },
+          tzuchi:  { hospitalCode:'6ZFSP71036',    patientPrice:13482, purchasePrice:10516 },
         },
         unit: '組',
       }),
-      v('IS-HELICO-01', '懸吊帶系統 HELICO（健保）', 9023, {
+      v('IS-HELICO-01', '懸吊帶系統 HELICO（健保）', 8988, {
         nhiCode: 'FSP71ST10042', patientPrice: 13482,
-        hospitalPrices: { tzuchi:10015 },
+        hospitalPrices: { tucheng:8988, tzuchi:10015 },
         hospitalInfo: {
-          eck:    { hospitalCode:'97Y6002',    patientPrice:13482, purchasePrice:9926 },
-          tzuchi: { hospitalCode:'6ZFSP71038', patientPrice:13482, purchasePrice:10516 },
+          tucheng: { hospitalCode:'84-301-ISHE01', patientPrice:13482, purchasePrice:9437 },
+          sph:     { hospitalCode:'84-301-ISHE01', patientPrice:13482, purchasePrice:9437 },
+          eck:     { hospitalCode:'97Y6002',        patientPrice:13482, purchasePrice:9926 },
+          tzuchi:  { hospitalCode:'6ZFSP71038',     patientPrice:13482, purchasePrice:10516 },
         },
         unit: '組',
       }),
-      v('P-STOP-8', '骨盆底修護網片 40×185+65×180', 36568, {
+      v('P-STOP-8', '骨盆底修護網片 40×185+65×180', 36381, {
         patientPrice: 58725,
-        hospitalPrices: { tzuchi:41524 },
+        hospitalPrices: { tucheng:36381, tzuchi:41524 },
         hospitalInfo: {
-          tzuchi: { hospitalCode:'6ZFSP71035', patientPrice:58725, purchasePrice:43600 },
+          tucheng: { hospitalCode:'84-286-PSTOP8', patientPrice:55000, purchasePrice:38200 },
+          sph:     { hospitalCode:'84-286-PSTOP8', patientPrice:55000, purchasePrice:38200 },
+          tzuchi:  { hospitalCode:'6ZFSP71035',    patientPrice:58725, purchasePrice:43600 },
         },
         unit: '片',
       }),
