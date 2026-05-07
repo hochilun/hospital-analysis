@@ -289,12 +289,13 @@ export const SEED_PRODUCTS: Product[] = [
     variants: [
       v('IS-M1', '迷你懸吊手術系統', 21861, {
         selfPayCode: 'FSZ031551001', patientPrice: 35000,
-        hospitalPrices: { tucheng:20952, tzuchi:22667 },
+        hospitalPrices: { tucheng:20952, tzuchi:22667, tmuh:25238 },
         hospitalInfo: {
           tucheng: { hospitalCode:'84-301-ISM100', patientPrice:35000, purchasePrice:22000 },
           sph:     { hospitalCode:'84-301-ISM100', patientPrice:35000, purchasePrice:22000 },
           eck:     { hospitalCode:'97U0627',        patientPrice:35000, purchasePrice:25000 },
           tzuchi:  { hospitalCode:'6ZFSP71031',     patientPrice:35000, purchasePrice:23800 },
+          tmuh:    { hospitalCode:'2172054151',      patientPrice:35000, purchasePrice:26500 },
         },
         unit: '組',
       }),
@@ -311,43 +312,47 @@ export const SEED_PRODUCTS: Product[] = [
       }),
       v('IS-1', '懸吊帶系統（健保）', 8988, {
         nhiCode: 'FSP71ST10042', patientPrice: 13482,
-        hospitalPrices: { tucheng:8988, tzuchi:10015 },
+        hospitalPrices: { tucheng:8988, tzuchi:10015, tmuh:9453 },
         hospitalInfo: {
           tucheng: { hospitalCode:'84-301-IS1000', patientPrice:13482, purchasePrice:9437 },
           sph:     { hospitalCode:'84-301-IS1000', patientPrice:13482, purchasePrice:9437 },
           eck:     { hospitalCode:'97Y6002',        patientPrice:13482, purchasePrice:9926 },
           tzuchi:  { hospitalCode:'6ZFSP71037',     patientPrice:13482, purchasePrice:10516 },
+          tmuh:    { hospitalCode:'2372054012',      patientPrice:13482, purchasePrice:9926 },
         },
         unit: '組',
       }),
       v('IS-6', '懸吊帶系統 IS-6（健保）', 8988, {
         nhiCode: 'FSP71ST10042', patientPrice: 13482,
-        hospitalPrices: { tucheng:8988, tzuchi:10015 },
+        hospitalPrices: { tucheng:8988, tzuchi:10015, tmuh:9453 },
         hospitalInfo: {
           tucheng: { hospitalCode:'84-301-IS6000', patientPrice:13482, purchasePrice:9437 },
           sph:     { hospitalCode:'84-301-IS6000', patientPrice:13482, purchasePrice:9437 },
           tzuchi:  { hospitalCode:'6ZFSP71036',    patientPrice:13482, purchasePrice:10516 },
+          tmuh:    { hospitalCode:'2372054012',     patientPrice:13482, purchasePrice:9926 },
         },
         unit: '組',
       }),
       v('IS-HELICO-01', '懸吊帶系統 HELICO（健保）', 8988, {
         nhiCode: 'FSP71ST10042', patientPrice: 13482,
-        hospitalPrices: { tucheng:8988, tzuchi:10015 },
+        hospitalPrices: { tucheng:8988, tzuchi:10015, tmuh:9453 },
         hospitalInfo: {
           tucheng: { hospitalCode:'84-301-ISHE01', patientPrice:13482, purchasePrice:9437 },
           sph:     { hospitalCode:'84-301-ISHE01', patientPrice:13482, purchasePrice:9437 },
           eck:     { hospitalCode:'97Y6002',        patientPrice:13482, purchasePrice:9926 },
           tzuchi:  { hospitalCode:'6ZFSP71038',     patientPrice:13482, purchasePrice:10516 },
+          tmuh:    { hospitalCode:'2372054012',      patientPrice:13482, purchasePrice:9926 },
         },
         unit: '組',
       }),
       v('P-STOP-8', '骨盆底修護網片 40×185+65×180', 36381, {
         patientPrice: 58725,
-        hospitalPrices: { tucheng:36381, tzuchi:41524 },
+        hospitalPrices: { tucheng:36381, tzuchi:41524, tmuh:37143 },
         hospitalInfo: {
           tucheng: { hospitalCode:'84-286-PSTOP8', patientPrice:55000, purchasePrice:38200 },
           sph:     { hospitalCode:'84-286-PSTOP8', patientPrice:55000, purchasePrice:38200 },
           tzuchi:  { hospitalCode:'6ZFSP71035',    patientPrice:58725, purchasePrice:43600 },
+          tmuh:    { hospitalCode:'2372054161',     patientPrice:55000, purchasePrice:39000 },
         },
         unit: '片',
       }),

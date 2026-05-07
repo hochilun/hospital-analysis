@@ -11,7 +11,7 @@ export const HOSPITAL_PRODUCT_IDS: Record<string, string[]> = {
   sph:     ['seed_宮安康', 'seed_止血顆粒', 'seed_賀邁補', 'seed_速巴定', 'seed_愛沛斯', 'seed_ventralight'],
   grace:   ['seed_止血顆粒', 'seed_賀邁補'],
   eck:     ['seed_宮安康', 'seed_止血顆粒', 'seed_速巴定', 'seed_3DMAX'],
-  tmuh:    ['seed_宮安康', 'seed_止血顆粒', 'seed_賀邁補', 'seed_3DMAX'],
+  tmuh:    ['seed_宮安康', 'seed_止血顆粒', 'seed_賀邁補', 'seed_3DMAX', 'seed_愛沛斯'],
   clinic:  ['seed_止血顆粒', 'seed_賀邁補'],
 };
 
