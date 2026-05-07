@@ -164,6 +164,7 @@ export default function EditProductPage() {
           border: 1px solid #e5e7eb;
           border-radius: 0.5rem;
           font-size: 0.875rem;
+          color: #111827;
           background: white;
           outline: none;
           display: block;
