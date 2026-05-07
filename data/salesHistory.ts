@@ -4,14 +4,14 @@
 export type SalesEntry = { qty: number; rev: number };
 export type HospitalSales = Record<string, SalesEntry>;
 
-// 各醫院有銷售紀錄的產品 ID（對應 seedProducts 的 id）
+// 各醫院有銷售紀錄的產品 ID（依銷售報表完整對應）
 export const HOSPITAL_PRODUCT_IDS: Record<string, string[]> = {
   tucheng: ['seed_宮安康', 'seed_止血顆粒', 'seed_賀邁補', 'seed_速巴定'],
-  tzuchi:  ['seed_宮安康', 'seed_止血顆粒', 'seed_賀邁補', 'seed_速巴定'],
+  tzuchi:  ['seed_宮安康', 'seed_止血顆粒', 'seed_賀邁補', 'seed_速巴定', 'seed_3DMAX'],
   sph:     ['seed_宮安康', 'seed_止血顆粒', 'seed_賀邁補'],
   grace:   ['seed_止血顆粒', 'seed_賀邁補'],
-  eck:     ['seed_宮安康', 'seed_止血顆粒', 'seed_速巴定'],
-  tmuh:    ['seed_宮安康', 'seed_止血顆粒', 'seed_賀邁補'],
+  eck:     ['seed_宮安康', 'seed_止血顆粒', 'seed_速巴定', 'seed_3DMAX'],
+  tmuh:    ['seed_宮安康', 'seed_止血顆粒', 'seed_賀邁補', 'seed_3DMAX'],
   clinic:  ['seed_止血顆粒', 'seed_賀邁補'],
 };
 
