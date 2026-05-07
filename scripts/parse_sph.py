@@ -13,6 +13,7 @@ TARGET_DEPTS = {
     '婦產科': ['婦產科', '婦產'],
     '泌尿外科': ['泌尿\n外科', '泌尿外科', '泌尿'],
     '一般外科': ['一\n般\n外\n科', '一般外科', '一般\n外科'],
+    '耳鼻喉科': ['耳鼻喉科', '耳鼻喉'],
 }
 
 # 頁1 (22 cols): col0=category, col1=dept, col2=subdept, col3=room, col4~21=schedule

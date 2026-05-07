@@ -12,12 +12,14 @@ const DEPT_COLOR: Record<string, string> = {
   '婦產科': 'bg-pink-100 text-pink-800 border-pink-200',
   '泌尿外科': 'bg-blue-100 text-blue-800 border-blue-200',
   '一般外科': 'bg-green-100 text-green-800 border-green-200',
+  '耳鼻喉科': 'bg-orange-100 text-orange-800 border-orange-200',
 };
 
 const DEPT_DOT: Record<string, string> = {
   '婦產科': 'bg-pink-400',
   '泌尿外科': 'bg-blue-400',
   '一般外科': 'bg-green-400',
+  '耳鼻喉科': 'bg-orange-400',
 };
 
 export default function WeeklyView({ hospitals, selectedDepts }: Props) {
