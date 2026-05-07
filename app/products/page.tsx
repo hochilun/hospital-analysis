@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+
 import { Product } from '@/types';
 import { getProducts, deleteProduct } from '@/lib/storage';
 import { HOSPITALS } from '@/data/hospitals';
@@ -106,8 +107,12 @@ export default function ProductsPage() {
                               )}
                             </td>
                             <td className="py-3 px-4 text-right">
-                              <button onClick={() => handleDelete(p.id, p.name)}
-                                className="text-xs text-gray-300 hover:text-red-400">刪除</button>
+                              <div className="flex items-center justify-end gap-3">
+                                <Link href={`/products/${p.id}/edit`}
+                                  className="text-xs text-blue-500 hover:text-blue-700">編輯</Link>
+                                <button onClick={() => handleDelete(p.id, p.name)}
+                                  className="text-xs text-gray-300 hover:text-red-400">刪除</button>
+                              </div>
                             </td>
                           </tr>
                         );
