@@ -7,6 +7,7 @@ import { Product } from '@/types';
 import { getProducts, deleteProduct, saveProduct } from '@/lib/storage';
 import { HOSPITALS } from '@/data/hospitals';
 import { SEED_PRODUCTS } from '@/data/seedProducts';
+import { HOSPITAL_PRODUCT_IDS } from '@/data/salesHistory';
 
 export default function ProductsPage() {
   const [products, setProducts] = useState<Product[]>([]);
@@ -14,16 +15,25 @@ export default function ProductsPage() {
 
   useEffect(() => { setProducts(getProducts()); }, []);
 
+  const selectedHospital = HOSPITALS.find(h => h.id === filterHospital);
+
   const filtered = filterHospital
-    ? products.filter(p => p.hospitalId === filterHospital)
+    ? products.filter(p => {
+        // 優先用銷售報表對應，其次用產品本身的 hospitalId
+        const salesIds = HOSPITAL_PRODUCT_IDS[filterHospital] ?? [];
+        return salesIds.includes(p.id) || p.hospitalId === filterHospital;
+      })
     : products;
 
-  const grouped = filtered.reduce((acc, p) => {
-    const key = p.hospitalName || '未分類';
-    if (!acc[key]) acc[key] = [];
-    acc[key].push(p);
-    return acc;
-  }, {} as Record<string, Product[]>);
+  // 選醫院時直接用醫院名稱為群組標題，全部時依產品 hospitalName 分組
+  const grouped: Record<string, Product[]> = filterHospital
+    ? { [selectedHospital?.name ?? filterHospital]: filtered }
+    : filtered.reduce((acc, p) => {
+        const key = p.hospitalName || '未分類';
+        if (!acc[key]) acc[key] = [];
+        acc[key].push(p);
+        return acc;
+      }, {} as Record<string, Product[]>);
 
   const handleDelete = (id: string, name: string) => {
     if (!confirm(`確定刪除「${name}」及所有型號？`)) return;
