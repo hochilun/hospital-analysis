@@ -5,6 +5,7 @@ import { Hospital, Department } from '@/types';
 import { HOSPITALS, TARGET_DEPARTMENTS } from '@/data/hospitals';
 import HospitalCard from '@/components/HospitalCard';
 import WeeklyView from '@/components/WeeklyView';
+import PersonalCalendar from '@/components/PersonalCalendar';
 
 export default function Home() {
   const [hospitals, setHospitals] = useState<Hospital[]>(HOSPITALS);
@@ -152,7 +153,10 @@ export default function Home() {
         </div>
 
         {view === 'weekly' ? (
-          <WeeklyView hospitals={filteredHospitals} selectedDepts={selectedDepts} />
+          <div className="space-y-6">
+            <WeeklyView hospitals={filteredHospitals} selectedDepts={selectedDepts} />
+            <PersonalCalendar />
+          </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {hospitals.map(hospital => (
