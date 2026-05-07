@@ -127,15 +127,27 @@ export default function ProductsPage() {
                           </thead>
                           <tbody>
                             {p.variants.map(v => {
-                              const markup = v.hospitalPrice > 0
-                                ? Math.round(((v.patientPrice - v.hospitalPrice) / v.hospitalPrice) * 100)
+                              // 選醫院時優先顯示該院個別售價
+                              const displayPrice = filterHospital && v.hospitalPrices?.[filterHospital]
+                                ? v.hospitalPrices[filterHospital]
+                                : v.hospitalPrice;
+                              const isHospitalSpecific = !!(filterHospital && v.hospitalPrices?.[filterHospital]);
+                              const markup = displayPrice > 0 && v.patientPrice > 0
+                                ? Math.round(((v.patientPrice - displayPrice) / displayPrice) * 100)
                                 : null;
                               return (
                                 <tr key={v.id} className="border-b border-gray-50 last:border-0">
                                   <td className="py-2.5 px-4 font-medium text-gray-700">{v.modelNumber}</td>
                                   <td className="py-2.5 px-4 text-gray-500">{v.description || '—'}</td>
-                                  <td className="py-2.5 px-4 text-right text-gray-700">
-                                    {v.hospitalPrice ? `NT$${v.hospitalPrice.toLocaleString()}` : '—'}
+                                  <td className="py-2.5 px-4 text-right">
+                                    {displayPrice ? (
+                                      <span className={isHospitalSpecific ? 'text-blue-700 font-medium' : 'text-gray-700'}>
+                                        NT${displayPrice.toLocaleString()}
+                                      </span>
+                                    ) : '—'}
+                                    {isHospitalSpecific && (
+                                      <span className="text-gray-300 text-xs ml-1">（院定）</span>
+                                    )}
                                   </td>
                                   <td className="py-2.5 px-4 text-right text-gray-700">
                                     {v.patientPrice ? `NT$${v.patientPrice.toLocaleString()}` : '—'}

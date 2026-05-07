@@ -66,8 +66,9 @@ export type ProductVariant = {
   id: string;
   modelNumber: string;
   description: string;
-  hospitalPrice: number;
+  hospitalPrice: number;        // 預設價（或平均價）
   patientPrice: number;
+  hospitalPrices?: Record<string, number>; // 各醫院個別售價 {hospitalId: price}
   unit: string;
 };
 
