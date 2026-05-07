@@ -172,7 +172,7 @@ export const SEED_PRODUCTS: Product[] = [
     variants: [
       v('0113115', '15釘', 6296, {
         nhiCode: 'FSPF122345BA', patientPrice: 11034,
-        hospitalPrices: { tucheng:5885, tzuchi:6805, eck:6490, tmuh:7619 },
+        hospitalPrices: { tucheng:7356, sph:7356, tzuchi:6805, eck:6490, tmuh:7619 },
         hospitalInfo: {
           tucheng: { hospitalCode:'84-301-113082', patientPrice:11034, purchasePrice:7724 },
           sph:     { hospitalCode:'84-301-113082', patientPrice:11034, purchasePrice:7724 },
