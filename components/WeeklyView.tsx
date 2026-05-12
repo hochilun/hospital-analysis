@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { Hospital, Department } from '@/types';
 import { DAY_LABELS, SESSION_LABELS, TARGET_DEPARTMENTS } from '@/data/hospitals';
 
@@ -22,17 +23,57 @@ const DEPT_DOT: Record<string, string> = {
   '耳鼻喉科': 'bg-orange-400',
 };
 
+function starKey(hospitalId: string, doctor: string) {
+  return `${hospitalId}:${doctor}`;
+}
+
+function loadStarred(): Set<string> {
+  if (typeof window === 'undefined') return new Set();
+  try {
+    const raw = localStorage.getItem('weekly-starred');
+    return new Set(raw ? JSON.parse(raw) : []);
+  } catch { return new Set(); }
+}
+
+function saveStarred(set: Set<string>) {
+  localStorage.setItem('weekly-starred', JSON.stringify([...set]));
+}
+
 export default function WeeklyView({ hospitals, selectedDepts }: Props) {
+  const [starred, setStarred] = useState<Set<string>>(new Set());
+  const [starOnly, setStarOnly] = useState(false);
+
+  useEffect(() => { setStarred(loadStarred()); }, []);
+
+  const toggleStar = (hospitalId: string, doctor: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setStarred(prev => {
+      const next = new Set(prev);
+      const key = starKey(hospitalId, doctor);
+      next.has(key) ? next.delete(key) : next.add(key);
+      saveStarred(next);
+      return next;
+    });
+  };
+
   const getDayCount = (day: number) =>
     hospitals.filter(h =>
-      h.clinics.some(c => c.dayOfWeek === day && selectedDepts.has(c.department))
+      h.clinics.some(c => {
+        if (c.dayOfWeek !== day || !selectedDepts.has(c.department)) return false;
+        if (starOnly && !starred.has(starKey(h.id, c.doctor))) return false;
+        return true;
+      })
     ).length;
 
   const getSlots = (day: number, session: string) => {
     const result: { hospital: Hospital; doctor: string; department: Department }[] = [];
     hospitals.forEach(h => {
       h.clinics
-        .filter(c => c.dayOfWeek === day && c.session === session && selectedDepts.has(c.department))
+        .filter(c => {
+          if (c.dayOfWeek !== day || c.session !== session || !selectedDepts.has(c.department)) return false;
+          if (starOnly && !starred.has(starKey(h.id, c.doctor))) return false;
+          return true;
+        })
         .forEach(c => result.push({ hospital: h, doctor: c.doctor, department: c.department }));
     });
     return result;
@@ -57,13 +98,26 @@ export default function WeeklyView({ hospitals, selectedDepts }: Props) {
       <div className="bg-white rounded-xl border border-gray-200 p-4">
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-sm font-semibold text-gray-700">本週推薦拜訪日</h2>
-          <div className="flex items-center gap-3 text-xs text-gray-500">
-            {TARGET_DEPARTMENTS.filter(d => selectedDepts.has(d as Department)).map(d => (
-              <span key={d} className="flex items-center gap-1">
-                <span className={`w-2 h-2 rounded-full inline-block ${DEPT_DOT[d]}`} />
-                {d}
-              </span>
-            ))}
+          <div className="flex items-center gap-3">
+            {/* 星號篩選 */}
+            <button
+              onClick={() => setStarOnly(v => !v)}
+              className={`flex items-center gap-1.5 text-xs px-3 py-1 rounded-full border transition-colors ${
+                starOnly
+                  ? 'bg-yellow-400 border-yellow-400 text-white font-semibold'
+                  : 'bg-white border-gray-200 text-gray-500 hover:border-yellow-400 hover:text-yellow-500'
+              }`}
+            >
+              ★ {starOnly ? '僅顯示星號' : '全部顯示'}
+            </button>
+            <div className="flex items-center gap-3 text-xs text-gray-500">
+              {TARGET_DEPARTMENTS.filter(d => selectedDepts.has(d as Department)).map(d => (
+                <span key={d} className="flex items-center gap-1">
+                  <span className={`w-2 h-2 rounded-full inline-block ${DEPT_DOT[d]}`} />
+                  {d}
+                </span>
+              ))}
+            </div>
           </div>
         </div>
         <div className="grid grid-cols-7 gap-2">
@@ -110,25 +164,40 @@ export default function WeeklyView({ hospitals, selectedDepts }: Props) {
           </thead>
           <tbody>
             {SESSION_LABELS.map(session => (
-              <tr key={session} className="border-b border-gray-100 last:border-0">
-                <td className="py-3 px-3 text-xs font-medium text-gray-400">{session}診</td>
+              <tr key={session} className="border-b-2 border-gray-200 last:border-0">
+                <td className="py-3 px-3 text-xs font-semibold text-gray-500 bg-gray-50">{session}診</td>
                 {DAY_LABELS.map((_, day) => {
                   const slots = getSlots(day, session);
                   return (
                     <td key={day} className="py-2 px-1 align-top min-w-[80px]">
                       <div className="space-y-1">
-                        {slots.map((s, i) => (
-                          <div
-                            key={i}
-                            className={`text-xs px-2 py-1 rounded border ${DEPT_COLOR[s.department]}`}
-                          >
-                            <div className="font-medium">{s.hospital.shortName}</div>
-                            <div>{s.doctor}</div>
-                            {showDeptLabel && (
-                              <div className="opacity-60 text-[10px]">{s.department}</div>
-                            )}
-                          </div>
-                        ))}
+                        {slots.map((s, i) => {
+                          const key = starKey(s.hospital.id, s.doctor);
+                          const isStarred = starred.has(key);
+                          return (
+                            <div
+                              key={i}
+                              className={`text-xs px-2 py-1 rounded border ${DEPT_COLOR[s.department]}`}
+                            >
+                              <div className="font-medium">{s.hospital.shortName}</div>
+                              <div className="flex items-center justify-between gap-1">
+                                <span>{s.doctor}</span>
+                                <button
+                                  onClick={e => toggleStar(s.hospital.id, s.doctor, e)}
+                                  className={`shrink-0 text-[11px] leading-none transition-colors ${
+                                    isStarred ? 'text-yellow-500' : 'text-gray-300 hover:text-yellow-400'
+                                  }`}
+                                  title={isStarred ? '取消星號' : '標記星號'}
+                                >
+                                  ★
+                                </button>
+                              </div>
+                              {showDeptLabel && (
+                                <div className="opacity-60 text-[10px]">{s.department}</div>
+                              )}
+                            </div>
+                          );
+                        })}
                       </div>
                     </td>
                   );

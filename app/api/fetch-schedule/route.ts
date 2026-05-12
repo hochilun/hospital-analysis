@@ -7,8 +7,13 @@ const execAsync = promisify(exec);
 
 // 有 Python 解析器的醫院
 const PYTHON_PARSERS: Record<string, string> = {
-  eck: 'parse_eck.py',
-  sph: 'parse_sph.py',
+  eck:    'parse_eck.py',
+  sph:    'parse_sph.py',
+  grace:  'parse_grace.py',
+  clinic: 'parse_clinic.py',
+  tmuh:   'parse_tmuh.py',
+  tzuchi: 'parse_tzuchi.py',  // 掛號系統 HTML，抓泌尿外科+一般外科
+  tucheng: 'parse_tucheng.py',  // PDF 放在 scripts/pdfs/tucheng.pdf
 };
 
 export async function POST(req: NextRequest) {
@@ -26,7 +31,8 @@ export async function POST(req: NextRequest) {
 
     const scriptPath = path.join(process.cwd(), 'scripts', scriptName);
     const { stdout, stderr } = await execAsync(`python3 "${scriptPath}"`, {
-      timeout: 30000,
+      timeout: 60000,
+      env: { ...process.env },  // 傳遞 ANTHROPIC_API_KEY 等環境變數
     });
 
     if (stderr && !stdout) {

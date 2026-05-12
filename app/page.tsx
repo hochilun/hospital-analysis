@@ -1,12 +1,47 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Hospital, Department } from '@/types';
+import { Hospital, Department, ClinicSlot } from '@/types';
 import { HOSPITALS, TARGET_DEPARTMENTS } from '@/data/hospitals';
 import Link from 'next/link';
 import HospitalCard from '@/components/HospitalCard';
 import WeeklyView from '@/components/WeeklyView';
 import PersonalCalendar from '@/components/PersonalCalendar';
+import { getDoctors } from '@/lib/storage';
+import { pullFromCloud } from '@/lib/supabase';
+
+const VALID_DEPTS = new Set(['婦產科', '泌尿外科', '一般外科', '耳鼻喉科']);
+
+function buildExtraHospitals(hospitals: Hospital[]): Hospital[] {
+  if (typeof window === 'undefined') return hospitals;
+  const doctors = getDoctors();
+  // 以 location 為 key，累積 ClinicSlot
+  const locationMap = new Map<string, ClinicSlot[]>();
+  for (const doc of doctors) {
+    const dept = VALID_DEPTS.has(doc.department) ? doc.department as Department : null;
+    if (!dept) continue;
+    for (const slot of (doc.extraClinicSlots ?? [])) {
+      if (!slot.location) continue;
+      const slots = locationMap.get(slot.location) ?? [];
+      slots.push({ doctor: doc.name, department: dept, dayOfWeek: slot.dayOfWeek, session: slot.session });
+      locationMap.set(slot.location, slots);
+    }
+  }
+  const extras: Hospital[] = [];
+  for (const [location, clinics] of locationMap) {
+    extras.push({
+      id: `extra_${location}`,
+      name: location,
+      shortName: location,
+      url: '',
+      scheduleUrl: '',
+      clinics,
+      news: [],
+      lastUpdated: null,
+    });
+  }
+  return [...hospitals, ...extras];
+}
 
 export default function Home() {
   const [hospitals, setHospitals] = useState<Hospital[]>(HOSPITALS);
@@ -16,15 +51,41 @@ export default function Home() {
   const [updating, setUpdating] = useState<string | null>(null);
 
   useEffect(() => {
-    const saved = localStorage.getItem('hospitals-data');
-    if (saved) {
-      try { setHospitals(JSON.parse(saved)); } catch {}
-    }
+    const loadData = () => {
+      const saved = localStorage.getItem('hospitals-data');
+      let base: Hospital[] = HOSPITALS;
+      if (saved) {
+        try { base = JSON.parse(saved); } catch {}
+      }
+      setHospitals(buildExtraHospitals(base));
+    };
+
+    // 啟動時先從雲端同步，再載入本機資料
+    pullFromCloud().then(synced => {
+      if (synced) loadData();
+    });
+    loadData();
+
+    // 處理 bfcache（瀏覽器上一頁快取）與切換分頁後返回的情況
+    window.addEventListener('pageshow', loadData);
+    // 同分頁內新增/修改客戶院外門診時，立即同步週曆
+    window.addEventListener('doctors-updated', loadData);
+    // 跨分頁同步
+    const onVisibility = () => { if (!document.hidden) loadData(); };
+    document.addEventListener('visibilitychange', onVisibility);
+
+    return () => {
+      window.removeEventListener('pageshow', loadData);
+      window.removeEventListener('doctors-updated', loadData);
+      document.removeEventListener('visibilitychange', onVisibility);
+    };
   }, []);
 
   const saveHospitals = (data: Hospital[]) => {
-    setHospitals(data);
-    localStorage.setItem('hospitals-data', JSON.stringify(data));
+    // 只存真正的醫院資料，過濾掉 extra_xxx 的院外門診假醫院
+    const baseOnly = data.filter(h => !h.id.startsWith('extra_'));
+    localStorage.setItem('hospitals-data', JSON.stringify(baseOnly));
+    setHospitals(buildExtraHospitals(baseOnly));
   };
 
   const toggleDept = (dept: Department) => {
@@ -103,6 +164,16 @@ export default function Home() {
         {/* 科別複選 */}
         <div className="flex flex-wrap items-center gap-2 mb-3">
           <span className="text-sm text-gray-500 w-10">科別</span>
+          <button
+            onClick={() => setSelectedDepts(new Set(TARGET_DEPARTMENTS))}
+            className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${
+              selectedDepts.size === TARGET_DEPARTMENTS.length
+                ? 'bg-blue-600 text-white'
+                : 'bg-white border border-gray-200 text-gray-400 hover:border-blue-300'
+            }`}
+          >
+            全選
+          </button>
           {TARGET_DEPARTMENTS.map(dept => (
             <button
               key={dept}
@@ -121,6 +192,16 @@ export default function Home() {
         {/* 醫院複選 */}
         <div className="flex flex-wrap items-center gap-2 mb-6">
           <span className="text-sm text-gray-500 w-10">醫院</span>
+          <button
+            onClick={() => setSelectedHospitals(new Set())}
+            className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${
+              selectedHospitals.size === 0
+                ? 'bg-gray-900 text-white'
+                : 'bg-white border border-gray-200 text-gray-400 hover:border-gray-400'
+            }`}
+          >
+            全選
+          </button>
           {hospitals.map(h => (
             <button
               key={h.id}
@@ -134,14 +215,6 @@ export default function Home() {
               {h.shortName}
             </button>
           ))}
-          {selectedHospitals.size > 0 && (
-            <button
-              onClick={() => setSelectedHospitals(new Set())}
-              className="text-xs text-gray-400 hover:text-gray-600 underline ml-1"
-            >
-              清除
-            </button>
-          )}
           <div className="ml-auto flex gap-2">
             <button
               onClick={() => setView('weekly')}

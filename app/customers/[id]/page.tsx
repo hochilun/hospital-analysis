@@ -3,10 +3,98 @@
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Doctor, VisitRecord } from '@/types';
-import { getDoctors, saveDoctor, getVisits, saveVisit, deleteVisit } from '@/lib/storage';
+import { Doctor, VisitRecord, ExtraClinicSlot, ClinicSlot } from '@/types';
+import { getDoctors, saveDoctor, getVisits, saveVisit, deleteVisit, getHospitalsData } from '@/lib/storage';
+import { HOSPITALS } from '@/data/hospitals';
 
 function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2); }
+
+const GRADE_STYLE: Record<string, string> = {
+  S: 'bg-amber-100 text-amber-800',
+  A: 'bg-green-100 text-green-800',
+  B: 'bg-blue-100 text-blue-800',
+  C: 'bg-gray-100 text-gray-600',
+  D: 'bg-red-50 text-red-500',
+  X: 'bg-violet-100 text-violet-700',
+  Y: 'bg-slate-100 text-slate-500',
+};
+
+function monthlyAvg(monthlyData?: Record<string, number>): number {
+  if (!monthlyData) return 0;
+  const vals = Object.values(monthlyData).filter(v => v > 0);
+  if (vals.length === 0) return 0;
+  return parseFloat((vals.reduce((s, v) => s + v, 0) / vals.length).toFixed(1));
+}
+
+// 產生 2026-01 ~ 今月的月份清單
+function getMonths(): string[] {
+  const months: string[] = [];
+  const now = new Date();
+  let y = 2026, m = 1;
+  while (y < now.getFullYear() || (y === now.getFullYear() && m <= now.getMonth() + 1)) {
+    months.push(`${y}-${String(m).padStart(2, '0')}`);
+    m++; if (m > 12) { m = 1; y++; }
+  }
+  return months;
+}
+
+const MONTHS = getMonths();
+
+function MonthlyUsagePanel({ target, onChange }: {
+  target: { productName: string; targetQty: number; unit: string; monthlyData?: Record<string, number> };
+  onChange: (monthlyData: Record<string, number>) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const data = target.monthlyData ?? {};
+  const avg = monthlyAvg(data);
+  const rate = target.targetQty > 0 ? Math.round((avg / target.targetQty) * 100) : 0;
+
+  return (
+    <div className="border border-gray-100 rounded-lg p-3">
+      {/* 產品名稱 + 展開按鈕 */}
+      <div className="flex items-center justify-between mb-2">
+        <span className="text-sm font-semibold text-gray-800">{target.productName}</span>
+        <button onClick={() => setOpen(v => !v)}
+          className={`text-xs px-2.5 py-1 rounded-full border transition-colors ${
+            open ? 'bg-blue-600 text-white border-blue-600' : 'bg-white border-gray-300 text-gray-600 hover:border-blue-400 hover:text-blue-600'
+          }`}>
+          {open ? '▲ 收起' : '▼ 輸入月用量'}
+        </button>
+      </div>
+
+      {/* 進度條 */}
+      <div className="flex items-center gap-2">
+        <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden">
+          <div className={`h-full rounded-full ${rate >= 100 ? 'bg-green-500' : rate >= 60 ? 'bg-blue-500' : 'bg-orange-400'}`}
+            style={{ width: `${Math.min(rate, 100)}%` }} />
+        </div>
+        <span className="text-xs text-gray-500 shrink-0">月均 {avg} / 目標 {target.targetQty} {target.unit}</span>
+      </div>
+
+      {/* 月份輸入 */}
+      {open && (
+        <div className="mt-3 pt-3 border-t border-gray-100">
+          <div className="grid grid-cols-4 gap-2">
+            {MONTHS.map(month => (
+              <div key={month}>
+                <label className="text-[10px] text-gray-400 block mb-0.5">{month}</label>
+                <input type="number" placeholder="0"
+                  value={data[month] || ''}
+                  onChange={e => {
+                    const val = parseFloat(e.target.value) || 0;
+                    const next = { ...data };
+                    if (val === 0) delete next[month]; else next[month] = val;
+                    onChange(next);
+                  }}
+                  className="w-full px-2 py-1.5 border border-gray-200 rounded text-sm text-gray-800 focus:outline-none focus:border-blue-400 bg-white" />
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function CustomerDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -14,18 +102,34 @@ export default function CustomerDetailPage() {
   const [doctor, setDoctor] = useState<Doctor | null>(null);
   const [visits, setVisits] = useState<VisitRecord[]>([]);
   const [showVisitForm, setShowVisitForm] = useState(false);
-  const [visitDraft, setVisitDraft] = useState({ date: new Date().toISOString().slice(0, 10), content: '', nextAction: '' });
+  const [visitDraft, setVisitDraft] = useState({ date: new Date().toISOString().slice(0, 10), companions: '', content: '', nextAction: '' });
+  const [hospitalClinicSlots, setHospitalClinicSlots] = useState<(ClinicSlot & { hospitalName: string })[]>([]);
+  const [showClinicForm, setShowClinicForm] = useState(false);
+  const [clinicDraft, setClinicDraft] = useState<ExtraClinicSlot>({ location: '', dayOfWeek: 1, session: '早' });
 
   useEffect(() => {
     const doc = getDoctors().find(d => d.id === id);
     if (!doc) { router.push('/customers'); return; }
-    setDoctor(doc);
+    const fullDoc = { ...doc, productTargets: doc.productTargets.map(t => ({ ...t, monthlyData: t.monthlyData ?? {} })), extraClinicSlots: doc.extraClinicSlots ?? [] };
+    setDoctor(fullDoc);
     setVisits(getVisits().filter(v => v.doctorId === id).sort((a, b) => b.date.localeCompare(a.date)));
+    // 從已抓的門診表比對醫師姓名
+    const hospData = getHospitalsData();
+    const matched: (ClinicSlot & { hospitalName: string })[] = [];
+    for (const h of hospData) {
+      for (const slot of h.clinics) {
+        if (slot.doctor === doc.name) {
+          matched.push({ ...slot, hospitalName: h.shortName });
+        }
+      }
+    }
+    matched.sort((a, b) => a.dayOfWeek - b.dayOfWeek || ['早','午','晚'].indexOf(a.session) - ['早','午','晚'].indexOf(b.session));
+    setHospitalClinicSlots(matched);
   }, [id]);
 
-  const updateTarget = (i: number, field: 'actualQty', value: number) => {
+  const updateMonthlyData = (i: number, monthlyData: Record<string, number>) => {
     if (!doctor) return;
-    const targets = doctor.productTargets.map((t, j) => j === i ? { ...t, [field]: value } : t);
+    const targets = doctor.productTargets.map((t, j) => j === i ? { ...t, monthlyData } : t);
     const updated = { ...doctor, productTargets: targets };
     setDoctor(updated);
     saveDoctor(updated);
@@ -36,8 +140,25 @@ export default function CustomerDetailPage() {
     const v: VisitRecord = { id: uid(), doctorId: id, ...visitDraft };
     saveVisit(v);
     setVisits(prev => [v, ...prev]);
-    setVisitDraft({ date: new Date().toISOString().slice(0, 10), content: '', nextAction: '' });
+    setVisitDraft({ date: new Date().toISOString().slice(0, 10), companions: '', content: '', nextAction: '' });
     setShowVisitForm(false);
+  };
+
+  const addClinicSlot = () => {
+    if (!doctor || !clinicDraft.location.trim()) { alert('請填寫診所名稱'); return; }
+    const updated = { ...doctor, extraClinicSlots: [...(doctor.extraClinicSlots ?? []), clinicDraft] };
+    setDoctor(updated);
+    saveDoctor(updated);
+    setClinicDraft({ location: '', dayOfWeek: 1, session: '早' });
+    setShowClinicForm(false);
+  };
+
+  const removeClinicSlot = (i: number) => {
+    if (!doctor) return;
+    const slots = (doctor.extraClinicSlots ?? []).filter((_, j) => j !== i);
+    const updated = { ...doctor, extraClinicSlots: slots };
+    setDoctor(updated);
+    saveDoctor(updated);
   };
 
   const removeVisit = (vid: string) => {
@@ -48,9 +169,9 @@ export default function CustomerDetailPage() {
 
   if (!doctor) return null;
 
-  const totalTarget = doctor.productTargets.reduce((s, t) => s + t.targetQty, 0);
-  const totalActual = doctor.productTargets.reduce((s, t) => s + t.actualQty, 0);
-  const rate = totalTarget > 0 ? Math.round((totalActual / totalTarget) * 100) : null;
+  const avgTotal = doctor.productTargets.reduce((s, t) => s + monthlyAvg(t.monthlyData), 0);
+  const targetTotal = doctor.productTargets.reduce((s, t) => s + t.targetQty, 0);
+  const rate = targetTotal > 0 ? Math.round((avgTotal / targetTotal) * 100) : null;
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -60,6 +181,11 @@ export default function CustomerDetailPage() {
             <Link href="/customers" className="text-gray-400 hover:text-gray-600 text-sm">← 返回</Link>
             <h1 className="text-xl font-bold text-gray-900">{doctor.name}</h1>
             {doctor.title && <span className="text-sm text-gray-400">{doctor.title}</span>}
+            {doctor.grade && (
+              <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${GRADE_STYLE[doctor.grade] ?? ''}`}>
+                {doctor.grade}
+              </span>
+            )}
           </div>
           <Link href={`/customers/${id}/edit`} className="text-sm text-blue-600 hover:underline">編輯</Link>
         </div>
@@ -69,18 +195,91 @@ export default function CustomerDetailPage() {
         {/* 基本資料 */}
         <div className="bg-white rounded-xl border border-gray-200 p-5">
           <div className="grid grid-cols-2 gap-y-3 text-sm">
-            <div><span className="text-gray-400">醫院</span><span className="ml-2 text-gray-800">{doctor.hospitalName || '—'}</span></div>
+            <div><span className="text-gray-400">醫院</span><span className="ml-2 text-gray-800">
+              {(doctor.hospitalIds ?? [doctor.hospitalId]).filter(Boolean)
+                .map(hid => HOSPITALS.find(h => h.id === hid)?.name ?? hid).join('、') || '—'}
+            </span></div>
             <div><span className="text-gray-400">科別</span><span className="ml-2 text-gray-800">{doctor.department || '—'}</span></div>
             <div><span className="text-gray-400">電話</span><span className="ml-2 text-gray-800">{doctor.phone || '—'}</span></div>
             <div><span className="text-gray-400">月投資</span><span className="ml-2 text-gray-800">{doctor.monthlyInvestment ? `NT$${doctor.monthlyInvestment.toLocaleString()}` : '—'}</span></div>
           </div>
           {doctor.habits && <div className="mt-3 pt-3 border-t border-gray-100"><p className="text-xs text-gray-400 mb-1">手術習慣 / 偏好</p><p className="text-sm text-gray-700 whitespace-pre-wrap">{doctor.habits}</p></div>}
-          {doctor.visitHabit && <div className="mt-3 pt-3 border-t border-gray-100"><p className="text-xs text-gray-400 mb-1">🗓 拜訪習慣模式</p><p className="text-sm text-blue-700 whitespace-pre-wrap font-medium">{doctor.visitHabit}</p></div>}
+          {doctor.visitHabit && <div className="mt-3 pt-3 border-t border-gray-100"><p className="text-xs text-gray-400 mb-1">拜訪習慣模式</p><p className="text-sm text-blue-700 whitespace-pre-wrap font-medium">{doctor.visitHabit}</p></div>}
           {doctor.attitude && <div className="mt-3 pt-3 border-t border-gray-100"><p className="text-xs text-gray-400 mb-1">對產品的態度</p><p className="text-sm text-gray-700 whitespace-pre-wrap">{doctor.attitude}</p></div>}
           {doctor.visitPlan && <div className="mt-3 pt-3 border-t border-gray-100"><p className="text-xs text-gray-400 mb-1">拜訪目標 / 策略</p><p className="text-sm text-gray-700 whitespace-pre-wrap">{doctor.visitPlan}</p></div>}
         </div>
 
-        {/* 產品目標達成 */}
+        {/* 門診時段 */}
+        <div className="bg-white rounded-xl border border-gray-200 p-5">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-sm font-semibold text-gray-700">門診時段</h2>
+            <button onClick={() => setShowClinicForm(v => !v)} className="text-xs text-blue-600 hover:underline">
+              {showClinicForm ? '取消' : '＋ 新增院外門診'}
+            </button>
+          </div>
+
+          {/* 新增院外門診表單 */}
+          {showClinicForm && (
+            <div className="mb-4 p-3 bg-blue-50 rounded-lg flex flex-wrap gap-2 items-end">
+              <div>
+                <label className="text-xs text-gray-500 block mb-1">診所名稱</label>
+                <input value={clinicDraft.location} onChange={e => setClinicDraft(d => ({ ...d, location: e.target.value }))}
+                  placeholder="例：津久診所"
+                  className="px-2.5 py-1.5 border border-gray-200 rounded text-sm w-36 bg-white focus:outline-none" />
+              </div>
+              <div>
+                <label className="text-xs text-gray-500 block mb-1">星期</label>
+                <select value={clinicDraft.dayOfWeek} onChange={e => setClinicDraft(d => ({ ...d, dayOfWeek: Number(e.target.value) }))}
+                  className="px-2 py-1.5 border border-gray-200 rounded text-sm bg-white focus:outline-none">
+                  {['日','一','二','三','四','五','六'].map((d, i) => <option key={i} value={i}>週{d}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="text-xs text-gray-500 block mb-1">時段</label>
+                <select value={clinicDraft.session} onChange={e => setClinicDraft(d => ({ ...d, session: e.target.value as '早'|'午'|'晚' }))}
+                  className="px-2 py-1.5 border border-gray-200 rounded text-sm bg-white focus:outline-none">
+                  {['早','午','晚'].map(s => <option key={s} value={s}>{s}診</option>)}
+                </select>
+              </div>
+              <button onClick={addClinicSlot} className="px-3 py-1.5 bg-blue-600 text-white text-sm rounded hover:bg-blue-700">新增</button>
+            </div>
+          )}
+
+          {/* 醫院門診（從門診表自動比對） */}
+          {hospitalClinicSlots.length === 0 && (doctor.extraClinicSlots ?? []).length === 0 ? (
+            <p className="text-sm text-gray-400 text-center py-3">尚無門診資料，請先更新醫院門診表或手動新增</p>
+          ) : (
+            <div className="space-y-2">
+              {hospitalClinicSlots.length > 0 && (
+                <div>
+                  <p className="text-xs text-gray-400 mb-1.5">從門診表自動比對</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {hospitalClinicSlots.map((slot, i) => (
+                      <span key={i} className="text-xs px-2 py-1 bg-blue-50 text-blue-700 rounded-full">
+                        {slot.hospitalName} 週{['日','一','二','三','四','五','六'][slot.dayOfWeek]}{slot.session}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {(doctor.extraClinicSlots ?? []).length > 0 && (
+                <div>
+                  <p className="text-xs text-gray-400 mb-1.5 mt-3">院外 / 手動新增</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {(doctor.extraClinicSlots ?? []).map((slot, i) => (
+                      <span key={i} className="text-xs px-2 py-1 bg-violet-50 text-violet-700 rounded-full flex items-center gap-1">
+                        {slot.location} 週{['日','一','二','三','四','五','六'][slot.dayOfWeek]}{slot.session}
+                        <button onClick={() => removeClinicSlot(i)} className="text-violet-300 hover:text-red-400 ml-0.5">✕</button>
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* 產品目標 & 月用量 */}
         {doctor.productTargets.length > 0 && (
           <div className="bg-white rounded-xl border border-gray-200 p-5">
             <div className="flex items-center justify-between mb-4">
@@ -91,28 +290,11 @@ export default function CustomerDetailPage() {
                 </span>
               )}
             </div>
-            <div className="space-y-3">
-              {doctor.productTargets.map((t, i) => {
-                const r = t.targetQty > 0 ? Math.round((t.actualQty / t.targetQty) * 100) : 0;
-                return (
-                  <div key={t.productId} className="flex items-center gap-3">
-                    <div className="flex-1">
-                      <div className="flex justify-between text-xs mb-1">
-                        <span className="font-medium text-gray-700">{t.productName}</span>
-                        <span className="text-gray-500">{t.actualQty}/{t.targetQty} {t.unit}</span>
-                      </div>
-                      <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-                        <div className={`h-full rounded-full transition-all ${r >= 100 ? 'bg-green-500' : r >= 60 ? 'bg-blue-500' : 'bg-orange-400'}`}
-                          style={{ width: `${Math.min(r, 100)}%` }} />
-                      </div>
-                    </div>
-                    <div className="w-12 text-right">
-                      <input type="number" value={t.actualQty} onChange={e => updateTarget(i, 'actualQty', parseFloat(e.target.value) || 0)}
-                        className="w-full text-xs text-right border border-gray-200 rounded px-1 py-0.5 focus:outline-none focus:border-blue-400" />
-                    </div>
-                  </div>
-                );
-              })}
+            <div className="space-y-4">
+              {doctor.productTargets.map((t, i) => (
+                <MonthlyUsagePanel key={t.productId || i} target={t}
+                  onChange={data => updateMonthlyData(i, data)} />
+              ))}
             </div>
           </div>
         )}
@@ -128,22 +310,30 @@ export default function CustomerDetailPage() {
 
           {showVisitForm && (
             <div className="mb-4 p-4 bg-blue-50 rounded-lg space-y-3">
-              <div>
-                <label className="text-xs text-gray-500">日期</label>
-                <input type="date" value={visitDraft.date} onChange={e => setVisitDraft(d => ({ ...d, date: e.target.value }))}
-                  className="block mt-1 px-3 py-1.5 border border-gray-200 rounded-lg text-sm w-full bg-white focus:outline-none" />
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs text-gray-500">日期</label>
+                  <input type="date" value={visitDraft.date} onChange={e => setVisitDraft(d => ({ ...d, date: e.target.value }))}
+                    className="block mt-1 px-3 py-1.5 border border-gray-200 rounded-lg text-sm text-gray-800 w-full bg-white focus:outline-none" />
+                </div>
+                <div>
+                  <label className="text-xs text-gray-500">同行人員</label>
+                  <input value={visitDraft.companions} onChange={e => setVisitDraft(d => ({ ...d, companions: e.target.value }))}
+                    placeholder="如：主管、同事姓名"
+                    className="block mt-1 px-3 py-1.5 border border-gray-200 rounded-lg text-sm text-gray-800 w-full bg-white focus:outline-none" />
+                </div>
               </div>
               <div>
                 <label className="text-xs text-gray-500">拜訪內容</label>
                 <textarea value={visitDraft.content} onChange={e => setVisitDraft(d => ({ ...d, content: e.target.value }))}
                   placeholder="今天談了什麼..." rows={3}
-                  className="block mt-1 px-3 py-2 border border-gray-200 rounded-lg text-sm w-full bg-white focus:outline-none resize-none" />
+                  className="block mt-1 px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-800 w-full bg-white focus:outline-none resize-none" />
               </div>
               <div>
                 <label className="text-xs text-gray-500">下一步行動</label>
                 <input value={visitDraft.nextAction} onChange={e => setVisitDraft(d => ({ ...d, nextAction: e.target.value }))}
                   placeholder="下次要做什麼..."
-                  className="block mt-1 px-3 py-1.5 border border-gray-200 rounded-lg text-sm w-full bg-white focus:outline-none" />
+                  className="block mt-1 px-3 py-1.5 border border-gray-200 rounded-lg text-sm text-gray-800 w-full bg-white focus:outline-none" />
               </div>
               <button onClick={addVisit} className="w-full py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700">儲存</button>
             </div>
@@ -156,7 +346,14 @@ export default function CustomerDetailPage() {
               {visits.map(v => (
                 <div key={v.id} className="border border-gray-100 rounded-lg p-3">
                   <div className="flex items-center justify-between mb-1">
-                    <span className="text-xs font-medium text-gray-500">{v.date}</span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-medium text-gray-500">{v.date}</span>
+                      {v.companions && (
+                        <span className="text-xs text-gray-400 bg-gray-50 px-1.5 py-0.5 rounded">
+                          同行：{v.companions}
+                        </span>
+                      )}
+                    </div>
                     <button onClick={() => removeVisit(v.id)} className="text-xs text-gray-300 hover:text-red-400">✕</button>
                   </div>
                   <p className="text-sm text-gray-800 whitespace-pre-wrap">{v.content}</p>

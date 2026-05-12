@@ -25,21 +25,33 @@ export type NewsItem = {
   url?: string;
 };
 
+// ── 手動門診時段（院外或補充）──────────────────────────────
+export type ExtraClinicSlot = {
+  location: string;             // 診所名稱，例如「津久診所」
+  dayOfWeek: number;            // 1=一 … 6=六, 0=日
+  session: '早' | '午' | '晚';
+};
+
 // ── 客戶資料庫 ──────────────────────────────────────────
+
+export type DoctorGrade = 'S' | 'A' | 'B' | 'C' | 'D' | 'X' | 'Y' | '';
 
 export type ProductTarget = {
   productId: string;
   productName: string;
+  category?: ProductCategory;
   targetQty: number;
-  actualQty: number;
   unit: string;
+  monthlyData?: Record<string, number>; // "2026-01" -> qty
 };
 
 export type Doctor = {
   id: string;
   name: string;
-  hospitalId: string;
-  hospitalName: string;
+  grade: DoctorGrade;
+  hospitalId: string;       // 主要醫院（第一間，向下相容）
+  hospitalName: string;     // 主要醫院名稱
+  hospitalIds?: string[];   // 所有醫院 ID（多選）
   department: string;
   title: string;
   phone: string;
@@ -49,6 +61,7 @@ export type Doctor = {
   visitPlan: string;
   productTargets: ProductTarget[];
   monthlyInvestment: number;
+  extraClinicSlots: ExtraClinicSlot[];
   createdAt: string;
 };
 
@@ -56,6 +69,7 @@ export type VisitRecord = {
   id: string;
   doctorId: string;
   date: string;
+  companions: string;
   content: string;
   nextAction: string;
 };

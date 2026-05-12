@@ -1,37 +1,73 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { Doctor, ProductTarget } from '@/types';
-import { saveDoctor } from '@/lib/storage';
+import { Doctor, DoctorGrade, Product, ProductTarget, ProductCategory } from '@/types';
+import { saveDoctor, getProducts } from '@/lib/storage';
 import { HOSPITALS } from '@/data/hospitals';
 
 function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2); }
 
+const GRADES: { value: DoctorGrade; label: string; color: string }[] = [
+  { value: 'S', label: 'S', color: 'bg-amber-500 text-white' },
+  { value: 'A', label: 'A', color: 'bg-green-500 text-white' },
+  { value: 'B', label: 'B', color: 'bg-blue-500 text-white' },
+  { value: 'C', label: 'C', color: 'bg-gray-400 text-white' },
+  { value: 'D', label: 'D', color: 'bg-red-400 text-white' },
+  { value: 'X', label: 'X', color: 'bg-violet-500 text-white' },
+  { value: 'Y', label: 'Y', color: 'bg-slate-400 text-white' },
+];
+
 export default function NewCustomerPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const prefilledHospitalId = searchParams.get('hospitalId') ?? '';
   const [form, setForm] = useState({
-    name: '', hospitalId: '', department: '', title: '', phone: '',
+    name: '', grade: '' as DoctorGrade,
+    department: '', title: '', phone: '',
     habits: '', visitHabit: '', attitude: '', visitPlan: '', monthlyInvestment: '',
   });
+  const [hospitalIds, setHospitalIds] = useState<string[]>(
+    prefilledHospitalId ? [prefilledHospitalId] : []
+  );
   const [targets, setTargets] = useState<ProductTarget[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
+
+  useEffect(() => { setProducts(getProducts()); }, []);
+
+  const toggleHospital = (hid: string) =>
+    setHospitalIds(prev => prev.includes(hid) ? prev.filter(x => x !== hid) : [...prev, hid]);
 
   const set = (k: string, v: string) => setForm(f => ({ ...f, [k]: v }));
 
-  const addTarget = () => setTargets(t => [...t, { productId: uid(), productName: '', targetQty: 0, actualQty: 0, unit: '個' }]);
+  const addTarget = () => setTargets(t => [...t, { productId: '', productName: '', targetQty: 0, unit: '個', monthlyData: {} }]);
+  const selectProduct = (i: number, productId: string) => {
+    const prod = products.find(p => p.id === productId);
+    if (!prod) return;
+    setTargets(t => t.map((x, j) => j === i ? {
+      ...x,
+      productId: prod.id,
+      productName: prod.name,
+      category: (prod.category ?? '') as ProductCategory,
+      unit: prod.variants[0]?.unit ?? '個',
+    } : x));
+  };
   const updateTarget = (i: number, k: keyof ProductTarget, v: string | number) =>
     setTargets(t => t.map((x, j) => j === i ? { ...x, [k]: v } : x));
   const removeTarget = (i: number) => setTargets(t => t.filter((_, j) => j !== i));
 
   const handleSave = () => {
     if (!form.name.trim()) { alert('請輸入醫師姓名'); return; }
-    const hospital = HOSPITALS.find(h => h.id === form.hospitalId);
+    const primaryId = hospitalIds[0] ?? '';
+    const hospital = HOSPITALS.find(h => h.id === primaryId);
     const doc: Doctor = {
       id: uid(),
       name: form.name.trim(),
-      hospitalId: form.hospitalId,
-      hospitalName: hospital?.name ?? form.hospitalId,
+      grade: form.grade,
+      hospitalId: primaryId,
+      hospitalName: hospital?.name ?? '',
+      hospitalIds,
       department: form.department,
       title: form.title,
       phone: form.phone,
@@ -41,6 +77,7 @@ export default function NewCustomerPage() {
       visitPlan: form.visitPlan,
       productTargets: targets,
       monthlyInvestment: parseFloat(form.monthlyInvestment) || 0,
+      extraClinicSlots: [],
       createdAt: new Date().toISOString(),
     };
     saveDoctor(doc);
@@ -70,12 +107,20 @@ export default function NewCustomerPage() {
               <label className="text-xs text-gray-500">醫師姓名 *</label>
               <input className="input-field mt-1" placeholder="王大明" value={form.name} onChange={e => set('name', e.target.value)} />
             </div>
-            <div>
-              <label className="text-xs text-gray-500">醫院</label>
-              <select className="input-field mt-1" value={form.hospitalId} onChange={e => set('hospitalId', e.target.value)}>
-                <option value="">請選擇</option>
-                {HOSPITALS.map(h => <option key={h.id} value={h.id}>{h.name}</option>)}
-              </select>
+            <div className="col-span-2">
+              <label className="text-xs text-gray-500 block mb-2">醫院（可複選）</label>
+              <div className="flex flex-wrap gap-2">
+                {HOSPITALS.map(h => (
+                  <button key={h.id} type="button" onClick={() => toggleHospital(h.id)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
+                      hospitalIds.includes(h.id)
+                        ? 'bg-gray-900 text-white border-gray-900'
+                        : 'bg-white border-gray-200 text-gray-500 hover:border-gray-400'
+                    }`}>
+                    {h.shortName}
+                  </button>
+                ))}
+              </div>
             </div>
             <div>
               <label className="text-xs text-gray-500">科別</label>
@@ -88,6 +133,29 @@ export default function NewCustomerPage() {
             <div>
               <label className="text-xs text-gray-500">電話</label>
               <input className="input-field mt-1" placeholder="0912-345-678" value={form.phone} onChange={e => set('phone', e.target.value)} />
+            </div>
+            <div className="col-span-2">
+              <label className="text-xs text-gray-500 block mb-2">客戶等級</label>
+              <div className="flex gap-2">
+                {GRADES.map(g => (
+                  <button key={g.value} type="button"
+                    onClick={() => set('grade', form.grade === g.value ? '' : g.value)}
+                    className={`w-10 h-10 rounded-lg text-sm font-bold border-2 transition-all ${
+                      form.grade === g.value ? `${g.color} border-transparent` : 'bg-white border-gray-200 text-gray-400 hover:border-gray-400'
+                    }`}>
+                    {g.label}
+                  </button>
+                ))}
+                <span className="text-xs text-gray-400 self-center ml-1">
+                  {form.grade === 'S' ? '最忠實 — 用量幾乎全給我們' :
+                   form.grade === 'A' ? '穩定 — 每月固定用量' :
+                   form.grade === 'B' ? '分用 — 跟其他廠商共享' :
+                   form.grade === 'C' ? '待開發 — 還需要花時間' :
+                   form.grade === 'D' ? '暫不觸碰' :
+                   form.grade === 'X' ? '護理師' :
+                   form.grade === 'Y' ? '行政人員／秘書' : '未設定'}
+                </span>
+              </div>
             </div>
           </div>
         </section>
@@ -126,21 +194,21 @@ export default function NewCustomerPage() {
           ) : (
             <div className="space-y-3">
               {targets.map((t, i) => (
-                <div key={t.productId} className="grid grid-cols-4 gap-2 items-end">
-                  <div className="col-span-1">
-                    <label className="text-xs text-gray-500">產品名稱</label>
-                    <input className="input-field mt-1" placeholder="縫合器" value={t.productName}
-                      onChange={e => updateTarget(i, 'productName', e.target.value)} />
+                <div key={i} className="grid grid-cols-3 gap-2 items-end">
+                  <div>
+                    <label className="text-xs text-gray-500">產品</label>
+                    <select className="input-field mt-1" value={t.productId}
+                      onChange={e => selectProduct(i, e.target.value)}>
+                      <option value="">請選擇產品...</option>
+                      {products.map(p => (
+                        <option key={p.id} value={p.id}>{p.name}</option>
+                      ))}
+                    </select>
                   </div>
                   <div>
                     <label className="text-xs text-gray-500">目標月用量</label>
-                    <input className="input-field mt-1" type="number" placeholder="0" value={t.targetQty}
+                    <input className="input-field mt-1" type="number" placeholder="0" value={t.targetQty || ''}
                       onChange={e => updateTarget(i, 'targetQty', parseFloat(e.target.value) || 0)} />
-                  </div>
-                  <div>
-                    <label className="text-xs text-gray-500">實際用量</label>
-                    <input className="input-field mt-1" type="number" placeholder="0" value={t.actualQty}
-                      onChange={e => updateTarget(i, 'actualQty', parseFloat(e.target.value) || 0)} />
                   </div>
                   <div className="flex items-end gap-2">
                     <div className="flex-1">
