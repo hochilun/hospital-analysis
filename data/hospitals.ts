@@ -73,6 +73,9 @@ export const HOSPITALS: Hospital[] = [
   },
 ];
 
-export const TARGET_DEPARTMENTS = ['婦產科', '泌尿外科', '一般外科', '耳鼻喉科'] as const;
+export const TARGET_DEPARTMENTS = ['GYN', 'GU', 'GS', 'ENT'] as const;
+export const DEPT_LABEL: Record<string, string> = {
+  GYN: '婦產科', GU: '泌尿外科', GS: '一般外科', ENT: '耳鼻喉科',
+};
 export const DAY_LABELS = ['日', '一', '二', '三', '四', '五', '六'];
 export const SESSION_LABELS = ['早', '午', '晚'];

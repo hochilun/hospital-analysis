@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Hospital, Department, ClinicSlot } from '@/types';
-import { HOSPITALS, TARGET_DEPARTMENTS } from '@/data/hospitals';
+import { HOSPITALS, TARGET_DEPARTMENTS, DEPT_LABEL } from '@/data/hospitals';
 import Link from 'next/link';
 import HospitalCard from '@/components/HospitalCard';
 import WeeklyView from '@/components/WeeklyView';
@@ -10,7 +10,7 @@ import PersonalCalendar from '@/components/PersonalCalendar';
 import { getDoctors } from '@/lib/storage';
 import { pullFromCloud } from '@/lib/supabase';
 
-const VALID_DEPTS = new Set(['婦產科', '泌尿外科', '一般外科', '耳鼻喉科']);
+const VALID_DEPTS = new Set(['GYN', 'GU', 'GS', 'ENT']);
 
 function buildExtraHospitals(hospitals: Hospital[]): Hospital[] {
   if (typeof window === 'undefined') return hospitals;
@@ -184,7 +184,7 @@ export default function Home() {
                   : 'bg-white border border-gray-200 text-gray-400 hover:border-blue-300'
               }`}
             >
-              {dept}
+              {DEPT_LABEL[dept] ?? dept}
             </button>
           ))}
         </div>

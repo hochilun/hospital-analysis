@@ -13,10 +13,10 @@ HEADERS = {
 DAY_COLS = {3: 1, 4: 2, 5: 3, 6: 4, 7: 5, 8: 6, 9: 0}
 
 TARGET_DEPTS = {
-    '婦產科':  ['婦產科', '婦產'],
-    '泌尿外科': ['泌尿科', '泌尿外科'],
-    '一般外科': ['外科'],
-    '耳鼻喉科': ['耳鼻喉科', '耳鼻喉'],
+    'GYN':  ['GYN', '婦產'],
+    'GU': ['泌尿科', 'GU'],
+    'GS': ['外科'],
+    'ENT': ['ENT', '耳鼻喉'],
 }
 # 排除含有這些字的「外科」（非一般外科）
 EXCLUDE_SURGERY = ['神經', '骨', '整形', '整型', '心臟', '胸腔', '直腸', '大腸']
@@ -28,7 +28,7 @@ def get_dept_key(text):
     for key, patterns in TARGET_DEPTS.items():
         for p in patterns:
             if p in t:
-                if key == '一般外科' and any(x in t for x in EXCLUDE_SURGERY):
+                if key == 'GS' and any(x in t for x in EXCLUDE_SURGERY):
                     continue
                 return key
     return None

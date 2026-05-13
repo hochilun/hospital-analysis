@@ -9,10 +9,21 @@ HEADERS = {
 }
 
 DEPT_PAGES = [
-    ('08',  '泌尿外科'),
-    ('09',  '耳鼻喉科'),
-    ('BW',  '一般外科'),
-    ('BA',  '一般外科'),
+    ('08', 'GU'),
+]
+
+ENT_DOCTORS = [
+    ('林哲玄', '09/090227'), ('李飛鵬', '09/090132'), ('張廷碩', '09/090233'),
+    ('陳彥均', '09/090238'), ('陳資穎', '09/090137'), ('葉啟偉', '09/090135'),
+    ('薛如茵', '09/090004'), ('林飛麟', '09/090123'), ('趙品植', '09/090209'),
+    ('周揚', '09/090011'),
+]
+
+SURGERY_DOCTORS = [
+    ('黃昱閔', 'BW/030042'), ('王偉',   'BW/031009'), ('湯堯舜', 'BW/030087'),
+    ('林雨寧', 'BW/030114'), ('陳瑞杰', 'BW/031023'), ('周大鈞', 'BW/031032'),
+    ('黃彥鈞', 'BA/032044'), ('魏柏立', 'BA/031008'), ('郭立人', 'BA/030032'),
+    ('王偉林', 'BA/030085'),
 ]
 
 # 婦產科用個人掛號頁，確保名字和診間完整對應
@@ -165,11 +176,27 @@ def main():
             all_clinics.extend(clinics)
         time.sleep(0.5)
 
+    # 耳鼻喉科用個人掛號頁
+    for doctor_name, url_path in ENT_DOCTORS:
+        html = fetch(f'https://www.tmuh.org.tw/service/regist/{url_path}')
+        if html:
+            clinics = parse_individual(html, doctor_name, 'ENT', seen)
+            all_clinics.extend(clinics)
+        time.sleep(0.3)
+
+    # 一般外科用個人掛號頁
+    for doctor_name, url_path in SURGERY_DOCTORS:
+        html = fetch(f'https://www.tmuh.org.tw/service/regist/{url_path}')
+        if html:
+            clinics = parse_individual(html, doctor_name, 'GS', seen)
+            all_clinics.extend(clinics)
+        time.sleep(0.3)
+
     # 婦產科用個人掛號頁（更精準）
     for doctor_name, url_path in OBGYN_DOCTORS:
         html = fetch(f'https://www.tmuh.org.tw/service/regist/{url_path}')
         if html:
-            clinics = parse_individual(html, doctor_name, '婦產科', seen)
+            clinics = parse_individual(html, doctor_name, 'GYN', seen)
             all_clinics.extend(clinics)
         time.sleep(0.3)
 

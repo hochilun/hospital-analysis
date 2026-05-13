@@ -2,7 +2,7 @@
 """中心綜合醫院門診時刻表解析器"""
 import urllib.request, re, json, sys
 
-BASE = 'https://clinicr.org.tw/NetReg/KReg'
+BASE = 'http://59.120.35.134/netreg/kreg'
 HEADERS = {
     'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
     'Accept': 'text/html,application/xhtml+xml',
@@ -10,10 +10,10 @@ HEADERS = {
 }
 
 TARGET_DEPTS = {
-    '05': '婦產科',
-    '03': '一般外科',
-    '08': '泌尿外科',
-    '09': '耳鼻喉科',
+    '05': 'GYN',
+    '03': 'GS',
+    '08': 'GU',
+    '09': 'ENT',
 }
 
 # TableDay / TableNight 固定欄位對應
@@ -67,7 +67,7 @@ def parse_schedule_table(table_html, col_map, dept_key, clinics, seen):
                     })
 
 def parse_dept_page(code, dept_key, clinics, seen):
-    url = f'{BASE}/DoctorList.aspx?Func=Query&DivInfo={code}'
+    url = f'{BASE}/DoctorList.aspx?Func=&DivInfo={code}'
     try:
         req = urllib.request.Request(url, headers=HEADERS)
         html = urllib.request.urlopen(req, timeout=15).read().decode('utf-8', errors='ignore')

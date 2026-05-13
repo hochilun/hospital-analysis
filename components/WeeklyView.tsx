@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Hospital, Department } from '@/types';
-import { DAY_LABELS, SESSION_LABELS, TARGET_DEPARTMENTS } from '@/data/hospitals';
+import { DAY_LABELS, SESSION_LABELS, TARGET_DEPARTMENTS, DEPT_LABEL } from '@/data/hospitals';
 
 type Props = {
   hospitals: Hospital[];
@@ -10,17 +10,17 @@ type Props = {
 };
 
 const DEPT_COLOR: Record<string, string> = {
-  '婦產科': 'bg-pink-100 text-pink-800 border-pink-200',
-  '泌尿外科': 'bg-blue-100 text-blue-800 border-blue-200',
-  '一般外科': 'bg-green-100 text-green-800 border-green-200',
-  '耳鼻喉科': 'bg-orange-100 text-orange-800 border-orange-200',
+  GYN: 'bg-pink-100 text-pink-800 border-pink-200',
+  GU:  'bg-blue-100 text-blue-800 border-blue-200',
+  GS:  'bg-green-100 text-green-800 border-green-200',
+  ENT: 'bg-orange-100 text-orange-800 border-orange-200',
 };
 
 const DEPT_DOT: Record<string, string> = {
-  '婦產科': 'bg-pink-400',
-  '泌尿外科': 'bg-blue-400',
-  '一般外科': 'bg-green-400',
-  '耳鼻喉科': 'bg-orange-400',
+  GYN: 'bg-pink-400',
+  GU:  'bg-blue-400',
+  GS:  'bg-green-400',
+  ENT: 'bg-orange-400',
 };
 
 function starKey(hospitalId: string, doctor: string) {
@@ -56,14 +56,21 @@ export default function WeeklyView({ hospitals, selectedDepts }: Props) {
     });
   };
 
-  const getDayCount = (day: number) =>
-    hospitals.filter(h =>
-      h.clinics.some(c => {
-        if (c.dayOfWeek !== day || !selectedDepts.has(c.department)) return false;
-        if (starOnly && !starred.has(starKey(h.id, c.doctor))) return false;
-        return true;
-      })
-    ).length;
+  const getStarredByHospital = (day: number) => {
+    const map = new Map<string, Set<string>>();
+    hospitals.forEach(h => {
+      h.clinics.forEach(c => {
+        if (c.dayOfWeek !== day || !selectedDepts.has(c.department)) return;
+        const key = starKey(h.id, c.doctor);
+        if (!starred.has(key)) return;
+        if (!map.has(h.shortName)) map.set(h.shortName, new Set());
+        map.get(h.shortName)!.add(c.doctor);
+      });
+    });
+    return [...map.entries()]
+      .map(([shortName, docs]) => ({ shortName, count: docs.size }))
+      .sort((a, b) => b.count - a.count);
+  };
 
   const getSlots = (day: number, session: string) => {
     const result: { hospital: Hospital; doctor: string; department: Department }[] = [];
@@ -94,54 +101,50 @@ export default function WeeklyView({ hospitals, selectedDepts }: Props) {
 
   return (
     <div className="space-y-4">
-      {/* 推薦拜訪日 */}
+      {/* 重點客戶門診分佈 */}
       <div className="bg-white rounded-xl border border-gray-200 p-4">
         <div className="flex items-center justify-between mb-3">
-          <h2 className="text-sm font-semibold text-gray-700">本週推薦拜訪日</h2>
-          <div className="flex items-center gap-3">
-            {/* 星號篩選 */}
-            <button
-              onClick={() => setStarOnly(v => !v)}
-              className={`flex items-center gap-1.5 text-xs px-3 py-1 rounded-full border transition-colors ${
-                starOnly
-                  ? 'bg-yellow-400 border-yellow-400 text-white font-semibold'
-                  : 'bg-white border-gray-200 text-gray-500 hover:border-yellow-400 hover:text-yellow-500'
-              }`}
-            >
-              ★ {starOnly ? '僅顯示星號' : '全部顯示'}
-            </button>
-            <div className="flex items-center gap-3 text-xs text-gray-500">
-              {TARGET_DEPARTMENTS.filter(d => selectedDepts.has(d as Department)).map(d => (
-                <span key={d} className="flex items-center gap-1">
-                  <span className={`w-2 h-2 rounded-full inline-block ${DEPT_DOT[d]}`} />
-                  {d}
-                </span>
-              ))}
-            </div>
-          </div>
+          <h2 className="text-sm font-semibold text-gray-700">重點客戶門診分佈 ★</h2>
+          <button
+            onClick={() => setStarOnly(v => !v)}
+            className={`flex items-center gap-1.5 text-xs px-3 py-1 rounded-full border transition-colors ${
+              starOnly
+                ? 'bg-yellow-400 border-yellow-400 text-white font-semibold'
+                : 'bg-white border-gray-200 text-gray-500 hover:border-yellow-400 hover:text-yellow-500'
+            }`}
+          >
+            ★ {starOnly ? '僅顯示星號' : '全部顯示'}
+          </button>
         </div>
         <div className="grid grid-cols-7 gap-2">
           {DAY_LABELS.map((label, day) => {
-            const count = getDayCount(day);
+            const breakdown = getStarredByHospital(day);
             const isWeekend = day === 0 || day === 6;
+            const total = breakdown.reduce((s, h) => s + h.count, 0);
             return (
               <div
                 key={day}
-                className={`rounded-lg p-3 text-center ${
+                className={`rounded-lg p-3 min-h-[72px] ${
                   isWeekend ? 'bg-gray-50' :
-                  count >= 3 ? 'bg-blue-600 text-white' :
-                  count >= 2 ? 'bg-blue-100' :
-                  count >= 1 ? 'bg-blue-50' : 'bg-gray-50'
+                  total > 0 ? 'bg-yellow-50 border border-yellow-100' : 'bg-gray-50'
                 }`}
               >
-                <div className={`text-xs font-medium ${isWeekend ? 'text-gray-400' : count >= 3 ? 'text-white' : 'text-gray-500'}`}>
+                <div className={`text-xs font-medium mb-2 ${isWeekend ? 'text-gray-300' : 'text-gray-500'}`}>
                   週{label}
                 </div>
-                <div className={`text-lg font-bold mt-1 ${isWeekend ? 'text-gray-300' : count >= 3 ? 'text-white' : 'text-blue-600'}`}>
-                  {isWeekend ? '-' : count}
-                </div>
-                {!isWeekend && count > 0 && (
-                  <div className={`text-xs mt-0.5 ${count >= 3 ? 'text-blue-100' : 'text-gray-400'}`}>間</div>
+                {isWeekend ? (
+                  <div className="text-gray-300 text-sm text-center">-</div>
+                ) : breakdown.length === 0 ? (
+                  <div className="text-gray-300 text-xs">-</div>
+                ) : (
+                  <div className="space-y-1">
+                    {breakdown.map(({ shortName, count }) => (
+                      <div key={shortName} className="flex items-center justify-between gap-1">
+                        <span className="text-xs text-gray-600 truncate">{shortName}</span>
+                        <span className="text-xs font-bold text-yellow-600 shrink-0">{count}位</span>
+                      </div>
+                    ))}
+                  </div>
                 )}
               </div>
             );

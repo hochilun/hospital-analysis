@@ -1,4 +1,4 @@
-export type Department = '婦產科' | '泌尿外科' | '一般外科' | '耳鼻喉科';
+export type Department = 'GYN' | 'GU' | 'GS' | 'ENT';
 
 export type ClinicSlot = {
   doctor: string;

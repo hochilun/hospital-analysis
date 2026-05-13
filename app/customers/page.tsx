@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Doctor, DoctorGrade, ProductCategory, VisitRecord, ClinicSlot } from '@/types';
 import { getDoctors, deleteDoctor, getHospitalStrategies, saveHospitalStrategy, saveDoctors, getProducts, getVisits, getHospitalsData } from '@/lib/storage';
+import { DEPT_LABEL } from '@/data/hospitals';
 import { HOSPITALS } from '@/data/hospitals';
 
 // ── 常數 ─────────────────────────────────────────────────
@@ -348,7 +349,7 @@ export default function CustomersPage() {
                   className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
                     filterDepts.has(d) ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
                   }`}>
-                  {d}
+                  {DEPT_LABEL[d] ?? d}
                 </button>
               ))}
             </div>
@@ -418,7 +419,7 @@ function DoctorCard({ doc, lastVisit, clinicSummary, onDelete }: { doc: Doctor; 
         <div className="flex items-center gap-2 mb-0.5 flex-wrap">
           <span className="font-semibold text-gray-900 text-sm">{doc.name}</span>
           {doc.title && <span className="text-xs text-gray-400">{doc.title}</span>}
-          {doc.department && <span className="text-xs text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded">{doc.department}</span>}
+          {doc.department && <span className="text-xs text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded">{DEPT_LABEL[doc.department] ?? doc.department}</span>}
           {g && (
             <span className={`text-xs font-bold px-1.5 py-0.5 rounded ${g.bg} ${g.text}`}>{doc.grade}</span>
           )}
