@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Doctor, VisitRecord, ExtraClinicSlot, ClinicSlot } from '@/types';
+import { Doctor, VisitRecord, ExtraClinicSlot, ClinicSlot, TodoItem } from '@/types';
 import { getDoctors, saveDoctor, getVisits, saveVisit, deleteVisit, getHospitalsData } from '@/lib/storage';
 import { HOSPITALS } from '@/data/hospitals';
 
@@ -106,6 +106,8 @@ export default function CustomerDetailPage() {
   const [hospitalClinicSlots, setHospitalClinicSlots] = useState<(ClinicSlot & { hospitalName: string })[]>([]);
   const [showClinicForm, setShowClinicForm] = useState(false);
   const [clinicDraft, setClinicDraft] = useState<ExtraClinicSlot>({ location: '', dayOfWeek: 1, session: '早' });
+  const [showTodoForm, setShowTodoForm] = useState(false);
+  const [todoDraft, setTodoDraft] = useState({ title: '', currentStatus: '', nextAction: '' });
 
   useEffect(() => {
     const doc = getDoctors().find(d => d.id === id);
@@ -157,6 +159,31 @@ export default function CustomerDetailPage() {
     if (!doctor) return;
     const slots = (doctor.extraClinicSlots ?? []).filter((_, j) => j !== i);
     const updated = { ...doctor, extraClinicSlots: slots };
+    setDoctor(updated);
+    saveDoctor(updated);
+  };
+
+  const addTodo = () => {
+    if (!doctor || !todoDraft.title.trim()) { alert('請填寫待辦事項'); return; }
+    const item: TodoItem = { id: uid(), ...todoDraft, createdAt: new Date().toISOString() };
+    const updated = { ...doctor, todos: [...(doctor.todos ?? []), item] };
+    setDoctor(updated);
+    saveDoctor(updated);
+    setTodoDraft({ title: '', currentStatus: '', nextAction: '' });
+    setShowTodoForm(false);
+  };
+
+  const updateTodo = (id: string, field: keyof TodoItem, value: string) => {
+    if (!doctor) return;
+    const todos = (doctor.todos ?? []).map(t => t.id === id ? { ...t, [field]: value } : t);
+    const updated = { ...doctor, todos };
+    setDoctor(updated);
+    saveDoctor(updated);
+  };
+
+  const removeTodo = (id: string) => {
+    if (!doctor) return;
+    const updated = { ...doctor, todos: (doctor.todos ?? []).filter(t => t.id !== id) };
     setDoctor(updated);
     saveDoctor(updated);
   };
@@ -298,6 +325,73 @@ export default function CustomerDetailPage() {
             </div>
           </div>
         )}
+
+        {/* 待辦事項 */}
+        <div className="bg-white rounded-xl border border-gray-200 p-5">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-sm font-semibold text-gray-700">待辦事項（{(doctor.todos ?? []).length}）</h2>
+            <button onClick={() => setShowTodoForm(v => !v)} className="text-xs text-blue-600 hover:underline">
+              {showTodoForm ? '取消' : '＋ 新增'}
+            </button>
+          </div>
+
+          {showTodoForm && (
+            <div className="mb-4 p-4 bg-amber-50 rounded-lg space-y-3">
+              <div>
+                <label className="text-xs text-gray-500">待辦事項</label>
+                <input value={todoDraft.title} onChange={e => setTodoDraft(d => ({ ...d, title: e.target.value }))}
+                  placeholder="例：提送試用申請、跟進審核進度..."
+                  className="block mt-1 px-3 py-1.5 border border-gray-200 rounded-lg text-sm text-gray-800 w-full bg-white focus:outline-none" />
+              </div>
+              <div>
+                <label className="text-xs text-gray-500">Current Status（目前狀態）</label>
+                <textarea value={todoDraft.currentStatus} onChange={e => setTodoDraft(d => ({ ...d, currentStatus: e.target.value }))}
+                  placeholder="目前進行到哪了..." rows={2}
+                  className="block mt-1 px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-800 w-full bg-white focus:outline-none resize-none" />
+              </div>
+              <div>
+                <label className="text-xs text-gray-500">Next Action（下一步）</label>
+                <textarea value={todoDraft.nextAction} onChange={e => setTodoDraft(d => ({ ...d, nextAction: e.target.value }))}
+                  placeholder="接下來要做什麼..." rows={2}
+                  className="block mt-1 px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-800 w-full bg-white focus:outline-none resize-none" />
+              </div>
+              <button onClick={addTodo} className="w-full py-2 bg-amber-500 text-white text-sm rounded-lg hover:bg-amber-600">新增</button>
+            </div>
+          )}
+
+          {(doctor.todos ?? []).length === 0 ? (
+            <p className="text-sm text-gray-400 text-center py-4">尚無待辦事項</p>
+          ) : (
+            <div className="space-y-3">
+              {(doctor.todos ?? []).map(t => (
+                <div key={t.id} className="border border-amber-100 rounded-lg p-3 bg-amber-50/50">
+                  <div className="flex items-start justify-between gap-2 mb-2">
+                    <input value={t.title}
+                      onChange={e => updateTodo(t.id, 'title', e.target.value)}
+                      className="flex-1 text-sm font-semibold text-gray-800 bg-transparent border-b border-dashed border-gray-300 focus:outline-none focus:border-amber-400 pb-0.5" />
+                    <button onClick={() => removeTodo(t.id)} className="text-xs text-gray-300 hover:text-red-400 shrink-0">✕</button>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3 mt-2">
+                    <div>
+                      <p className="text-[10px] text-gray-400 mb-1">Current Status</p>
+                      <textarea value={t.currentStatus}
+                        onChange={e => updateTodo(t.id, 'currentStatus', e.target.value)}
+                        rows={2} placeholder="目前狀態..."
+                        className="w-full text-xs text-gray-700 bg-white border border-gray-200 rounded px-2 py-1.5 resize-none focus:outline-none focus:border-amber-400" />
+                    </div>
+                    <div>
+                      <p className="text-[10px] text-gray-400 mb-1">Next Action</p>
+                      <textarea value={t.nextAction}
+                        onChange={e => updateTodo(t.id, 'nextAction', e.target.value)}
+                        rows={2} placeholder="下一步行動..."
+                        className="w-full text-xs text-gray-700 bg-white border border-gray-200 rounded px-2 py-1.5 resize-none focus:outline-none focus:border-amber-400" />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
 
         {/* 拜訪紀錄 */}
         <div className="bg-white rounded-xl border border-gray-200 p-5">

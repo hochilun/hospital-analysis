@@ -28,13 +28,23 @@ const HOSP_BORDER: Record<string, string> = {
   tucheng: 'border-l-4 border-yellow-400',
 };
 const HOSP_BADGE: Record<string, string> = {
-  tmuh:    'bg-blue-50 text-blue-600',
-  eck:     'bg-green-50 text-green-600',
-  sph:     'bg-purple-50 text-purple-600',
-  clinic:  'bg-orange-50 text-orange-600',
-  grace:   'bg-pink-50 text-pink-600',
-  tzuchi:  'bg-teal-50 text-teal-600',
-  tucheng: 'bg-yellow-50 text-yellow-600',
+  tmuh:    'bg-blue-100 text-blue-700 font-semibold',
+  eck:     'bg-green-100 text-green-700 font-semibold',
+  sph:     'bg-purple-100 text-purple-700 font-semibold',
+  clinic:  'bg-orange-100 text-orange-700 font-semibold',
+  grace:   'bg-pink-100 text-pink-700 font-semibold',
+  tzuchi:  'bg-teal-100 text-teal-700 font-semibold',
+  tucheng: 'bg-yellow-100 text-yellow-700 font-semibold',
+};
+
+const HOSP_CARD_BG: Record<string, string> = {
+  tmuh:    'bg-blue-50',
+  eck:     'bg-green-50',
+  sph:     'bg-purple-50',
+  clinic:  'bg-orange-50',
+  grace:   'bg-pink-50',
+  tzuchi:  'bg-teal-50',
+  tucheng: 'bg-yellow-50',
 };
 
 const CAT_ZH: Record<string, string> = {
@@ -388,6 +398,7 @@ function DoctorCard({ doc, lastVisit, clinicSummary, onDelete }: { doc: Doctor; 
   const g = doc.grade ? GRADE_STYLE[doc.grade] : null;
   const allHospIds = doc.hospitalIds ?? (doc.hospitalId ? [doc.hospitalId] : []);
   const borderClass = HOSP_BORDER[allHospIds[0] ?? ''] ?? 'border-l-4 border-gray-200';
+  const cardBg = HOSP_CARD_BG[allHospIds[0] ?? ''] ?? 'bg-white';
   const total = doc.productTargets.reduce((s, t) => s + monthlyTotal(t.monthlyData), 0);
   const targetTotal = doc.productTargets.reduce((s, t) => s + t.targetQty, 0);
   const rate = targetTotal > 0 ? Math.round((total / Math.max(targetTotal * 4, 1)) * 100) : null;
@@ -402,7 +413,7 @@ function DoctorCard({ doc, lastVisit, clinicSummary, onDelete }: { doc: Doctor; 
   const staleness = daysSince === null ? 'none' : daysSince > 30 ? 'red' : daysSince > 14 ? 'yellow' : 'green';
 
   return (
-    <div className={`bg-white rounded-lg border border-gray-100 pl-0 overflow-hidden flex ${borderClass}`}>
+    <div className={`${cardBg} rounded-lg border border-gray-100 pl-0 overflow-hidden flex ${borderClass}`}>
       <Link href={`/customers/${doc.id}`} className="flex-1 min-w-0 px-4 py-3">
         <div className="flex items-center gap-2 mb-0.5 flex-wrap">
           <span className="font-semibold text-gray-900 text-sm">{doc.name}</span>

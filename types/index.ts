@@ -45,6 +45,14 @@ export type ProductTarget = {
   monthlyData?: Record<string, number>; // "2026-01" -> qty
 };
 
+export type TodoItem = {
+  id: string;
+  title: string;
+  currentStatus: string;
+  nextAction: string;
+  createdAt: string;
+};
+
 export type Doctor = {
   id: string;
   name: string;
@@ -62,6 +70,7 @@ export type Doctor = {
   productTargets: ProductTarget[];
   monthlyInvestment: number;
   extraClinicSlots: ExtraClinicSlot[];
+  todos?: TodoItem[];
   createdAt: string;
 };
 
