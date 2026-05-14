@@ -217,6 +217,9 @@ export default function CustomersPage() {
   // 所有科別
   const allDepts = [...new Set(doctors.map(d => d.department).filter(Boolean))];
 
+  // 醫院排序優先順序
+  const HOSP_ORDER = HOSPITALS.reduce<Record<string, number>>((acc, h, i) => { acc[h.id] = i; return acc; }, {});
+
   // 篩選邏輯
   const filtered = doctors.filter(d => {
     if (filterGrades.size > 0 && !filterGrades.has(d.grade)) return false;
@@ -228,6 +231,10 @@ export default function CustomersPage() {
     if (filterProducts.size > 0 && !d.productTargets.some(t => filterProducts.has(t.productId))) return false;
     if (search.trim() && !d.name.includes(search) && !d.hospitalName.includes(search) && !d.department.includes(search)) return false;
     return true;
+  }).sort((a, b) => {
+    const aId = (a.hospitalIds?.[0] ?? a.hospitalId) || '';
+    const bId = (b.hospitalIds?.[0] ?? b.hospitalId) || '';
+    return (HOSP_ORDER[aId] ?? 999) - (HOSP_ORDER[bId] ?? 999);
   });
 
   function toggleSet<T>(set: Set<T>, val: T): Set<T> {
