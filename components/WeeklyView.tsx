@@ -42,6 +42,15 @@ function saveStarred(set: Set<string>) {
 export default function WeeklyView({ hospitals, selectedDepts }: Props) {
   const [starred, setStarred] = useState<Set<string>>(new Set());
   const [starOnly, setStarOnly] = useState(false);
+  const [collapsedSessions, setCollapsedSessions] = useState<Set<string>>(new Set());
+
+  const toggleSession = (session: string) => {
+    setCollapsedSessions(prev => {
+      const next = new Set(prev);
+      next.has(session) ? next.delete(session) : next.add(session);
+      return next;
+    });
+  };
 
   useEffect(() => { setStarred(loadStarred()); }, []);
 
@@ -166,10 +175,24 @@ export default function WeeklyView({ hospitals, selectedDepts }: Props) {
             </tr>
           </thead>
           <tbody>
-            {SESSION_LABELS.map(session => (
+            {SESSION_LABELS.map(session => {
+              const collapsed = collapsedSessions.has(session);
+              return (
               <tr key={session} className="border-b-2 border-gray-200 last:border-0">
-                <td className="py-3 px-3 text-xs font-semibold text-gray-500 bg-gray-50">{session}診</td>
-                {DAY_LABELS.map((_, day) => {
+                <td
+                  className="py-3 px-3 bg-gray-50 align-top cursor-pointer select-none group"
+                  onClick={() => toggleSession(session)}
+                >
+                  <div className="flex items-center gap-1">
+                    <span className="text-xs font-semibold text-gray-500">{session}診</span>
+                    <span className={`text-[10px] text-gray-400 transition-transform ${collapsed ? 'rotate-0' : 'rotate-180'}`}>▲</span>
+                  </div>
+                </td>
+                {collapsed ? (
+                  <td colSpan={DAY_LABELS.length} className="py-2 px-3 text-xs text-gray-300 bg-gray-50/50">
+                    已收起
+                  </td>
+                ) : DAY_LABELS.map((_, day) => {
                   const slots = getSlots(day, session);
                   return (
                     <td key={day} className="py-2 px-1 align-top min-w-[80px]">
@@ -206,7 +229,8 @@ export default function WeeklyView({ hospitals, selectedDepts }: Props) {
                   );
                 })}
               </tr>
-            ))}
+            );
+          })}
           </tbody>
         </table>
       </div>
