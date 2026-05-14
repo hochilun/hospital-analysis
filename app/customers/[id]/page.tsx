@@ -108,6 +108,8 @@ export default function CustomerDetailPage() {
   const [clinicDraft, setClinicDraft] = useState<ExtraClinicSlot>({ location: '', dayOfWeek: 1, session: '早' });
   const [showTodoForm, setShowTodoForm] = useState(false);
   const [todoDraft, setTodoDraft] = useState({ title: '', currentStatus: '', nextAction: '' });
+  const [editingVisitId, setEditingVisitId] = useState<string | null>(null);
+  const [editDraft, setEditDraft] = useState({ date: '', companions: '', content: '', nextAction: '' });
 
   useEffect(() => {
     const doc = getDoctors().find(d => d.id === id);
@@ -186,6 +188,21 @@ export default function CustomerDetailPage() {
     const updated = { ...doctor, todos: (doctor.todos ?? []).filter(t => t.id !== id) };
     setDoctor(updated);
     saveDoctor(updated);
+  };
+
+  const startEditVisit = (v: VisitRecord) => {
+    setEditingVisitId(v.id);
+    setEditDraft({ date: v.date, companions: v.companions, content: v.content, nextAction: v.nextAction });
+  };
+
+  const saveEditVisit = () => {
+    if (!editingVisitId || !editDraft.content.trim()) { alert('請填寫拜訪內容'); return; }
+    const original = visits.find(v => v.id === editingVisitId);
+    if (!original) return;
+    const updated = { ...original, ...editDraft };
+    saveVisit(updated);
+    setVisits(prev => prev.map(v => v.id === editingVisitId ? updated : v));
+    setEditingVisitId(null);
   };
 
   const removeVisit = (vid: string) => {
@@ -437,23 +454,64 @@ export default function CustomerDetailPage() {
             <p className="text-sm text-gray-400 text-center py-6">還沒有拜訪紀錄</p>
           ) : (
             <div className="space-y-3">
-              {visits.map(v => (
-                <div key={v.id} className="border border-gray-100 rounded-lg p-3">
-                  <div className="flex items-center justify-between mb-1">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-medium text-gray-500">{v.date}</span>
-                      {v.companions && (
-                        <span className="text-xs text-gray-400 bg-gray-50 px-1.5 py-0.5 rounded">
-                          同行：{v.companions}
-                        </span>
-                      )}
-                    </div>
-                    <button onClick={() => removeVisit(v.id)} className="text-xs text-gray-300 hover:text-red-400">✕</button>
+              {visits.map(v => {
+                const isEditing = editingVisitId === v.id;
+                return (
+                  <div key={v.id} className={`border rounded-lg p-3 ${isEditing ? 'border-blue-300 bg-blue-50' : 'border-gray-100'}`}>
+                    {isEditing ? (
+                      <div className="space-y-3">
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <label className="text-xs text-gray-500">日期</label>
+                            <input type="date" value={editDraft.date} onChange={e => setEditDraft(d => ({ ...d, date: e.target.value }))}
+                              className="block mt-1 px-3 py-1.5 border border-gray-200 rounded-lg text-sm text-gray-800 w-full bg-white focus:outline-none" />
+                          </div>
+                          <div>
+                            <label className="text-xs text-gray-500">同行人員</label>
+                            <input value={editDraft.companions} onChange={e => setEditDraft(d => ({ ...d, companions: e.target.value }))}
+                              placeholder="如：主管、同事姓名"
+                              className="block mt-1 px-3 py-1.5 border border-gray-200 rounded-lg text-sm text-gray-800 w-full bg-white focus:outline-none" />
+                          </div>
+                        </div>
+                        <div>
+                          <label className="text-xs text-gray-500">拜訪內容</label>
+                          <textarea value={editDraft.content} onChange={e => setEditDraft(d => ({ ...d, content: e.target.value }))}
+                            rows={3} className="block mt-1 px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-800 w-full bg-white focus:outline-none resize-none" />
+                        </div>
+                        <div>
+                          <label className="text-xs text-gray-500">下一步行動</label>
+                          <input value={editDraft.nextAction} onChange={e => setEditDraft(d => ({ ...d, nextAction: e.target.value }))}
+                            placeholder="下次要做什麼..."
+                            className="block mt-1 px-3 py-1.5 border border-gray-200 rounded-lg text-sm text-gray-800 w-full bg-white focus:outline-none" />
+                        </div>
+                        <div className="flex gap-2">
+                          <button onClick={saveEditVisit} className="flex-1 py-1.5 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700">儲存</button>
+                          <button onClick={() => setEditingVisitId(null)} className="px-4 py-1.5 border border-gray-200 text-sm rounded-lg text-gray-500 hover:border-gray-400">取消</button>
+                        </div>
+                      </div>
+                    ) : (
+                      <>
+                        <div className="flex items-center justify-between mb-1">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-medium text-gray-500">{v.date}</span>
+                            {v.companions && (
+                              <span className="text-xs text-gray-400 bg-gray-50 px-1.5 py-0.5 rounded">
+                                同行：{v.companions}
+                              </span>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <button onClick={() => startEditVisit(v)} className="text-xs text-gray-400 hover:text-blue-500">編輯</button>
+                            <button onClick={() => removeVisit(v.id)} className="text-xs text-gray-300 hover:text-red-400">✕</button>
+                          </div>
+                        </div>
+                        <p className="text-sm text-gray-800 whitespace-pre-wrap">{v.content}</p>
+                        {v.nextAction && <p className="text-xs text-blue-600 mt-1.5">→ {v.nextAction}</p>}
+                      </>
+                    )}
                   </div>
-                  <p className="text-sm text-gray-800 whitespace-pre-wrap">{v.content}</p>
-                  {v.nextAction && <p className="text-xs text-blue-600 mt-1.5">→ {v.nextAction}</p>}
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>
