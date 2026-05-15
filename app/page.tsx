@@ -242,7 +242,7 @@ export default function Home() {
               <HospitalCard
                 key={hospital.id}
                 hospital={hospital}
-                selectedDept={selectedDepts.size > 0 ? Array.from(selectedDepts)[0] : '婦產科'}
+                selectedDept={selectedDepts.size > 0 ? Array.from(selectedDepts)[0] : 'GYN'}
                 onUpdate={() => handleUpdate(hospital.id)}
                 updating={updating === hospital.id}
               />
