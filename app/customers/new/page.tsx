@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Doctor, DoctorGrade, Product, ProductTarget, ProductCategory } from '@/types';
@@ -19,7 +19,7 @@ const GRADES: { value: DoctorGrade; label: string; color: string }[] = [
   { value: 'Y', label: 'Y', color: 'bg-slate-400 text-white' },
 ];
 
-export default function NewCustomerPage() {
+function NewCustomerForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const prefilledHospitalId = searchParams.get('hospitalId') ?? '';
@@ -235,7 +235,7 @@ export default function NewCustomerPage() {
         </section>
       </div>
 
-      <style jsx>{`
+      <style>{`
         .input-field {
           width: 100%;
           padding: 0.5rem 0.75rem;
@@ -251,5 +251,13 @@ export default function NewCustomerPage() {
         textarea.input-field { resize: vertical; }
       `}</style>
     </div>
+  );
+}
+
+export default function NewCustomerPage() {
+  return (
+    <Suspense>
+      <NewCustomerForm />
+    </Suspense>
   );
 }
