@@ -9,6 +9,7 @@ import WeeklyView from '@/components/WeeklyView';
 import PersonalCalendar from '@/components/PersonalCalendar';
 import { getDoctors } from '@/lib/storage';
 import { pullFromCloud } from '@/lib/supabase';
+import GlobalTodosPanel from '@/components/GlobalTodosPanel';
 
 const VALID_DEPTS = new Set(['GYN', 'GU', 'GS', 'ENT']);
 
@@ -161,6 +162,8 @@ export default function Home() {
       </div>
 
       <div className="max-w-6xl mx-auto px-6 py-6">
+        <GlobalTodosPanel />
+
         {/* 科別複選 */}
         <div className="flex flex-wrap items-center gap-2 mb-3">
           <span className="text-sm text-gray-500 w-10">科別</span>

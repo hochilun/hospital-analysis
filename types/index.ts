@@ -45,6 +45,17 @@ export type ProductTarget = {
   monthlyData?: Record<string, number>; // "2026-01" -> qty
 };
 
+export type GlobalTodo = {
+  id: string;
+  title: string;
+  currentStatus: string;
+  nextAction: string;
+  deadline: string;       // YYYY-MM-DD
+  stakeholder: string;
+  priority: 1 | 2 | 3;   // 1=高 2=中 3=低
+  createdAt: string;
+};
+
 export type TodoItem = {
   id: string;
   title: string;

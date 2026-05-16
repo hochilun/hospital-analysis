@@ -1,4 +1,4 @@
-import { Doctor, VisitRecord, Product, Hospital } from '@/types';
+import { Doctor, VisitRecord, Product, Hospital, GlobalTodo } from '@/types';
 import { pushToCloud } from './supabase';
 
 // ── Doctors ──
@@ -80,3 +80,13 @@ export const saveProduct = (p: Product) => {
 };
 export const deleteProduct = (id: string) =>
   syncProducts(getProducts().filter(p => p.id !== id));
+
+// ── Global Todos ──
+export const getGlobalTodos = (): GlobalTodo[] => {
+  if (typeof window === 'undefined') return [];
+  try { return JSON.parse(localStorage.getItem('global-todos') || '[]'); } catch { return []; }
+};
+export const saveGlobalTodos = (data: GlobalTodo[]) => {
+  localStorage.setItem('global-todos', JSON.stringify(data));
+  pushToCloud('global-todos', data);
+};

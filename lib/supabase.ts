@@ -14,6 +14,7 @@ export const SYNC_KEYS = [
   'hospital-strategies',
   'weekly-starred',
   'personal-calendar',
+  'global-todos',
 ] as const;
 
 export type SyncKey = typeof SYNC_KEYS[number];
