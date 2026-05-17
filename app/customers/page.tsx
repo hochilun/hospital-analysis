@@ -165,6 +165,7 @@ export default function CustomersPage() {
   const [doctors, setDoctors] = useState<Doctor[]>([]);
   const [strategies, setStrategies] = useState<Record<string, string>>({});
   const [allProducts, setAllProducts] = useState<{ id: string; name: string }[]>([]);
+  const [priceMap, setPriceMap] = useState<Record<string, { base: number; byHosp: Record<string, number> }>>({});
   const [lastVisitMap, setLastVisitMap] = useState<Record<string, VisitRecord>>({});
   const [clinicMap, setClinicMap] = useState<Record<string, string>>({});  // doctorName -> 門診摘要
 
@@ -180,6 +181,12 @@ export default function CustomersPage() {
     setStrategies(getHospitalStrategies());
     const prods = getProducts();
     setAllProducts(prods.map(p => ({ id: p.id, name: p.name })));
+    const pm: Record<string, { base: number; byHosp: Record<string, number> }> = {};
+    for (const p of prods) {
+      const v = p.variants[0];
+      if (v) pm[p.id] = { base: v.hospitalPrice ?? 0, byHosp: v.hospitalPrices ?? {} };
+    }
+    setPriceMap(pm);
     // 建立每位醫師的最近拜訪 map
     const visits = getVisits().sort((a, b) => b.date.localeCompare(a.date));
     const map: Record<string, VisitRecord> = {};
@@ -392,7 +399,7 @@ export default function CustomersPage() {
           {filtered.length === 0 ? (
             <p className="text-center text-gray-400 py-10">找不到符合的醫師</p>
           ) : (
-            filtered.map(doc => <DoctorCard key={doc.id} doc={doc} lastVisit={lastVisitMap[doc.id]} clinicSummary={clinicMap[doc.name]} onDelete={handleDelete} />)
+            filtered.map(doc => <DoctorCard key={doc.id} doc={doc} lastVisit={lastVisitMap[doc.id]} clinicSummary={clinicMap[doc.name]} priceMap={priceMap} onDelete={handleDelete} />)
           )}
         </div>
       </div>
@@ -402,7 +409,11 @@ export default function CustomersPage() {
 
 // ── DoctorCard ────────────────────────────────────────────
 
-function DoctorCard({ doc, lastVisit, clinicSummary, onDelete }: { doc: Doctor; lastVisit?: VisitRecord; clinicSummary?: string; onDelete: (id: string, name: string) => void }) {
+function DoctorCard({ doc, lastVisit, clinicSummary, priceMap, onDelete }: {
+  doc: Doctor; lastVisit?: VisitRecord; clinicSummary?: string;
+  priceMap: Record<string, { base: number; byHosp: Record<string, number> }>;
+  onDelete: (id: string, name: string) => void;
+}) {
   const g = doc.grade ? GRADE_STYLE[doc.grade] : null;
   const allHospIds = doc.hospitalIds ?? (doc.hospitalId ? [doc.hospitalId] : []);
   const borderClass = HOSP_BORDER[allHospIds[0] ?? ''] ?? 'border-l-4 border-gray-200';
@@ -410,6 +421,16 @@ function DoctorCard({ doc, lastVisit, clinicSummary, onDelete }: { doc: Doctor; 
   const total = doc.productTargets.reduce((s, t) => s + monthlyTotal(t.monthlyData), 0);
   const targetTotal = doc.productTargets.reduce((s, t) => s + t.targetQty, 0);
   const rate = targetTotal > 0 ? Math.round((total / Math.max(targetTotal * 4, 1)) * 100) : null;
+
+  // 月業績估算：currentQty × 單價
+  const monthlyRev = doc.productTargets.reduce((s, t) => {
+    const qty = t.currentQty ?? 0;
+    if (!qty) return s;
+    const pm = priceMap[t.productId];
+    if (!pm) return s;
+    const price = allHospIds.map(h => pm.byHosp[h]).find(Boolean) ?? pm.base;
+    return s + Math.round(qty * price);
+  }, 0);
 
   // 計算距上次拜訪天數（用本地時間比較，避免 UTC 時區偏移）
   const daysSince = (() => {
@@ -482,6 +503,14 @@ function DoctorCard({ doc, lastVisit, clinicSummary, onDelete }: { doc: Doctor; 
         </div>
       </Link>
       <div className="flex items-center gap-3 px-4 shrink-0">
+        {monthlyRev > 0 && (
+          <div className="text-center">
+            <div className="text-sm font-bold text-blue-600">
+              {monthlyRev >= 10000 ? `${Math.round(monthlyRev / 1000)}K` : monthlyRev.toLocaleString()}
+            </div>
+            <div className="text-xs text-gray-400">月業績</div>
+          </div>
+        )}
         {rate !== null && rate > 0 && (
           <div className="text-center">
             <div className={`text-sm font-bold ${rate >= 100 ? 'text-green-600' : rate >= 60 ? 'text-blue-600' : 'text-orange-500'}`}>
