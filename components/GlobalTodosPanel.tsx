@@ -179,11 +179,12 @@ export default function GlobalTodosPanel() {
           {sorted.length === 0 ? (
             <p className="text-sm text-gray-400 text-center py-6">尚無待辦事項</p>
           ) : (
-            sorted.map(t => {
+            <div className="grid grid-cols-2 gap-3">
+            {sorted.map(t => {
               const p = PRIORITY_STYLE[t.priority];
               const isEditing = editingId === t.id;
               return (
-                <div key={t.id} className={`border rounded-xl p-4 ${isEditing ? 'border-blue-300 bg-blue-50' : 'border-gray-100 hover:border-gray-200'}`}>
+                <div key={t.id} className={`border rounded-xl p-4 ${isEditing ? 'border-blue-300 bg-blue-50 col-span-2' : 'border-gray-100 hover:border-gray-200'}`}>
                   {isEditing ? (
                     <div className="space-y-3">
                       <div className="grid grid-cols-2 gap-3">
@@ -269,7 +270,8 @@ export default function GlobalTodosPanel() {
                   )}
                 </div>
               );
-            })
+            })}
+            </div>
           )}
         </div>
       )}
