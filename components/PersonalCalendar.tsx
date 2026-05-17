@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import { pushToCloud } from '@/lib/supabase';
 
 const DAYS = ['一', '二', '三', '四', '五', '六', '日'];
 const SLOTS = ['早', '下午', '晚', '活動'] as const;
@@ -48,6 +49,7 @@ export default function PersonalCalendar() {
   const save = (next: CalendarData) => {
     setData(next);
     localStorage.setItem('personal-calendar', JSON.stringify(next));
+    pushToCloud('personal-calendar', next);
   };
 
   const startEdit = (day: number, slot: Slot) => {
