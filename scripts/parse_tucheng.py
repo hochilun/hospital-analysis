@@ -1,149 +1,91 @@
 #!/usr/bin/env python3
-"""新北市立土城醫院（長庚土城）門診時刻表解析器（本地PDF）"""
-import pdfplumber, json, sys, re, os
+"""新北市立土城醫院（長庚土城）門診時刻表解析器（掛號頁面版）"""
+import urllib.request, re, json, sys, time
 
-TARGET_DEPTS = {
-    'GYN':   ['GYN', '婦產'],
-    'GU': ['GU', '泌尿'],
-    'GS': ['GS'],   # 必須完整寫法，避免大類「外科」誤觸
-    'ENT': ['ENT', '耳鼻喉'],
+HEADERS = {
+    'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
+    'Accept': 'text/html,application/xhtml+xml',
+    'Accept-Language': 'zh-TW,zh;q=0.9',
 }
 
-def get_dept_key(text):
-    t = str(text or '').replace('\n', '').replace(' ', '')
-    for key, patterns in TARGET_DEPTS.items():
-        for p in patterns:
-            if p in t:
-                return key
-    return None
+# 科別代碼 → (dept_key, 頁面代碼清單)
+DEPT_PAGES = {
+    'GS':  ['V2100A', 'V2100E'],
+    'GU':  ['V2600A'],
+    'ENT': ['V3500A'],
+}
 
-def extract_doctors(cell):
-    """從格子中提取所有醫師名，格式：5碼ID + 姓名(備注)"""
-    if not cell:
-        return []
-    names = []
-    for m in re.finditer(r'\d{5}([^\d\n(（]+)', str(cell)):
-        name = m.group(1).strip()
-        if len(name) >= 2:
-            names.append(name)
-    return names
+DAY_MAP = {'日': 0, '一': 1, '二': 2, '三': 3, '四': 4, '五': 5, '六': 6}
+SESSION_MAP = {0: '早', 1: '午', 2: '晚'}
 
-def build_col_map_full(row0, row1):
-    """15 欄格式：row0 有日期, row1 有上午/下午"""
-    DAY_NUM = {'星期一': 1, '星期二': 2, '星期三': 3, '星期四': 4, '星期五': 5, '星期六': 6}
-    SESSION_MAP = {'上午': '早', '下午': '午', '夜間': '晚'}
-    col_map = {}
-    current_day = None
-    for i, cell in enumerate(row0):
-        n = re.sub(r'\s+', '', str(cell or ''))
-        for d, num in DAY_NUM.items():
-            if d in n:
-                current_day = num
-                break
-        s = re.sub(r'\s+', '', str(row1[i] if i < len(row1) else '') or '')
-        if current_day and s in SESSION_MAP:
-            col_map[i] = (current_day, SESSION_MAP[s])
-    return col_map
 
-def build_col_map_simple(row0):
-    """9 欄格式：只有日期列，Mon-Fri 上午，星期六下午"""
-    DAY_NUM = {'星期一': 1, '星期二': 2, '星期三': 3, '星期四': 4, '星期五': 5}
-    col_map = {}
-    for i, cell in enumerate(row0):
-        n = re.sub(r'\s+', '', str(cell or ''))
-        for d, num in DAY_NUM.items():
-            if d in n:
-                session = '早'
-                # 如果標題裡有「下午」則是下午診
-                if '下午' in n:
-                    session = '午'
-                col_map[i] = (num, session)
-                break
-        if '星期六下午' in n or ('星期六' in n and '下午' in n):
-            col_map[i] = (6, '午')
-        elif '星期六' in n and i not in col_map:
-            col_map[i] = (6, '早')
-        elif '星期日' in n:
-            col_map[i] = (0, '早')
-    return col_map
+def fetch(url: str) -> str:
+    req = urllib.request.Request(url, headers=HEADERS)
+    try:
+        return urllib.request.urlopen(req, timeout=20).read().decode('utf-8', errors='ignore')
+    except Exception:
+        return ''
 
-def parse_table(table, clinics, seen):
-    if not table or len(table) < 2:
-        return
 
-    row0 = table[0]
-    row1 = table[1]
-    n_cols = len(row0)
+def parse_page(html: str, dept_key: str, seen: set) -> list:
+    clinics = []
+    m = re.search(r'<table class="department-table">(.*?)</table>', html, re.DOTALL)
+    if not m:
+        return clinics
+    table = m.group(1)
 
-    # 判斷格式：是否有 上午/下午 row
-    has_session_row = any(
-        re.sub(r'\s+', '', str(c or '')) in ('上午', '下午', '夜間')
-        for c in row1
-    )
-
-    if has_session_row:
-        col_map = build_col_map_full(row0, row1)
-        data_start = 2
-    else:
-        col_map = build_col_map_simple(row0)
-        data_start = 1
-
-    if not col_map:
-        return
-
-    # 判斷科別欄位 (通常 col 0，有時 merged 到 col 1)
-    dept_carry = ''
-    for row in table[data_start:]:
-        if not row:
+    rows = re.findall(r'<tr>(.*?)</tr>', table, re.DOTALL)
+    for row in rows:
+        # 取日期標題
+        th = re.search(r'<th>[\d/]+（([日一二三四五六])）</th>', row)
+        if not th:
+            continue
+        day_of_week = DAY_MAP.get(th.group(1), -1)
+        if day_of_week < 0:
             continue
 
-        # 更新科別
-        cell0 = str(row[0] or '').strip()
-        if cell0:
-            dept_carry = cell0
-        candidate = dept_carry
-
-        dept_key = get_dept_key(candidate)
-        if not dept_key:
-            continue
-
-        for col_idx, (day_num, session) in col_map.items():
-            if col_idx >= len(row):
+        # 取三個 <td>（上午/下午/晚間）
+        tds = re.findall(r'<td>(.*?)</td>', row, re.DOTALL)
+        for col_idx, td in enumerate(tds[:3]):
+            session = SESSION_MAP.get(col_idx)
+            if not session:
                 continue
-            for doctor in extract_doctors(row[col_idx]):
-                key = (doctor, dept_key, day_num, session)
+            # 找 <a> 裡的醫師名（格式：「1xxxx 姓名」，去掉開頭數字）
+            for a in re.findall(r'<a[^>]*>(\d{5})\s*([^<(（]+)', td):
+                name = a[1].strip()
+                if not name or len(name) < 2:
+                    continue
+                key = f'{name}_{day_of_week}_{session}'
                 if key not in seen:
                     seen.add(key)
                     clinics.append({
-                        'doctor': doctor,
+                        'doctor': name,
                         'department': dept_key,
-                        'dayOfWeek': day_num,
+                        'dayOfWeek': day_of_week,
                         'session': session,
                     })
+    return clinics
 
-def parse(pdf_path=None):
-    script_dir = os.path.dirname(os.path.abspath(__file__))
-    default_path = os.path.join(script_dir, 'pdfs', 'tucheng.pdf')
-    path = pdf_path or os.environ.get('TUCHENG_PDF_PATH', default_path)
-    if not path or not os.path.exists(path):
-        return {'error': f'找不到土城醫院 PDF，請將最新門診表存為 scripts/pdfs/tucheng.pdf'}
 
-    clinics = []
+def main():
+    all_clinics = []
     seen = set()
 
-    with pdfplumber.open(path) as pdf:
-        for page_num, page in enumerate(pdf.pages):
-            tables = page.extract_tables()
-            for table in tables:
-                parse_table(table, clinics, seen)
+    for dept_key, page_codes in DEPT_PAGES.items():
+        for code in page_codes:
+            url = f'https://register.cgmh.org.tw/Department_WEEK/V/{code}'
+            html = fetch(url)
+            if html:
+                clinics = parse_page(html, dept_key, seen)
+                all_clinics.extend(clinics)
+            time.sleep(0.5)
 
-    return {'clinics': clinics, 'news': []}
+    print(json.dumps({'clinics': all_clinics, 'news': []}, ensure_ascii=False))
+
 
 if __name__ == '__main__':
-    pdf_arg = sys.argv[1] if len(sys.argv) > 1 else None
     try:
-        result = parse(pdf_arg)
-        print(json.dumps(result, ensure_ascii=False))
+        main()
     except Exception as e:
         print(json.dumps({'error': str(e)}))
         sys.exit(1)
