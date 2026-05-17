@@ -41,6 +41,7 @@ export type ProductTarget = {
   productName: string;
   category?: ProductCategory;
   targetQty: number;
+  currentQty?: number;           // 目前月均用量
   unit: string;
   monthlyData?: Record<string, number>; // "2026-01" -> qty
 };
