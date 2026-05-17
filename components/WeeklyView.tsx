@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Hospital, Department } from '@/types';
 import { DAY_LABELS, SESSION_LABELS, TARGET_DEPARTMENTS, DEPT_LABEL } from '@/data/hospitals';
+import { pushToCloud } from '@/lib/supabase';
 
 type Props = {
   hospitals: Hospital[];
@@ -36,7 +37,9 @@ function loadStarred(): Set<string> {
 }
 
 function saveStarred(set: Set<string>) {
-  localStorage.setItem('weekly-starred', JSON.stringify([...set]));
+  const arr = [...set];
+  localStorage.setItem('weekly-starred', JSON.stringify(arr));
+  pushToCloud('weekly-starred', arr);
 }
 
 export default function WeeklyView({ hospitals, selectedDepts }: Props) {
