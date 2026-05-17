@@ -10,6 +10,7 @@ HEADERS = {
 
 # 科別代碼 → (dept_key, 頁面代碼清單)
 DEPT_PAGES = {
+    'GYN': ['V7000A'],
     'GS':  ['V2100A', 'V2100E'],
     'GU':  ['V2600A'],
     'ENT': ['V3500A'],
