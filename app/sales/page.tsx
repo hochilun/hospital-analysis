@@ -1,20 +1,14 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import Link from 'next/link';
 import {
   PieChart, Pie, Cell, Legend, ResponsiveContainer,
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
 } from 'recharts';
-import {
-  HOSPITAL_TOTALS, HOSPITAL_PRODUCT_SALES, PRODUCT_TOTALS,
-} from '@/data/salesHistory';
+import { SALES_BY_YEAR } from '@/data/salesHistory';
 
 type View = 'hospital' | 'product';
-
-const PERIOD = '2025/01 – 2026/04';
-const TOTAL_REV = Object.values(HOSPITAL_TOTALS).reduce((s, v) => s + v.rev, 0);
-const TOTAL_QTY = Object.values(HOSPITAL_TOTALS).reduce((s, v) => s + v.qty, 0);
 
 const CAT_COLORS: Record<string, string> = {
   'Hemostasis':           '#3b82f6',
@@ -39,33 +33,6 @@ function prodToCat(name: string): string {
   return 'Hemostasis';
 }
 
-// Category totals (from PRODUCT_TOTALS, already excludes tucheng/tzuchi)
-const catRevMap: Record<string, number> = {};
-for (const [name, { rev }] of Object.entries(PRODUCT_TOTALS)) {
-  const cat = prodToCat(name);
-  catRevMap[cat] = (catRevMap[cat] ?? 0) + rev;
-}
-const CAT_TOTAL = Object.values(catRevMap).reduce((s, v) => s + v, 0);
-const catPieData = Object.entries(catRevMap)
-  .sort((a, b) => b[1] - a[1])
-  .map(([cat, value]) => ({ cat, name: CAT_ZH[cat] ?? cat, value }));
-
-// Hospital pie data
-const hospPieData = Object.entries(HOSPITAL_TOTALS)
-  .sort((a, b) => b[1].rev - a[1].rev)
-  .map(([name, { rev }]) => ({ name, value: rev }));
-
-// Stacked bar: hospital × category revenue
-const barData = Object.entries(HOSPITAL_PRODUCT_SALES).map(([hospital, products]) => {
-  const row: Record<string, string | number> = { hospital };
-  for (const cat of Object.keys(CAT_COLORS)) row[cat] = 0;
-  for (const [prod, { rev }] of Object.entries(products)) {
-    const cat = prodToCat(prod);
-    row[cat] = (row[cat] as number) + rev;
-  }
-  return row;
-});
-
 function fmtRev(n: number) {
   if (n >= 1_000_000) return `NT$${(n / 1_000_000).toFixed(2)}M`;
   if (n >= 10_000)    return `NT$${Math.round(n / 1000)}K`;
@@ -86,59 +53,50 @@ function BarRow({ label, value, max, sub }: { label: string; value: number; max:
   );
 }
 
-function HospPieTip({ active, payload }: any) {
-  if (!active || !payload?.length) return null;
-  const { name, value } = payload[0];
-  return (
-    <div className="bg-white border border-gray-200 rounded-lg shadow-sm p-3 text-sm">
-      <p className="font-semibold text-gray-800">{name}</p>
-      <p className="text-gray-600">{fmtRev(value)} · {((value / TOTAL_REV) * 100).toFixed(1)}%</p>
-    </div>
-  );
-}
-
-function CatPieTip({ active, payload }: any) {
-  if (!active || !payload?.length) return null;
-  const { name, value } = payload[0];
-  return (
-    <div className="bg-white border border-gray-200 rounded-lg shadow-sm p-3 text-sm">
-      <p className="font-semibold text-gray-800">{name}</p>
-      <p className="text-gray-600">{fmtRev(value)} · {((value / CAT_TOTAL) * 100).toFixed(1)}%</p>
-    </div>
-  );
-}
-
-function StackedBarTip({ active, payload, label }: any) {
-  if (!active || !payload?.length) return null;
-  const items = [...payload].reverse().filter(p => (p.value ?? 0) > 0);
-  const total = items.reduce((s, p) => s + (p.value ?? 0), 0);
-  return (
-    <div className="bg-white border border-gray-200 rounded-lg shadow-sm p-3 text-sm min-w-[180px]">
-      <p className="font-semibold text-gray-800 mb-2">{label}</p>
-      {items.map(p => (
-        <div key={p.dataKey} className="flex items-center justify-between gap-4 mb-1">
-          <span className="flex items-center gap-1.5 text-gray-600">
-            <span className="w-2.5 h-2.5 rounded-full inline-block" style={{ background: p.fill }} />
-            {CAT_ZH[p.dataKey] ?? p.dataKey}
-          </span>
-          <span className="font-medium text-gray-800">{fmtRev(p.value)}</span>
-        </div>
-      ))}
-      <div className="border-t border-gray-100 mt-2 pt-2 flex justify-between font-semibold text-gray-800">
-        <span>合計</span><span>{fmtRev(total)}</span>
-      </div>
-    </div>
-  );
-}
-
 export default function SalesPage() {
+  const [year, setYear] = useState<'2025' | '2026'>('2025');
   const [view, setView] = useState<View>('hospital');
   const [selectedHospital, setSelectedHospital] = useState<string | null>(null);
 
-  const hospitalsSorted = Object.entries(HOSPITAL_TOTALS).sort((a, b) => b[1].rev - a[1].rev);
-  const productsSorted  = Object.entries(PRODUCT_TOTALS).sort((a, b) => b[1].rev - a[1].rev);
-  const maxHospitalRev  = hospitalsSorted[0]?.[1].rev ?? 1;
-  const maxProductRev   = productsSorted[0]?.[1].rev ?? 1;
+  const { HOSPITAL_TOTALS, HOSPITAL_PRODUCT_SALES, PRODUCT_TOTALS, label } = SALES_BY_YEAR[year];
+
+  const { totalRev, totalQty, catPieData, catTotal, hospPieData, barData,
+          hospitalsSorted, productsSorted, maxHospitalRev, maxProductRev } = useMemo(() => {
+    const totalRev = Object.values(HOSPITAL_TOTALS).reduce((s, v) => s + v.rev, 0);
+    const totalQty = Object.values(HOSPITAL_TOTALS).reduce((s, v) => s + v.qty, 0);
+
+    const catRevMap: Record<string, number> = {};
+    for (const [name, { rev }] of Object.entries(PRODUCT_TOTALS)) {
+      const cat = prodToCat(name);
+      catRevMap[cat] = (catRevMap[cat] ?? 0) + rev;
+    }
+    const catTotal = Object.values(catRevMap).reduce((s, v) => s + v, 0);
+    const catPieData = Object.entries(catRevMap).sort((a, b) => b[1] - a[1])
+      .map(([cat, value]) => ({ cat, name: CAT_ZH[cat] ?? cat, value }));
+
+    const hospPieData = Object.entries(HOSPITAL_TOTALS).sort((a, b) => b[1].rev - a[1].rev)
+      .map(([name, { rev }]) => ({ name, value: rev }));
+
+    const barData = Object.entries(HOSPITAL_PRODUCT_SALES).map(([hospital, products]) => {
+      const row: Record<string, string | number> = { hospital };
+      for (const cat of Object.keys(CAT_COLORS)) row[cat] = 0;
+      for (const [prod, { rev }] of Object.entries(products)) {
+        const cat = prodToCat(prod);
+        row[cat] = (row[cat] as number) + rev;
+      }
+      return row;
+    });
+
+    const hospitalsSorted = Object.entries(HOSPITAL_TOTALS).sort((a, b) => b[1].rev - a[1].rev);
+    const productsSorted  = Object.entries(PRODUCT_TOTALS).sort((a, b) => b[1].rev - a[1].rev);
+
+    return {
+      totalRev, totalQty, catPieData, catTotal, hospPieData, barData,
+      hospitalsSorted, productsSorted,
+      maxHospitalRev: hospitalsSorted[0]?.[1].rev ?? 1,
+      maxProductRev:  productsSorted[0]?.[1].rev ?? 1,
+    };
+  }, [year, HOSPITAL_TOTALS, HOSPITAL_PRODUCT_SALES, PRODUCT_TOTALS]);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -148,8 +106,19 @@ export default function SalesPage() {
             <Link href="/" className="text-gray-400 hover:text-gray-600 text-sm">← 返回</Link>
             <div>
               <h1 className="text-xl font-bold text-gray-900">歷史業績</h1>
-              <p className="text-xs text-gray-400">{PERIOD}（不含長庚土城、台北慈濟）</p>
+              <p className="text-xs text-gray-400">不含長庚土城、台北慈濟</p>
             </div>
+          </div>
+          {/* 年份 filter */}
+          <div className="flex gap-2">
+            {(['2025', '2026'] as const).map(y => (
+              <button key={y} onClick={() => { setYear(y); setSelectedHospital(null); }}
+                className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${
+                  year === y ? 'bg-blue-600 text-white' : 'bg-white border border-gray-200 text-gray-500 hover:border-blue-400'
+                }`}>
+                {SALES_BY_YEAR[y].label}
+              </button>
+            ))}
           </div>
         </div>
       </div>
@@ -159,11 +128,11 @@ export default function SalesPage() {
         <div className="grid grid-cols-3 gap-4">
           <div className="bg-white rounded-xl border border-gray-200 p-4 text-center">
             <p className="text-xs text-gray-400 mb-1">總業績</p>
-            <p className="text-2xl font-bold text-blue-600">{fmtRev(TOTAL_REV)}</p>
+            <p className="text-2xl font-bold text-blue-600">{fmtRev(totalRev)}</p>
           </div>
           <div className="bg-white rounded-xl border border-gray-200 p-4 text-center">
             <p className="text-xs text-gray-400 mb-1">總數量</p>
-            <p className="text-2xl font-bold text-gray-800">{TOTAL_QTY.toLocaleString()}</p>
+            <p className="text-2xl font-bold text-gray-800">{totalQty.toLocaleString()}</p>
           </div>
           <div className="bg-white rounded-xl border border-gray-200 p-4 text-center">
             <p className="text-xs text-gray-400 mb-1">涵蓋醫院</p>
@@ -177,13 +146,20 @@ export default function SalesPage() {
             <h2 className="text-sm font-semibold text-gray-700 mb-3">醫院業績佔比</h2>
             <ResponsiveContainer width="100%" height={220}>
               <PieChart>
-                <Pie data={hospPieData} cx="50%" cy="45%" outerRadius={75}
-                  dataKey="value" nameKey="name">
-                  {hospPieData.map((_, i) => (
-                    <Cell key={i} fill={HOSP_COLORS[i % HOSP_COLORS.length]} />
-                  ))}
+                <Pie data={hospPieData} cx="50%" cy="45%" outerRadius={75} dataKey="value" nameKey="name">
+                  {hospPieData.map((_, i) => <Cell key={i} fill={HOSP_COLORS[i % HOSP_COLORS.length]} />)}
                 </Pie>
-                <Tooltip content={<HospPieTip />} />
+                <Tooltip content={({ active, payload }) => {
+                  if (!active || !payload?.length) return null;
+                  const { name, value } = payload[0];
+                  const v = Number(value ?? 0);
+                  return (
+                    <div className="bg-white border border-gray-200 rounded-lg shadow-sm p-3 text-sm">
+                      <p className="font-semibold text-gray-800">{name}</p>
+                      <p className="text-gray-600">{fmtRev(v)} · {((v / totalRev) * 100).toFixed(1)}%</p>
+                    </div>
+                  );
+                }} />
                 <Legend iconType="circle" iconSize={8}
                   formatter={(v) => <span className="text-xs text-gray-600">{v}</span>} />
               </PieChart>
@@ -194,13 +170,20 @@ export default function SalesPage() {
             <h2 className="text-sm font-semibold text-gray-700 mb-3">產品分類佔比</h2>
             <ResponsiveContainer width="100%" height={220}>
               <PieChart>
-                <Pie data={catPieData} cx="50%" cy="45%" outerRadius={75}
-                  dataKey="value" nameKey="name">
-                  {catPieData.map((entry) => (
-                    <Cell key={entry.cat} fill={CAT_COLORS[entry.cat]} />
-                  ))}
+                <Pie data={catPieData} cx="50%" cy="45%" outerRadius={75} dataKey="value" nameKey="name">
+                  {catPieData.map((entry) => <Cell key={entry.cat} fill={CAT_COLORS[entry.cat]} />)}
                 </Pie>
-                <Tooltip content={<CatPieTip />} />
+                <Tooltip content={({ active, payload }) => {
+                  if (!active || !payload?.length) return null;
+                  const { name, value } = payload[0];
+                  const v = Number(value ?? 0);
+                  return (
+                    <div className="bg-white border border-gray-200 rounded-lg shadow-sm p-3 text-sm">
+                      <p className="font-semibold text-gray-800">{name}</p>
+                      <p className="text-gray-600">{fmtRev(v)} · {((v / catTotal) * 100).toFixed(1)}%</p>
+                    </div>
+                  );
+                }} />
                 <Legend iconType="circle" iconSize={8}
                   formatter={(v) => <span className="text-xs text-gray-600">{v}</span>} />
               </PieChart>
@@ -208,7 +191,7 @@ export default function SalesPage() {
           </div>
         </div>
 
-        {/* 堆疊長條圖：各醫院 × 分類 */}
+        {/* 堆疊長條圖 */}
         <div className="bg-white rounded-xl border border-gray-200 p-5">
           <h2 className="text-sm font-semibold text-gray-700 mb-4">各醫院業績結構（依分類）</h2>
           <ResponsiveContainer width="100%" height={260}>
@@ -217,23 +200,44 @@ export default function SalesPage() {
               <XAxis dataKey="hospital" tick={{ fontSize: 12, fill: '#6b7280' }} />
               <YAxis tickFormatter={v => v >= 1_000_000 ? `${(v/1_000_000).toFixed(1)}M` : `${Math.round(v/1000)}K`}
                 tick={{ fontSize: 11, fill: '#9ca3af' }} />
-              <Tooltip content={<StackedBarTip />} />
+              <Tooltip content={({ active, payload, label: lbl }) => {
+                if (!active || !payload?.length) return null;
+                const items = [...payload].reverse().filter(p => Number(p.value ?? 0) > 0);
+                const total = items.reduce((s, p) => s + Number(p.value ?? 0), 0);
+                return (
+                  <div className="bg-white border border-gray-200 rounded-lg shadow-sm p-3 text-sm min-w-[180px]">
+                    <p className="font-semibold text-gray-800 mb-2">{lbl}</p>
+                    {items.map((p, i) => (
+                      <div key={`${p.dataKey}-${i}`} className="flex items-center justify-between gap-4 mb-1">
+                        <span className="flex items-center gap-1.5 text-gray-600">
+                          <span className="w-2.5 h-2.5 rounded-full inline-block" style={{ background: p.fill }} />
+                          {CAT_ZH[p.dataKey as string] ?? p.dataKey}
+                        </span>
+                        <span className="font-medium text-gray-800">{fmtRev(Number(p.value ?? 0))}</span>
+                      </div>
+                    ))}
+                    <div className="border-t border-gray-100 mt-2 pt-2 flex justify-between font-semibold text-gray-800">
+                      <span>合計</span><span>{fmtRev(total)}</span>
+                    </div>
+                  </div>
+                );
+              }} />
               {Object.entries(CAT_COLORS).map(([cat, color]) => (
                 <Bar key={cat} dataKey={cat} stackId="a" fill={color} />
               ))}
             </BarChart>
           </ResponsiveContainer>
           <div className="flex flex-wrap gap-4 mt-2 justify-center">
-            {Object.entries(CAT_ZH).map(([cat, label]) => (
+            {Object.entries(CAT_ZH).map(([cat, lbl]) => (
               <div key={cat} className="flex items-center gap-1.5 text-xs text-gray-600">
                 <span className="w-3 h-3 rounded inline-block" style={{ background: CAT_COLORS[cat] }} />
-                {label}
+                {lbl}
               </div>
             ))}
           </div>
         </div>
 
-        {/* 切換 tab：明細 */}
+        {/* 切換 tab */}
         <div className="flex gap-2">
           {(['hospital', 'product'] as View[]).map(v => (
             <button key={v} onClick={() => { setView(v); setSelectedHospital(null); }}
@@ -283,9 +287,7 @@ export default function SalesPage() {
                             <td className="py-2 font-medium text-gray-700">{prod}</td>
                             <td className="py-2 text-right text-gray-500">{qty}</td>
                             <td className="py-2 text-right text-gray-800">{fmtRev(rev)}</td>
-                            <td className="py-2 text-right text-gray-400">
-                              {((rev / total) * 100).toFixed(1)}%
-                            </td>
+                            <td className="py-2 text-right text-gray-400">{((rev / total) * 100).toFixed(1)}%</td>
                           </tr>
                         );
                       })}
