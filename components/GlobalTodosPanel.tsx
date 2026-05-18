@@ -38,6 +38,7 @@ export default function GlobalTodosPanel() {
   const [sortBy, setSortBy] = useState<'deadline' | 'priority'>('deadline');
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editDraft, setEditDraft] = useState(EMPTY_DRAFT);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
   const [collapsed, setCollapsed] = useState(false);
 
   useEffect(() => { setTodos(getGlobalTodos()); }, []);
@@ -234,36 +235,44 @@ export default function GlobalTodosPanel() {
                     </div>
                   ) : (
                     <div>
-                      <div className="flex items-start justify-between gap-3 mb-2">
-                        <div className="flex items-center gap-2 flex-wrap min-w-0">
+                      {/* 標題列（永遠顯示，點擊展開/收起） */}
+                      <div
+                        className="flex items-center justify-between gap-2 cursor-pointer"
+                        onClick={() => setExpandedId(expandedId === t.id ? null : t.id)}
+                      >
+                        <div className="flex items-center gap-2 flex-wrap min-w-0 flex-1">
                           <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full shrink-0 ${p.bg} ${p.text}`}>
                             {p.label}
                           </span>
-                          <span className="text-sm font-semibold text-gray-800">{t.title}</span>
+                          <span className="text-sm font-semibold text-gray-800 truncate">{t.title}</span>
+                          {t.deadline && (
+                            <span className={`text-xs shrink-0 ${deadlineColor(t.deadline)}`}>
+                              📅 {t.deadline}{daysLabel(t.deadline)}
+                            </span>
+                          )}
+                          {t.stakeholder && <span className="text-xs text-gray-400 shrink-0">👤 {t.stakeholder}</span>}
                         </div>
-                        <div className="flex items-center gap-2 shrink-0">
+                        <div className="flex items-center gap-2 shrink-0" onClick={e => e.stopPropagation()}>
                           <button onClick={() => startEdit(t)} className="text-xs text-gray-400 hover:text-blue-500">編輯</button>
                           <button onClick={() => remove(t.id)} className="text-xs text-gray-300 hover:text-red-400">✕</button>
+                          <span className="text-gray-300 text-xs">{expandedId === t.id ? '▲' : '▼'}</span>
                         </div>
                       </div>
-                      <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500 mb-2">
-                        {t.deadline && (
-                          <span className={deadlineColor(t.deadline)}>
-                            📅 {t.deadline}{daysLabel(t.deadline)}
-                          </span>
-                        )}
-                        {t.stakeholder && <span>👤 {t.stakeholder}</span>}
-                      </div>
-                      {t.currentStatus && (
-                        <div className="mt-1.5">
-                          <span className="text-[10px] text-gray-400 uppercase tracking-wide">Current Status</span>
-                          <p className="text-sm text-gray-700 mt-0.5 whitespace-pre-wrap">{t.currentStatus}</p>
-                        </div>
-                      )}
-                      {t.nextAction && (
-                        <div className="mt-1.5">
-                          <span className="text-[10px] text-gray-400 uppercase tracking-wide">Next Action</span>
-                          <p className="text-sm text-blue-600 mt-0.5">→ {t.nextAction}</p>
+                      {/* 展開內容 */}
+                      {expandedId === t.id && (
+                        <div className="mt-3 pt-3 border-t border-gray-100 space-y-2">
+                          {t.currentStatus && (
+                            <div>
+                              <span className="text-[10px] text-gray-400 uppercase tracking-wide">Current Status</span>
+                              <p className="text-sm text-gray-700 mt-0.5 whitespace-pre-wrap">{t.currentStatus}</p>
+                            </div>
+                          )}
+                          {t.nextAction && (
+                            <div>
+                              <span className="text-[10px] text-gray-400 uppercase tracking-wide">Next Action</span>
+                              <p className="text-sm text-blue-600 mt-0.5">→ {t.nextAction}</p>
+                            </div>
+                          )}
                         </div>
                       )}
                     </div>
