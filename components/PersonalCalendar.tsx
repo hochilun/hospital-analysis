@@ -40,10 +40,15 @@ export default function PersonalCalendar() {
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
-    const saved = localStorage.getItem('personal-calendar');
-    if (saved) {
-      try { setData(JSON.parse(saved)); } catch {}
-    }
+    const load = () => {
+      const saved = localStorage.getItem('personal-calendar');
+      if (saved) {
+        try { setData(JSON.parse(saved)); } catch {}
+      }
+    };
+    load();
+    window.addEventListener('cloud-synced', load);
+    return () => window.removeEventListener('cloud-synced', load);
   }, []);
 
   const save = (next: CalendarData) => {

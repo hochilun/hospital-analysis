@@ -63,7 +63,10 @@ export default function Home() {
 
     // 啟動時先從雲端同步，再載入本機資料
     pullFromCloud().then(synced => {
-      if (synced) loadData();
+      if (synced) {
+        loadData();
+        window.dispatchEvent(new CustomEvent('cloud-synced'));
+      }
     });
     loadData();
 
