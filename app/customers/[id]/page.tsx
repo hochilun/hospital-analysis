@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Doctor, VisitRecord, ExtraClinicSlot, ClinicSlot, TodoItem } from '@/types';
-import { getDoctors, saveDoctor, getVisits, saveVisit, deleteVisit, getHospitalsData } from '@/lib/storage';
+import { getDoctors, saveDoctor, getVisits, saveVisit, deleteVisit, getHospitalsData, getProducts } from '@/lib/storage';
 import { HOSPITALS } from '@/data/hospitals';
 
 function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2); }
@@ -110,6 +110,7 @@ export default function CustomerDetailPage() {
   const [todoDraft, setTodoDraft] = useState({ title: '', currentStatus: '', nextAction: '' });
   const [editingVisitId, setEditingVisitId] = useState<string | null>(null);
   const [editDraft, setEditDraft] = useState({ date: '', companions: '', content: '', nextAction: '' });
+  const [priceMap, setPriceMap] = useState<Record<string, { base: number; byHosp: Record<string, number> }>>({});
 
   useEffect(() => {
     const doc = getDoctors().find(d => d.id === id);
@@ -118,6 +119,15 @@ export default function CustomerDetailPage() {
     setDoctor(fullDoc);
     setVisits(getVisits().filter(v => v.doctorId === id).sort((a, b) => b.date.localeCompare(a.date)));
     // 從已抓的門診表比對醫師姓名
+    // 建立產品單價 map
+    const prods = getProducts();
+    const pm: Record<string, { base: number; byHosp: Record<string, number> }> = {};
+    for (const p of prods) {
+      const v = p.variants[0];
+      if (v) pm[p.id] = { base: v.hospitalPrice ?? 0, byHosp: v.hospitalPrices ?? {} };
+    }
+    setPriceMap(pm);
+
     const hospData = getHospitalsData();
     const matched: (ClinicSlot & { hospitalName: string })[] = [];
     for (const h of hospData) {
@@ -328,11 +338,33 @@ export default function CustomerDetailPage() {
           <div className="bg-white rounded-xl border border-gray-200 p-5">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-sm font-semibold text-gray-700">產品目標達成</h2>
-              {rate !== null && (
-                <span className={`text-lg font-bold ${rate >= 100 ? 'text-green-600' : rate >= 60 ? 'text-blue-600' : 'text-orange-500'}`}>
-                  {rate}%
-                </span>
-              )}
+              <div className="flex items-center gap-4">
+                {(() => {
+                  const hospIds = doctor.hospitalIds ?? (doctor.hospitalId ? [doctor.hospitalId] : []);
+                  const totalRev = doctor.productTargets.reduce((s, t) => {
+                    const vals = Object.values(t.monthlyData ?? {}).filter(v => v > 0);
+                    const avg = vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : 0;
+                    if (!avg) return s;
+                    const pm = priceMap[t.productId];
+                    if (!pm) return s;
+                    const price = hospIds.map(h => pm.byHosp[h]).find(Boolean) ?? pm.base;
+                    return s + Math.round(avg * price);
+                  }, 0);
+                  return totalRev > 0 ? (
+                    <div className="text-right">
+                      <span className="text-xs text-gray-400">月均業績</span>
+                      <div className="text-base font-bold text-blue-600">
+                        NT${totalRev.toLocaleString()}
+                      </div>
+                    </div>
+                  ) : null;
+                })()}
+                {rate !== null && (
+                  <span className={`text-lg font-bold ${rate >= 100 ? 'text-green-600' : rate >= 60 ? 'text-blue-600' : 'text-orange-500'}`}>
+                    {rate}%
+                  </span>
+                )}
+              </div>
             </div>
             <div className="space-y-4">
               {doctor.productTargets.map((t, i) => (

@@ -228,15 +228,21 @@ export default function CustomersPage() {
   // 醫院排序優先順序
   const HOSP_ORDER = HOSPITALS.reduce<Record<string, number>>((acc, h, i) => { acc[h.id] = i; return acc; }, {});
 
+  const monthlyAvg = (data?: Record<string, number>) => {
+    if (!data) return 0;
+    const vals = Object.values(data).filter(v => v > 0);
+    return vals.length ? vals.reduce((s, v) => s + v, 0) / vals.length : 0;
+  };
+
   const calcMonthlyRev = (doc: Doctor) =>
     doc.productTargets.reduce((s, t) => {
-      const qty = t.currentQty ?? 0;
-      if (!qty) return s;
+      const avg = monthlyAvg(t.monthlyData);
+      if (!avg) return s;
       const pm = priceMap[t.productId];
       if (!pm) return s;
       const hospIds = doc.hospitalIds ?? (doc.hospitalId ? [doc.hospitalId] : []);
       const price = hospIds.map(h => pm.byHosp[h]).find(Boolean) ?? pm.base;
-      return s + Math.round(qty * price);
+      return s + Math.round(avg * price);
     }, 0);
 
   // 篩選邏輯
@@ -448,14 +454,19 @@ function DoctorCard({ doc, lastVisit, clinicSummary, priceMap, onDelete }: {
   const targetTotal = doc.productTargets.reduce((s, t) => s + t.targetQty, 0);
   const rate = targetTotal > 0 ? Math.round((total / Math.max(targetTotal * 4, 1)) * 100) : null;
 
-  // 月業績估算：currentQty × 單價
+  // 月業績估算：月均用量 × 單價
+  const avgQty = (data?: Record<string, number>) => {
+    if (!data) return 0;
+    const vals = Object.values(data).filter(v => v > 0);
+    return vals.length ? vals.reduce((s, v) => s + v, 0) / vals.length : 0;
+  };
   const monthlyRev = doc.productTargets.reduce((s, t) => {
-    const qty = t.currentQty ?? 0;
-    if (!qty) return s;
+    const avg = avgQty(t.monthlyData);
+    if (!avg) return s;
     const pm = priceMap[t.productId];
     if (!pm) return s;
     const price = allHospIds.map(h => pm.byHosp[h]).find(Boolean) ?? pm.base;
-    return s + Math.round(qty * price);
+    return s + Math.round(avg * price);
   }, 0);
 
   // 計算距上次拜訪天數（用本地時間比較，避免 UTC 時區偏移）

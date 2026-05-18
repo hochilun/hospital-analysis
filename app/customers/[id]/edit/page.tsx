@@ -222,60 +222,30 @@ export default function EditCustomerPage() {
             <p className="text-xs text-gray-400 text-center py-4">點「新增產品」設定目標用量</p>
           ) : (
             <div className="space-y-4">
-              {targets.map((t, i) => {
-                const unitPrice = getUnitPrice(t.productId);
-                const currentQty = t.currentQty ?? 0;
-                const monthlyRev = Math.round(currentQty * unitPrice);
-                return (
-                  <div key={i} className="border border-gray-100 rounded-lg p-3 space-y-2">
-                    <div className="flex items-center gap-2">
-                      <div className="flex-1">
-                        <label className="text-xs text-gray-500">產品</label>
-                        <select className="input-field mt-1" value={t.productId}
-                          onChange={e => selectProduct(i, e.target.value)}>
-                          <option value="">請選擇產品...</option>
-                          {products.map(p => (
-                            <option key={p.id} value={p.id}>{p.name}</option>
-                          ))}
-                          {t.productId && !products.find(p => p.id === t.productId) && (
-                            <option value={t.productId}>{t.productName}</option>
-                          )}
-                        </select>
-                      </div>
-                      <button onClick={() => removeTarget(i)} className="text-red-300 hover:text-red-500 mt-5 text-sm shrink-0">✕</button>
-                    </div>
-                    <div className="grid grid-cols-3 gap-2">
-                      <div>
-                        <label className="text-xs text-gray-500">目前月用量</label>
-                        <input className="input-field mt-1" type="number" placeholder="0"
-                          value={currentQty || ''}
-                          onChange={e => updateTarget(i, 'currentQty', parseFloat(e.target.value) || 0)} />
-                      </div>
-                      <div>
-                        <label className="text-xs text-gray-500">目標月用量</label>
-                        <input className="input-field mt-1" type="number" placeholder="0"
-                          value={t.targetQty || ''}
-                          onChange={e => updateTarget(i, 'targetQty', parseFloat(e.target.value) || 0)} />
-                      </div>
-                      <div>
-                        <label className="text-xs text-gray-500">月業績估算</label>
-                        <div className="input-field mt-1 bg-gray-50 text-blue-700 font-semibold">
-                          {monthlyRev > 0 ? `NT$${monthlyRev.toLocaleString()}` : unitPrice > 0 ? '填入用量' : '—'}
-                        </div>
-                      </div>
-                    </div>
+              {targets.map((t, i) => (
+                <div key={i} className="grid grid-cols-[1fr_auto_auto] gap-2 items-end">
+                  <div>
+                    <label className="text-xs text-gray-500">產品</label>
+                    <select className="input-field mt-1" value={t.productId}
+                      onChange={e => selectProduct(i, e.target.value)}>
+                      <option value="">請選擇產品...</option>
+                      {products.map(p => (
+                        <option key={p.id} value={p.id}>{p.name}</option>
+                      ))}
+                      {t.productId && !products.find(p => p.id === t.productId) && (
+                        <option value={t.productId}>{t.productName}</option>
+                      )}
+                    </select>
                   </div>
-                );
-              })}
-              {/* 月業績合計 */}
-              {targets.some(t => (t.currentQty ?? 0) > 0 && getUnitPrice(t.productId) > 0) && (
-                <div className="flex justify-end pt-1 border-t border-gray-100">
-                  <span className="text-sm text-gray-500 mr-3">月業績合計</span>
-                  <span className="text-sm font-bold text-blue-700">
-                    NT${targets.reduce((s, t) => s + Math.round((t.currentQty ?? 0) * getUnitPrice(t.productId)), 0).toLocaleString()}
-                  </span>
+                  <div className="w-32">
+                    <label className="text-xs text-gray-500">目標月用量</label>
+                    <input className="input-field mt-1" type="number" placeholder="0"
+                      value={t.targetQty || ''}
+                      onChange={e => updateTarget(i, 'targetQty', parseFloat(e.target.value) || 0)} />
+                  </div>
+                  <button onClick={() => removeTarget(i)} className="text-red-300 hover:text-red-500 pb-2 text-sm">✕</button>
                 </div>
-              )}
+              ))}
             </div>
           )}
         </section>
