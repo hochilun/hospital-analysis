@@ -85,7 +85,7 @@ export default function WeeklyView({ hospitals, selectedDepts }: Props) {
   };
 
   const getSlots = (day: number, session: string) => {
-    const result: { hospital: Hospital; doctor: string; department: Department }[] = [];
+    const result: { hospital: Hospital; doctor: string; department: Department; absent?: boolean }[] = [];
     hospitals.forEach(h => {
       h.clinics
         .filter(c => {
@@ -93,7 +93,10 @@ export default function WeeklyView({ hospitals, selectedDepts }: Props) {
           if (starOnly && !starred.has(starKey(h.id, c.doctor))) return false;
           return true;
         })
-        .forEach(c => result.push({ hospital: h, doctor: c.doctor, department: c.department }));
+        .forEach(c => {
+          const absent = h.weeklyAbsences?.some(a => a.doctor === c.doctor && a.dayOfWeek === day && a.session === session) ?? false;
+          result.push({ hospital: h, doctor: c.doctor, department: c.department, absent });
+        });
     });
     return result;
   };
@@ -206,11 +209,14 @@ export default function WeeklyView({ hospitals, selectedDepts }: Props) {
                           return (
                             <div
                               key={i}
-                              className={`text-xs px-2 py-1 rounded border ${DEPT_COLOR[s.department]}`}
+                              className={`text-xs px-2 py-1 rounded border ${s.absent ? 'bg-gray-50 border-gray-200 opacity-60' : DEPT_COLOR[s.department]}`}
                             >
-                              <div className="font-medium">{s.hospital.shortName}</div>
+                              <div className="font-medium flex items-center gap-1">
+                                {s.hospital.shortName}
+                                {s.absent && <span className="text-[10px] bg-gray-200 text-gray-500 px-1 rounded">停診</span>}
+                              </div>
                               <div className="flex items-center justify-between gap-1">
-                                <span>{s.doctor}</span>
+                                <span className={s.absent ? 'line-through text-gray-400' : ''}>{s.doctor}</span>
                                 <button
                                   onClick={e => toggleStar(s.hospital.id, s.doctor, e)}
                                   className={`shrink-0 text-[11px] leading-none transition-colors ${

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Hospital, Department, ClinicSlot } from '@/types';
+import { Hospital, Department, ClinicSlot, WeeklyAbsence } from '@/types';
 import { HOSPITALS, TARGET_DEPARTMENTS, DEPT_LABEL } from '@/data/hospitals';
 import Link from 'next/link';
 import HospitalCard from '@/components/HospitalCard';
@@ -123,13 +123,19 @@ export default function Home() {
         const mergeMode = hospitalId === 'tucheng';
         const updated = hospitals.map(h => {
           if (h.id !== hospitalId) return h;
-          let clinics = data.clinics;
+          let clinics = data.clinics as ClinicSlot[];
+          let weeklyAbsences: WeeklyAbsence[] | undefined;
           if (mergeMode) {
             const existingKeys = new Set(h.clinics.map((c: ClinicSlot) => `${c.doctor}_${c.dayOfWeek}_${c.session}`));
-            const extra = (data.clinics as ClinicSlot[]).filter(c => !existingKeys.has(`${c.doctor}_${c.dayOfWeek}_${c.session}`));
+            const extra = clinics.filter(c => !existingKeys.has(`${c.doctor}_${c.dayOfWeek}_${c.session}`));
             clinics = [...h.clinics, ...extra];
+            // 偵測本週停診：固定班表有、但本週抓不到的
+            const thisWeekKeys = new Set((data.clinics as ClinicSlot[]).map(c => `${c.doctor}_${c.dayOfWeek}_${c.session}`));
+            weeklyAbsences = h.clinics
+              .filter(c => !thisWeekKeys.has(`${c.doctor}_${c.dayOfWeek}_${c.session}`))
+              .map(c => ({ doctor: c.doctor, dayOfWeek: c.dayOfWeek, session: c.session as '早'|'午'|'晚', department: c.department }));
           }
-          return { ...h, clinics, news: data.news, lastUpdated: new Date().toISOString() };
+          return { ...h, clinics, news: data.news, lastUpdated: new Date().toISOString(), weeklyAbsences };
         });
         saveHospitals(updated);
       } else {

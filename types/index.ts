@@ -7,6 +7,13 @@ export type ClinicSlot = {
   session: '早' | '午' | '晚';
 };
 
+export type WeeklyAbsence = {
+  doctor: string;
+  dayOfWeek: number;
+  session: '早' | '午' | '晚';
+  department: string;
+};
+
 export type Hospital = {
   id: string;
   name: string;
@@ -17,6 +24,7 @@ export type Hospital = {
   clinics: ClinicSlot[];
   news: NewsItem[];
   lastUpdated: string | null;
+  weeklyAbsences?: WeeklyAbsence[];  // 本週停診（限滾動班表醫院）
 };
 
 export type NewsItem = {
