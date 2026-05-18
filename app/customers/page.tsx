@@ -175,6 +175,7 @@ export default function CustomersPage() {
   const [filterDepts, setFilterDepts] = useState<Set<string>>(new Set());
   const [filterProducts, setFilterProducts] = useState<Set<string>>(new Set());
   const [search, setSearch] = useState('');
+  const [sortBy, setSortBy] = useState<'hospital' | 'revenue'>('hospital');
 
   useEffect(() => {
     setDoctors(getDoctors());
@@ -227,6 +228,17 @@ export default function CustomersPage() {
   // 醫院排序優先順序
   const HOSP_ORDER = HOSPITALS.reduce<Record<string, number>>((acc, h, i) => { acc[h.id] = i; return acc; }, {});
 
+  const calcMonthlyRev = (doc: Doctor) =>
+    doc.productTargets.reduce((s, t) => {
+      const qty = t.currentQty ?? 0;
+      if (!qty) return s;
+      const pm = priceMap[t.productId];
+      if (!pm) return s;
+      const hospIds = doc.hospitalIds ?? (doc.hospitalId ? [doc.hospitalId] : []);
+      const price = hospIds.map(h => pm.byHosp[h]).find(Boolean) ?? pm.base;
+      return s + Math.round(qty * price);
+    }, 0);
+
   // 篩選邏輯
   const filtered = doctors.filter(d => {
     if (filterGrades.size > 0 && !filterGrades.has(d.grade)) return false;
@@ -239,6 +251,9 @@ export default function CustomersPage() {
     if (search.trim() && !d.name.includes(search) && !d.hospitalName.includes(search) && !d.department.includes(search)) return false;
     return true;
   }).sort((a, b) => {
+    if (sortBy === 'revenue') {
+      return calcMonthlyRev(b) - calcMonthlyRev(a);
+    }
     const aId = (a.hospitalIds?.[0] ?? a.hospitalId) || '';
     const bId = (b.hospitalIds?.[0] ?? b.hospitalId) || '';
     return (HOSP_ORDER[aId] ?? 999) - (HOSP_ORDER[bId] ?? 999);
@@ -388,7 +403,18 @@ export default function CustomersPage() {
             </div>
           )}
 
-          {/* 搜尋 */}
+          {/* 排序 + 搜尋 */}
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-gray-400 shrink-0">排序</span>
+            <button onClick={() => setSortBy('hospital')}
+              className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${sortBy === 'hospital' ? 'bg-gray-900 text-white border-transparent' : 'bg-white border-gray-200 text-gray-500 hover:border-gray-400'}`}>
+              醫院
+            </button>
+            <button onClick={() => setSortBy('revenue')}
+              className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${sortBy === 'revenue' ? 'bg-blue-600 text-white border-transparent' : 'bg-white border-gray-200 text-gray-500 hover:border-blue-400'}`}>
+              月業績 ↓
+            </button>
+          </div>
           <input type="text" placeholder="搜尋姓名、醫院、科別..."
             value={search} onChange={e => setSearch(e.target.value)}
             className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-300 bg-white" />
