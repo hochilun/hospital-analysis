@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Doctor, DoctorGrade, ProductCategory, VisitRecord, ClinicSlot } from '@/types';
-import { getDoctors, deleteDoctor, getHospitalStrategies, saveHospitalStrategy, saveDoctors, getProducts, getVisits, getHospitalsData } from '@/lib/storage';
+import { getDoctors, deleteDoctor, getHospitalStrategies, saveHospitalStrategy, getProducts, getVisits, getHospitalsData } from '@/lib/storage';
 import { DEPT_LABEL } from '@/data/hospitals';
 import { HOSPITALS } from '@/data/hospitals';
 
@@ -86,25 +86,6 @@ function prodToCat(name: string): ProductCategory {
 
 // ── 示範資料 seed ─────────────────────────────────────────
 
-const GRADES_DIST: DoctorGrade[] = ['S', 'S', 'A', 'A', 'A', 'B', 'B', 'C', 'C', 'D'];
-
-function seedMockData(doctors: Doctor[]): Doctor[] {
-  const months = ['2026-01', '2026-02', '2026-03', '2026-04'];
-  return doctors.map((doc, di) => {
-    const grade = doc.grade || GRADES_DIST[di % GRADES_DIST.length];
-    const multiplier = grade === 'S' ? 0.95 : grade === 'A' ? 0.75 : grade === 'B' ? 0.45 : 0.1;
-    const targets = doc.productTargets.map(t => {
-      const base = Math.max(t.targetQty || 3, 1);
-      const monthlyData: Record<string, number> = {};
-      months.forEach(m => {
-        const jitter = 0.8 + Math.random() * 0.4;
-        monthlyData[m] = Math.max(1, Math.round(base * multiplier * jitter));
-      });
-      return { ...t, monthlyData, category: t.category || prodToCat(t.productName) };
-    });
-    return { ...doc, grade, productTargets: targets };
-  });
-}
 
 // ── 子元件 ────────────────────────────────────────────────
 
@@ -216,12 +197,6 @@ export default function CustomersPage() {
     reload();
   };
 
-  const handleSeedMock = () => {
-    if (!confirm('將為所有客戶產生 2026/01-04 的示範月用量（已有資料也會覆蓋）。確定？')) return;
-    saveDoctors(seedMockData(doctors));
-    reload();
-  };
-
   // 所有科別
   const allDepts = [...new Set(doctors.map(d => d.department).filter(Boolean))];
 
@@ -283,10 +258,6 @@ export default function CustomersPage() {
             <span className="text-sm text-gray-400">{doctors.length} 位</span>
           </div>
           <div className="flex items-center gap-2">
-            <button onClick={handleSeedMock}
-              className="px-3 py-1.5 border border-gray-200 text-xs text-gray-500 rounded-lg hover:border-gray-400">
-              產生示範資料
-            </button>
             <Link href="/customers/new"
               className="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700">
               ＋ 新增客戶
