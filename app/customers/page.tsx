@@ -197,8 +197,14 @@ export default function CustomersPage() {
     reload();
   };
 
-  // 所有科別
-  const allDepts = [...new Set(doctors.map(d => d.department).filter(Boolean))];
+  // 中文科別名稱反查代碼（應對舊資料存中文的情況）
+  const DEPT_CODE: Record<string, string> = Object.fromEntries(
+    Object.entries(DEPT_LABEL).map(([code, label]) => [label, code])
+  );
+  const normDept = (dept: string) => DEPT_CODE[dept] ?? dept;
+
+  // 所有科別（統一轉為代碼，避免 GYN / 婦產科 重複）
+  const allDepts = [...new Set(doctors.map(d => normDept(d.department)).filter(Boolean))];
 
   // 醫院排序優先順序
   const HOSP_ORDER = HOSPITALS.reduce<Record<string, number>>((acc, h, i) => { acc[h.id] = i; return acc; }, {});
@@ -227,7 +233,7 @@ export default function CustomersPage() {
       const ids = d.hospitalIds ?? (d.hospitalId ? [d.hospitalId] : []);
       if (!ids.some(hid => filterHospitals.has(hid))) return false;
     }
-    if (filterDepts.size > 0 && !filterDepts.has(d.department)) return false;
+    if (filterDepts.size > 0 && !filterDepts.has(normDept(d.department))) return false;
     if (filterProducts.size > 0 && !d.productTargets.some(t => filterProducts.has(t.productId))) return false;
     if (search.trim() && !d.name.includes(search) && !d.hospitalName.includes(search) && !d.department.includes(search)) return false;
     return true;
