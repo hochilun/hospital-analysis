@@ -127,7 +127,7 @@ export default function PersonalCalendar() {
                       ) : (
                         <div
                           onClick={() => startEdit(day, slot)}
-                          className={`w-full h-12 text-xs p-1.5 rounded border cursor-pointer hover:opacity-80 transition-opacity whitespace-pre-wrap ${
+                          className={`w-full h-12 text-xs p-1.5 rounded border cursor-pointer hover:opacity-80 transition-opacity whitespace-pre-wrap text-gray-700 ${
                             value ? SLOT_COLOR[slot] : 'border-transparent hover:border-gray-200'
                           }`}
                         >
