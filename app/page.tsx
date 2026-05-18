@@ -119,11 +119,18 @@ export default function Home() {
       });
       const data = await res.json();
       if (data.success) {
-        const updated = hospitals.map(h =>
-          h.id === hospitalId
-            ? { ...h, clinics: data.clinics, news: data.news, lastUpdated: new Date().toISOString() }
-            : h
-        );
+        // tucheng 用合併模式（長庚掛號頁只顯示未來7天，取代會漏掉請假那週的固定班次）
+        const mergeMode = hospitalId === 'tucheng';
+        const updated = hospitals.map(h => {
+          if (h.id !== hospitalId) return h;
+          let clinics = data.clinics;
+          if (mergeMode) {
+            const existingKeys = new Set(h.clinics.map((c: ClinicSlot) => `${c.doctor}_${c.dayOfWeek}_${c.session}`));
+            const extra = (data.clinics as ClinicSlot[]).filter(c => !existingKeys.has(`${c.doctor}_${c.dayOfWeek}_${c.session}`));
+            clinics = [...h.clinics, ...extra];
+          }
+          return { ...h, clinics, news: data.news, lastUpdated: new Date().toISOString() };
+        });
         saveHospitals(updated);
       } else {
         alert(`更新失敗：${data.error}`);
