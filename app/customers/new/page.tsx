@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Doctor, DoctorGrade, Product, ProductTarget, ProductCategory } from '@/types';
 import { saveDoctor, getProducts } from '@/lib/storage';
-import { HOSPITALS } from '@/data/hospitals';
+import { HOSPITALS, DEPT_LABEL } from '@/data/hospitals';
 
 function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2); }
 
@@ -124,7 +124,12 @@ function NewCustomerForm() {
             </div>
             <div>
               <label className="text-xs text-gray-500">科別</label>
-              <input className="input-field mt-1" placeholder="婦產科" value={form.department} onChange={e => set('department', e.target.value)} />
+              <select className="input-field mt-1" value={form.department} onChange={e => set('department', e.target.value)}>
+                <option value="">請選擇...</option>
+                {Object.entries(DEPT_LABEL).map(([code, label]) => (
+                  <option key={code} value={code}>{label}</option>
+                ))}
+              </select>
             </div>
             <div>
               <label className="text-xs text-gray-500">職稱</label>

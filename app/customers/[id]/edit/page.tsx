@@ -5,7 +5,12 @@ import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Doctor, DoctorGrade, Product, ProductTarget, ProductCategory, ExtraClinicSlot } from '@/types';
 import { getDoctors, saveDoctor, getProducts } from '@/lib/storage';
-import { HOSPITALS } from '@/data/hospitals';
+import { HOSPITALS, DEPT_LABEL } from '@/data/hospitals';
+
+const DEPT_CODE: Record<string, string> = Object.fromEntries(
+  Object.entries(DEPT_LABEL).map(([code, label]) => [label, code])
+);
+const normDept = (dept: string) => DEPT_CODE[dept] ?? dept;
 
 const GRADES: { value: DoctorGrade; label: string; color: string }[] = [
   { value: 'S', label: 'S', color: 'bg-amber-500 text-white' },
@@ -41,7 +46,7 @@ export default function EditCustomerPage() {
     setForm({
       name: doc.name,
       grade: doc.grade ?? '',
-      department: doc.department,
+      department: normDept(doc.department),
       title: doc.title,
       phone: doc.phone,
       habits: doc.habits,
@@ -95,7 +100,7 @@ export default function EditCustomerPage() {
       hospitalId: primaryId,
       hospitalName: hospital?.name ?? '',
       hospitalIds,
-      department: form.department,
+      department: normDept(form.department),
       title: form.title,
       phone: form.phone,
       habits: form.habits,
@@ -153,7 +158,12 @@ export default function EditCustomerPage() {
             </div>
             <div>
               <label className="text-xs text-gray-500">科別</label>
-              <input className="input-field mt-1" value={form.department} onChange={e => set('department', e.target.value)} />
+              <select className="input-field mt-1" value={form.department} onChange={e => set('department', e.target.value)}>
+                <option value="">請選擇...</option>
+                {Object.entries(DEPT_LABEL).map(([code, label]) => (
+                  <option key={code} value={code}>{label}</option>
+                ))}
+              </select>
             </div>
             <div>
               <label className="text-xs text-gray-500">職稱</label>
