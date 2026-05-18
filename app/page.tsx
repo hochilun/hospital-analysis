@@ -139,10 +139,10 @@ export default function Home() {
         });
         saveHospitals(updated);
       } else {
-        alert(`更新失敗：${data.error}`);
+        console.warn(`更新失敗 [${hospitalId}]:`, data.error);
       }
-    } catch {
-      alert('更新失敗，請稍後再試');
+    } catch (e) {
+      console.warn(`更新失敗 [${hospitalId}]:`, e);
     }
     setUpdating(null);
   };
