@@ -70,6 +70,7 @@ export default function EditProductPage() {
   const router = useRouter();
   const [name, setName] = useState('');
   const [nameEn, setNameEn] = useState('');
+  const [licenseNumber, setLicenseNumber] = useState('');
   const [hospitalId, setHospitalId] = useState('');
   const [notes, setNotes] = useState('');
   const [variants, setVariants] = useState<ProductVariant[]>([emptyVariant()]);
@@ -80,6 +81,7 @@ export default function EditProductPage() {
     if (!p) { router.push('/products'); return; }
     setName(p.name);
     setNameEn(p.nameEn ?? '');
+    setLicenseNumber(p.licenseNumber ?? '');
     setHospitalId(p.hospitalId);
     setNotes(p.notes);
     setVariants(p.variants?.length ? p.variants : [emptyVariant()]);
@@ -98,6 +100,7 @@ export default function EditProductPage() {
       id,
       name: name.trim(),
       nameEn: nameEn.trim() || undefined,
+      licenseNumber: licenseNumber.trim() || undefined,
       hospitalId,
       hospitalName: hospital?.name ?? '',
       variants: variants.filter(v => v.modelNumber.trim()),
@@ -132,6 +135,10 @@ export default function EditProductPage() {
           <div>
             <label className="text-xs text-gray-500">英文品名</label>
             <input className="input mt-1" placeholder="e.g. Arista AH Absorbable Hemostatic Particles" value={nameEn} onChange={e => setNameEn(e.target.value)} />
+          </div>
+          <div>
+            <label className="text-xs text-gray-500">許可證字號</label>
+            <input className="input mt-1" placeholder="衛部醫器輸字第 XXXXXX 號" value={licenseNumber} onChange={e => setLicenseNumber(e.target.value)} />
           </div>
           <div>
             <label className="text-xs text-gray-500">所屬醫院</label>

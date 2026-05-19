@@ -130,6 +130,7 @@ export type Product = {
   id: string;
   name: string;
   nameEn?: string;
+  licenseNumber?: string;
   category?: ProductCategory;
   hospitalId: string;
   hospitalName: string;

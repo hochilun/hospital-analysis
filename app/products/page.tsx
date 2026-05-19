@@ -141,7 +141,7 @@ export default function ProductsPage() {
                             <div>
                               <span className="font-semibold text-gray-800">{p.name}</span>
                               {p.nameEn && <div className="text-xs text-gray-400 mt-0.5">{p.nameEn}</div>}
-                              {p.notes && <span className="text-xs text-gray-400 ml-2">{p.notes}</span>}
+                              {p.licenseNumber && <div className="text-xs text-gray-400 mt-0.5">{p.licenseNumber}</div>}
                             </div>
                             <div className="flex gap-3">
                               <Link href={`/products/${p.id}/edit`}
