@@ -7,6 +7,7 @@ import { getProducts, deleteProduct, saveProduct } from '@/lib/storage';
 import { HOSPITALS } from '@/data/hospitals';
 import { SEED_PRODUCTS } from '@/data/seedProducts';
 import { HOSPITAL_PRODUCT_IDS } from '@/data/salesHistory';
+import { pullFromCloud } from '@/lib/supabase';
 
 const CATEGORIES: { key: ProductCategory; label: string; color: string }[] = [
   { key: 'Hemostasis',           label: 'Hemostasis',           color: 'bg-red-100 text-red-800 border-red-200' },
@@ -54,6 +55,12 @@ export default function ProductsPage() {
     setProducts(getProducts());
   };
 
+  const handleCloudSync = async () => {
+    localStorage.removeItem('products-db');
+    await pullFromCloud();
+    setProducts(getProducts());
+  };
+
   const handleImport = () => {
     const existing = getProducts().map(p => p.id);
     let count = 0;
@@ -76,6 +83,10 @@ export default function ProductsPage() {
             <h1 className="text-xl font-bold text-gray-900">產品資料庫</h1>
           </div>
           <div className="flex gap-2">
+            <button onClick={handleCloudSync}
+              className="px-4 py-2 bg-gray-100 text-gray-700 text-sm rounded-lg hover:bg-gray-200">
+              從雲端同步
+            </button>
             <button onClick={handleImport}
               className="px-4 py-2 bg-gray-100 text-gray-700 text-sm rounded-lg hover:bg-gray-200">
               匯入報表產品
