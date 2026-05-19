@@ -68,6 +68,7 @@ function VariantRow({ v, onChange, onRemove, showRemove }: {
 export default function NewProductPage() {
   const router = useRouter();
   const [name, setName] = useState('');
+  const [nameEn, setNameEn] = useState('');
   const [hospitalId, setHospitalId] = useState('');
   const [notes, setNotes] = useState('');
   const [variants, setVariants] = useState<ProductVariant[]>([emptyVariant()]);
@@ -84,6 +85,7 @@ export default function NewProductPage() {
     const p: Product = {
       id: uid(),
       name: name.trim(),
+      nameEn: nameEn.trim() || undefined,
       hospitalId,
       hospitalName: hospital?.name ?? '',
       variants: variants.filter(v => v.modelNumber.trim()),
@@ -111,8 +113,12 @@ export default function NewProductPage() {
         {/* 基本資料 */}
         <div className="bg-white rounded-xl border border-gray-200 p-5 space-y-4">
           <div>
-            <label className="text-xs text-gray-500">產品名稱 *</label>
+            <label className="text-xs text-gray-500">產品名稱（中文）*</label>
             <input className="input mt-1" placeholder="例：止血粉" value={name} onChange={e => setName(e.target.value)} />
+          </div>
+          <div>
+            <label className="text-xs text-gray-500">英文品名</label>
+            <input className="input mt-1" placeholder="e.g. Arista AH Absorbable Hemostatic Particles" value={nameEn} onChange={e => setNameEn(e.target.value)} />
           </div>
           <div>
             <label className="text-xs text-gray-500">所屬醫院</label>

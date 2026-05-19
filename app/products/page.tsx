@@ -140,6 +140,7 @@ export default function ProductsPage() {
                           <div className="flex items-center justify-between px-4 py-3 bg-gray-50/50">
                             <div>
                               <span className="font-semibold text-gray-800">{p.name}</span>
+                              {p.nameEn && <div className="text-xs text-gray-400 mt-0.5">{p.nameEn}</div>}
                               {p.notes && <span className="text-xs text-gray-400 ml-2">{p.notes}</span>}
                             </div>
                             <div className="flex gap-3">

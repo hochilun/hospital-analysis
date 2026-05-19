@@ -69,6 +69,7 @@ export default function EditProductPage() {
   const id = decodeURIComponent(params.id);
   const router = useRouter();
   const [name, setName] = useState('');
+  const [nameEn, setNameEn] = useState('');
   const [hospitalId, setHospitalId] = useState('');
   const [notes, setNotes] = useState('');
   const [variants, setVariants] = useState<ProductVariant[]>([emptyVariant()]);
@@ -78,6 +79,7 @@ export default function EditProductPage() {
     const p = getProducts().find(x => x.id === id);
     if (!p) { router.push('/products'); return; }
     setName(p.name);
+    setNameEn(p.nameEn ?? '');
     setHospitalId(p.hospitalId);
     setNotes(p.notes);
     setVariants(p.variants?.length ? p.variants : [emptyVariant()]);
@@ -95,6 +97,7 @@ export default function EditProductPage() {
     const p: Product = {
       id,
       name: name.trim(),
+      nameEn: nameEn.trim() || undefined,
       hospitalId,
       hospitalName: hospital?.name ?? '',
       variants: variants.filter(v => v.modelNumber.trim()),
@@ -123,8 +126,12 @@ export default function EditProductPage() {
       <div className="max-w-2xl mx-auto px-6 py-6 space-y-5">
         <div className="bg-white rounded-xl border border-gray-200 p-5 space-y-4">
           <div>
-            <label className="text-xs text-gray-500">產品名稱 *</label>
+            <label className="text-xs text-gray-500">產品名稱（中文）*</label>
             <input className="input mt-1" value={name} onChange={e => setName(e.target.value)} />
+          </div>
+          <div>
+            <label className="text-xs text-gray-500">英文品名</label>
+            <input className="input mt-1" placeholder="e.g. Arista AH Absorbable Hemostatic Particles" value={nameEn} onChange={e => setNameEn(e.target.value)} />
           </div>
           <div>
             <label className="text-xs text-gray-500">所屬醫院</label>

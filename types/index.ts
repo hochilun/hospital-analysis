@@ -129,6 +129,7 @@ export type ProductCategory = 'Hemostasis' | 'Adhesion Prevention' | 'Hernia' | 
 export type Product = {
   id: string;
   name: string;
+  nameEn?: string;
   category?: ProductCategory;
   hospitalId: string;
   hospitalName: string;
