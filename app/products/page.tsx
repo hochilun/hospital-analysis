@@ -174,6 +174,7 @@ export default function ProductsPage() {
                                     {filterHospital ? `採購價（未稅）` : '參考採購價'}
                                   </th>
                                   <th className="text-right py-2 px-4">末端售價</th>
+                                  {filterHospital && <th className="text-right py-2 px-4">學術贊助</th>}
                                 </tr>
                               </thead>
                               <tbody>
@@ -214,6 +215,15 @@ export default function ProductsPage() {
                                       <td className="py-2.5 px-4 text-right text-gray-700">
                                         {patientPriceDisplay ? `NT$${patientPriceDisplay.toLocaleString()}` : '—'}
                                       </td>
+                                      {filterHospital && (
+                                        <td className="py-2.5 px-4 text-right">
+                                          {info?.academicSponsorship === null
+                                            ? <span className="text-gray-400 text-xs">N.A.</span>
+                                            : info?.academicSponsorship !== undefined
+                                              ? <span className="text-emerald-600 font-medium">NT${info.academicSponsorship.toLocaleString()}</span>
+                                              : <span className="text-gray-300">—</span>}
+                                        </td>
+                                      )}
                                     </tr>
                                   );
                                 })}

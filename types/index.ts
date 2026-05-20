@@ -106,9 +106,10 @@ export type VisitRecord = {
 // ── 產品資料庫 ──────────────────────────────────────────
 
 export type HospitalVariantInfo = {
-  hospitalCode?: string;   // 院內碼
-  patientPrice?: number;   // 末端售價（含稅，病人付）
-  purchasePrice?: number;  // 採購價（含稅）= hospitalPrice × 1.05
+  hospitalCode?: string;        // 院內碼
+  patientPrice?: number;        // 末端售價（含稅，病人付）
+  purchasePrice?: number;       // 採購價（含稅）= hospitalPrice × 1.05
+  academicSponsorship?: number | null; // 學術贊助（null = N.A.，undefined = 未設定）
 };
 
 export type ProductVariant = {
