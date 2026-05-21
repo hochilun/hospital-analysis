@@ -116,6 +116,9 @@ export type ProductVariant = {
   id: string;
   modelNumber: string;
   description: string;
+  nameZh?: string;         // 官方中文品名
+  nameEn?: string;         // 官方英文品名
+  licenseNumber?: string;  // 許可證字號
   selfPayCode?: string;    // 自費碼
   nhiCode?: string;        // 健保碼
   hospitalPrice: number;        // 預設採購價（未稅）

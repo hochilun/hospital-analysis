@@ -188,8 +188,12 @@ export default function ProductsPage() {
                                   const codeType = v.nhiCode ? '健' : v.selfPayCode ? '自' : '';
                                   return (
                                     <tr key={v.id} className="border-b border-gray-50 last:border-0">
-                                      <td className="py-2.5 px-4 font-medium text-gray-700">{v.modelNumber}</td>
-                                      <td className="py-2.5 px-4 text-gray-500">{v.description || '—'}</td>
+                                      <td className="py-2.5 px-4">
+                                        <div className="font-medium text-gray-700">{v.modelNumber}</div>
+                                        {v.nameZh && <div className="text-xs text-gray-400 mt-0.5">{v.nameZh}</div>}
+                                        {v.licenseNumber && <div className="text-xs text-gray-400 mt-0.5">{v.licenseNumber}</div>}
+                                      </td>
+                                      <td className="py-2.5 px-4 text-gray-500">{v.nameEn || v.description || '—'}</td>
                                       {filterHospital && (
                                         <td className="py-2.5 px-3 text-gray-500 font-mono text-xs">
                                           {info?.hospitalCode ?? '—'}
