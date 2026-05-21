@@ -206,7 +206,7 @@ function NewCustomerForm() {
                       onChange={e => selectProduct(i, e.target.value)}>
                       <option value="">請選擇產品...</option>
                       {products.map(p => (
-                        <option key={p.id} value={p.id}>{p.name}</option>
+                        <option key={p.id} value={p.id}>{p.nameEn || p.name}</option>
                       ))}
                     </select>
                   </div>

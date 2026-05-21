@@ -240,7 +240,7 @@ export default function EditCustomerPage() {
                       onChange={e => selectProduct(i, e.target.value)}>
                       <option value="">請選擇產品...</option>
                       {products.map(p => (
-                        <option key={p.id} value={p.id}>{p.name}</option>
+                        <option key={p.id} value={p.id}>{p.nameEn || p.name}</option>
                       ))}
                       {t.productId && !products.find(p => p.id === t.productId) && (
                         <option value={t.productId}>{t.productName}</option>
