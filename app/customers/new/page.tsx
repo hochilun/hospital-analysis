@@ -81,7 +81,7 @@ function NewCustomerForm() {
       createdAt: new Date().toISOString(),
     };
     saveDoctor(doc);
-    router.push('/customers');
+    router.push(`/customers/${doc.id}`);
   };
 
   return (
