@@ -155,6 +155,7 @@ export default function CustomersPage() {
   const [filterHospitals, setFilterHospitals] = useState<Set<string>>(new Set());
   const [filterDepts, setFilterDepts] = useState<Set<string>>(new Set());
   const [filterProducts, setFilterProducts] = useState<Set<string>>(new Set());
+  const [filterTags, setFilterTags] = useState<Set<string>>(new Set());
   const [search, setSearch] = useState('');
   const [sortBy, setSortBy] = useState<'hospital' | 'revenue'>('hospital');
 
@@ -206,6 +207,9 @@ export default function CustomersPage() {
   // 所有科別（統一轉為代碼，避免 GYN / 婦產科 重複）
   const allDepts = [...new Set(doctors.map(d => normDept(d.department)).filter(Boolean))];
 
+  // 所有 tags
+  const allTags = [...new Set(doctors.flatMap(d => d.tags ?? []))].sort();
+
   // 醫院排序優先順序
   const HOSP_ORDER = HOSPITALS.reduce<Record<string, number>>((acc, h, i) => { acc[h.id] = i; return acc; }, {});
 
@@ -235,6 +239,7 @@ export default function CustomersPage() {
     }
     if (filterDepts.size > 0 && !filterDepts.has(normDept(d.department))) return false;
     if (filterProducts.size > 0 && !d.productTargets.some(t => filterProducts.has(t.productId))) return false;
+    if (filterTags.size > 0 && !([...(d.tags ?? [])].some(tag => filterTags.has(tag)))) return false;
     if (search.trim() && !d.name.includes(search) && !d.hospitalName.includes(search) && !d.department.includes(search)) return false;
     return true;
   }).sort((a, b) => {
@@ -386,6 +391,25 @@ export default function CustomersPage() {
             </div>
           )}
 
+          {/* 標籤 */}
+          {allTags.length > 0 && (
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-xs text-gray-400 w-8 shrink-0">#</span>
+              <button onClick={() => setFilterTags(new Set())}
+                className={`px-3 py-1 rounded-full text-xs font-medium ${filterTags.size === 0 ? 'bg-violet-600 text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}>
+                全選
+              </button>
+              {allTags.map(tag => (
+                <button key={tag} onClick={() => setFilterTags(prev => toggleSet(prev, tag))}
+                  className={`px-3 py-1 rounded-full text-xs font-semibold transition-colors ${
+                    filterTags.has(tag) ? 'bg-violet-600 text-white' : 'bg-violet-50 text-violet-600 hover:bg-violet-100'
+                  }`}>
+                  #{tag}
+                </button>
+              ))}
+            </div>
+          )}
+
           {/* 排序 + 搜尋 */}
           <div className="flex items-center gap-2">
             <span className="text-xs text-gray-400 shrink-0">排序</span>
@@ -496,6 +520,14 @@ function DoctorCard({ doc, lastVisit, clinicSummary, priceMap, onDelete }: {
               <span key={`ex-${i}`} className="text-[10px] px-1.5 py-0.5 bg-violet-50 text-violet-600 rounded">
                 {s.location} {['日','一','二','三','四','五','六'][s.dayOfWeek]}{s.session}
               </span>
+            ))}
+          </div>
+        )}
+        {/* 標籤 */}
+        {(doc.tags ?? []).length > 0 && (
+          <div className="mt-1 flex flex-wrap gap-1">
+            {(doc.tags ?? []).map(tag => (
+              <span key={tag} className="text-[10px] px-2 py-0.5 bg-violet-100 text-violet-700 font-semibold rounded-full">#{tag}</span>
             ))}
           </div>
         )}

@@ -91,6 +91,7 @@ export type Doctor = {
   monthlyInvestment: number;
   extraClinicSlots: ExtraClinicSlot[];
   todos?: TodoItem[];
+  tags?: string[];
   createdAt: string;
 };
 

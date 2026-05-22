@@ -110,6 +110,7 @@ export default function CustomerDetailPage() {
   const [todoDraft, setTodoDraft] = useState({ title: '', currentStatus: '', nextAction: '' });
   const [editingVisitId, setEditingVisitId] = useState<string | null>(null);
   const [editDraft, setEditDraft] = useState({ date: '', companions: '', content: '', nextAction: '' });
+  const [tagInput, setTagInput] = useState('');
   const [priceMap, setPriceMap] = useState<Record<string, { base: number; byHosp: Record<string, number> }>>({});
 
   useEffect(() => {
@@ -200,6 +201,25 @@ export default function CustomerDetailPage() {
     saveDoctor(updated);
   };
 
+  const addTag = () => {
+    if (!doctor) return;
+    const tag = tagInput.trim().replace(/^#/, '');
+    if (!tag) return;
+    const existing = doctor.tags ?? [];
+    if (existing.includes(tag)) { setTagInput(''); return; }
+    const updated = { ...doctor, tags: [...existing, tag] };
+    setDoctor(updated);
+    saveDoctor(updated);
+    setTagInput('');
+  };
+
+  const removeTag = (tag: string) => {
+    if (!doctor) return;
+    const updated = { ...doctor, tags: (doctor.tags ?? []).filter(t => t !== tag) };
+    setDoctor(updated);
+    saveDoctor(updated);
+  };
+
   const startEditVisit = (v: VisitRecord) => {
     setEditingVisitId(v.id);
     setEditDraft({ date: v.date, companions: v.companions, content: v.content, nextAction: v.nextAction });
@@ -261,6 +281,30 @@ export default function CustomerDetailPage() {
           {doctor.visitHabit && <div className="mt-3 pt-3 border-t border-gray-100"><p className="text-xs text-gray-400 mb-1">拜訪習慣模式</p><p className="text-sm text-blue-700 whitespace-pre-wrap font-medium">{doctor.visitHabit}</p></div>}
           {doctor.attitude && <div className="mt-3 pt-3 border-t border-gray-100"><p className="text-xs text-gray-400 mb-1">對產品的態度</p><p className="text-sm text-gray-700 whitespace-pre-wrap">{doctor.attitude}</p></div>}
           {doctor.visitPlan && <div className="mt-3 pt-3 border-t border-gray-100"><p className="text-xs text-gray-400 mb-1">拜訪目標 / 策略</p><p className="text-sm text-gray-700 whitespace-pre-wrap">{doctor.visitPlan}</p></div>}
+        </div>
+
+        {/* 標籤 */}
+        <div className="bg-white rounded-xl border border-gray-200 p-4">
+          <h2 className="text-sm font-semibold text-gray-700 mb-3"># 標籤</h2>
+          <div className="flex flex-wrap gap-2 mb-3">
+            {(doctor.tags ?? []).map(tag => (
+              <span key={tag} className="flex items-center gap-1 px-2.5 py-1 bg-violet-100 text-violet-700 text-xs font-semibold rounded-full">
+                #{tag}
+                <button onClick={() => removeTag(tag)} className="text-violet-400 hover:text-violet-700 leading-none">×</button>
+              </span>
+            ))}
+            {(doctor.tags ?? []).length === 0 && <span className="text-xs text-gray-300">尚無標籤</span>}
+          </div>
+          <div className="flex gap-2">
+            <input
+              value={tagInput}
+              onChange={e => setTagInput(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addTag(); } }}
+              placeholder="輸入標籤後按 Enter，例：九月研討會"
+              className="flex-1 px-3 py-1.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-violet-400"
+            />
+            <button onClick={addTag} className="px-3 py-1.5 bg-violet-600 text-white text-xs rounded-lg hover:bg-violet-700">新增</button>
+          </div>
         </div>
 
         {/* 門診時段 */}
