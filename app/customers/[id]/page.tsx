@@ -301,7 +301,7 @@ export default function CustomerDetailPage() {
               onChange={e => setTagInput(e.target.value)}
               onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addTag(); } }}
               placeholder="輸入標籤後按 Enter，例：九月研討會"
-              className="flex-1 px-3 py-1.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-violet-400"
+              className="flex-1 px-3 py-1.5 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:border-violet-400"
             />
             <button onClick={addTag} className="px-3 py-1.5 bg-violet-600 text-white text-xs rounded-lg hover:bg-violet-700">新增</button>
           </div>
