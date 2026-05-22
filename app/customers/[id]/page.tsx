@@ -111,10 +111,13 @@ export default function CustomerDetailPage() {
   const [editingVisitId, setEditingVisitId] = useState<string | null>(null);
   const [editDraft, setEditDraft] = useState({ date: '', companions: '', content: '', nextAction: '' });
   const [tagInput, setTagInput] = useState('');
+  const [allTags, setAllTags] = useState<string[]>([]);
   const [priceMap, setPriceMap] = useState<Record<string, { base: number; byHosp: Record<string, number> }>>({});
 
   useEffect(() => {
-    const doc = getDoctors().find(d => d.id === id);
+    const allDoctors = getDoctors();
+    setAllTags([...new Set(allDoctors.flatMap(d => d.tags ?? []))].sort());
+    const doc = allDoctors.find(d => d.id === id);
     if (!doc) { router.push('/customers'); return; }
     const fullDoc = { ...doc, productTargets: doc.productTargets.map(t => ({ ...t, monthlyData: t.monthlyData ?? {} })), extraClinicSlots: doc.extraClinicSlots ?? [] };
     setDoctor(fullDoc);
@@ -210,6 +213,7 @@ export default function CustomerDetailPage() {
     const updated = { ...doctor, tags: [...existing, tag] };
     setDoctor(updated);
     saveDoctor(updated);
+    setAllTags(prev => [...new Set([...prev, tag])].sort());
     setTagInput('');
   };
 
@@ -295,15 +299,41 @@ export default function CustomerDetailPage() {
             ))}
             {(doctor.tags ?? []).length === 0 && <span className="text-xs text-gray-300">尚無標籤</span>}
           </div>
-          <div className="flex gap-2">
-            <input
-              value={tagInput}
-              onChange={e => setTagInput(e.target.value)}
-              onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addTag(); } }}
-              placeholder="輸入標籤後按 Enter，例：九月研討會"
-              className="flex-1 px-3 py-1.5 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:border-violet-400"
-            />
-            <button onClick={addTag} className="px-3 py-1.5 bg-violet-600 text-white text-xs rounded-lg hover:bg-violet-700">新增</button>
+          <div className="relative flex gap-2">
+            <div className="relative flex-1">
+              <input
+                value={tagInput}
+                onChange={e => setTagInput(e.target.value)}
+                onKeyDown={e => {
+                  if (e.key === 'Enter') { e.preventDefault(); addTag(); }
+                  if (e.key === 'Escape') setTagInput('');
+                }}
+                placeholder="輸入標籤後按 Enter，例：九月研討會"
+                className="w-full px-3 py-1.5 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:border-violet-400"
+              />
+              {tagInput.trim() && (() => {
+                const keyword = tagInput.trim().replace(/^#/, '');
+                const existing = doctor?.tags ?? [];
+                const suggestions = allTags.filter(t =>
+                  t.toLowerCase().includes(keyword.toLowerCase()) && !existing.includes(t)
+                );
+                if (!suggestions.length) return null;
+                return (
+                  <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-10 overflow-hidden">
+                    {suggestions.map(t => (
+                      <button
+                        key={t}
+                        onMouseDown={e => { e.preventDefault(); setTagInput(t); setTimeout(addTag, 0); }}
+                        className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-violet-50 hover:text-violet-700 flex items-center gap-1.5"
+                      >
+                        <span className="text-violet-400 text-xs font-bold">#</span>{t}
+                      </button>
+                    ))}
+                  </div>
+                );
+              })()}
+            </div>
+            <button onClick={addTag} className="px-3 py-1.5 bg-violet-600 text-white text-xs rounded-lg hover:bg-violet-700 shrink-0">新增</button>
           </div>
         </div>
 
