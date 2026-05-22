@@ -124,18 +124,16 @@ export default function WeeklyView({ hospitals, selectedDepts }: Props) {
             <h2 className="text-sm font-semibold text-gray-700">重點客戶門診分佈 ★</h2>
             <span className={`text-[10px] text-gray-400 transition-transform ${collapsed ? '' : 'rotate-180'}`}>▲</span>
           </button>
-          {!collapsed && (
-            <button
-              onClick={() => setStarOnly(v => !v)}
-              className={`flex items-center gap-1.5 text-xs px-3 py-1 rounded-full border transition-colors ${
-                starOnly
-                  ? 'bg-yellow-400 border-yellow-400 text-white font-semibold'
-                  : 'bg-white border-gray-200 text-gray-500 hover:border-yellow-400 hover:text-yellow-500'
-              }`}
-            >
-              ★ {starOnly ? '僅顯示星號' : '全部顯示'}
-            </button>
-          )}
+          <button
+            onClick={() => setStarOnly(v => !v)}
+            className={`flex items-center gap-1.5 text-xs px-3 py-1 rounded-full border transition-colors ${
+              starOnly
+                ? 'bg-yellow-400 border-yellow-400 text-white font-semibold'
+                : 'bg-white border-gray-200 text-gray-500 hover:border-yellow-400 hover:text-yellow-500'
+            }`}
+          >
+            ★ {starOnly ? '僅顯示星號' : '全部顯示'}
+          </button>
         </div>
         {!collapsed && <div className="grid grid-cols-7 gap-2">
           {DAY_LABELS.map((label, day) => {
