@@ -46,6 +46,7 @@ export default function WeeklyView({ hospitals, selectedDepts }: Props) {
   const [starred, setStarred] = useState<Set<string>>(new Set());
   const [starOnly, setStarOnly] = useState(false);
   const [collapsedSessions, setCollapsedSessions] = useState<Set<string>>(new Set());
+  const [collapsed, setCollapsed] = useState(false);
 
   const toggleSession = (session: string) => {
     setCollapsedSessions(prev => {
@@ -119,19 +120,24 @@ export default function WeeklyView({ hospitals, selectedDepts }: Props) {
       {/* 重點客戶門診分佈 */}
       <div className="bg-white rounded-xl border border-gray-200 p-4">
         <div className="flex items-center justify-between mb-3">
-          <h2 className="text-sm font-semibold text-gray-700">重點客戶門診分佈 ★</h2>
-          <button
-            onClick={() => setStarOnly(v => !v)}
-            className={`flex items-center gap-1.5 text-xs px-3 py-1 rounded-full border transition-colors ${
-              starOnly
-                ? 'bg-yellow-400 border-yellow-400 text-white font-semibold'
-                : 'bg-white border-gray-200 text-gray-500 hover:border-yellow-400 hover:text-yellow-500'
-            }`}
-          >
-            ★ {starOnly ? '僅顯示星號' : '全部顯示'}
+          <button onClick={() => setCollapsed(v => !v)} className="flex items-center gap-2 group">
+            <h2 className="text-sm font-semibold text-gray-700">重點客戶門診分佈 ★</h2>
+            <span className={`text-[10px] text-gray-400 transition-transform ${collapsed ? '' : 'rotate-180'}`}>▲</span>
           </button>
+          {!collapsed && (
+            <button
+              onClick={() => setStarOnly(v => !v)}
+              className={`flex items-center gap-1.5 text-xs px-3 py-1 rounded-full border transition-colors ${
+                starOnly
+                  ? 'bg-yellow-400 border-yellow-400 text-white font-semibold'
+                  : 'bg-white border-gray-200 text-gray-500 hover:border-yellow-400 hover:text-yellow-500'
+              }`}
+            >
+              ★ {starOnly ? '僅顯示星號' : '全部顯示'}
+            </button>
+          )}
         </div>
-        <div className="grid grid-cols-7 gap-2">
+        {!collapsed && <div className="grid grid-cols-7 gap-2">
           {DAY_LABELS.map((label, day) => {
             const breakdown = getStarredByHospital(day);
             const isWeekend = day === 0 || day === 6;
@@ -164,7 +170,7 @@ export default function WeeklyView({ hospitals, selectedDepts }: Props) {
               </div>
             );
           })}
-        </div>
+        </div>}
       </div>
 
       {/* 週曆詳細 */}
