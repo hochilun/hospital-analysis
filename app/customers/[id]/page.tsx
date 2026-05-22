@@ -204,9 +204,9 @@ export default function CustomerDetailPage() {
     saveDoctor(updated);
   };
 
-  const addTag = () => {
+  const addTagByName = (tagName: string) => {
     if (!doctor) return;
-    const tag = tagInput.trim().replace(/^#/, '');
+    const tag = tagName.trim().replace(/^#/, '');
     if (!tag) return;
     const existing = doctor.tags ?? [];
     if (existing.includes(tag)) { setTagInput(''); return; }
@@ -216,6 +216,8 @@ export default function CustomerDetailPage() {
     setAllTags(prev => [...new Set([...prev, tag])].sort());
     setTagInput('');
   };
+
+  const addTag = () => addTagByName(tagInput);
 
   const removeTag = (tag: string) => {
     if (!doctor) return;
@@ -323,7 +325,7 @@ export default function CustomerDetailPage() {
                     {suggestions.map(t => (
                       <button
                         key={t}
-                        onMouseDown={e => { e.preventDefault(); setTagInput(t); setTimeout(addTag, 0); }}
+                        onMouseDown={e => { e.preventDefault(); addTagByName(t); }}
                         className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-violet-50 hover:text-violet-700 flex items-center gap-1.5"
                       >
                         <span className="text-violet-400 text-xs font-bold">#</span>{t}
