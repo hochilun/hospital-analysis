@@ -33,7 +33,6 @@ const HOSP_LINE_COLORS: Record<string, string> = {
 };
 const CHART_HOSPS = ['中心診所', '台北醫學', '宏恩醫療', '恩主公', '沙爾德聖'];
 const CHART_CATS  = ['Hemostasis', 'Adhesion Prevention', 'Hernia', 'Urinary Incontinence'];
-type ChartMode = 'total' | 'hospital' | 'category';
 
 function prodToCat(name: string): string {
   if (name.startsWith('宮安康') || name.startsWith('塞納斯')) return 'Adhesion Prevention';
@@ -50,13 +49,15 @@ function fmtRev(n: number) {
   return `NT$${n.toLocaleString()}`;
 }
 
-function BarRow({ label, value, max, sub }: { label: string; value: number; max: number; sub?: string }) {
+function BarRow({ label, value, max, sub, barColor }: {
+  label: string; value: number; max: number; sub?: string; barColor?: string;
+}) {
   const pct = max > 0 ? (value / max) * 100 : 0;
   return (
     <div className="flex items-center gap-3">
       <div className="w-28 shrink-0 text-sm text-gray-700 truncate">{label}</div>
-      <div className="flex-1 h-6 bg-gray-100 rounded overflow-hidden">
-        <div className="h-full bg-blue-500 rounded transition-all" style={{ width: `${pct}%` }} />
+      <div className="flex-1 h-5 bg-gray-100 rounded overflow-hidden">
+        <div className="h-full rounded transition-all" style={{ width: `${pct}%`, background: barColor ?? '#3b82f6' }} />
       </div>
       <div className="w-24 shrink-0 text-right text-sm font-medium text-gray-800">{fmtRev(value)}</div>
       {sub && <div className="w-16 shrink-0 text-right text-xs text-gray-400">{sub}</div>}
@@ -68,7 +69,8 @@ export default function SalesPage() {
   const [year, setYear] = useState<'2025' | '2026'>('2025');
   const [view, setView] = useState<View>('hospital');
   const [selectedHospital, setSelectedHospital] = useState<string | null>(null);
-  const [chartMode, setChartMode] = useState<ChartMode>('total');
+  const [chartHosp, setChartHosp] = useState<string | null>(null);
+  const [chartCat,  setChartCat]  = useState<string | null>(null);
 
   const { HOSPITAL_TOTALS, HOSPITAL_PRODUCT_SALES, PRODUCT_TOTALS, MONTHLY_REV,
           MONTHLY_BY_HOSPITAL, MONTHLY_BY_CATEGORY, label } = SALES_BY_YEAR[year];
@@ -111,6 +113,49 @@ export default function SalesPage() {
     };
   }, [year, HOSPITAL_TOTALS, HOSPITAL_PRODUCT_SALES, PRODUCT_TOTALS]);
 
+  // ── 月份折線圖數據 ──────────────────────────────────────────
+  const chartLineData = chartHosp
+    ? MONTHLY_BY_HOSPITAL.map(r => ({ month: String(r.month), rev: Number(r[chartHosp] ?? 0) }))
+    : chartCat
+    ? MONTHLY_BY_CATEGORY.map(r => ({ month: String(r.month), rev: Number(r[chartCat] ?? 0) }))
+    : MONTHLY_REV;
+  const chartLineColor = chartHosp ? HOSP_LINE_COLORS[chartHosp]
+    : chartCat ? CAT_COLORS[chartCat] : '#3b82f6';
+  const chartAvg = chartLineData.length > 0
+    ? chartLineData.reduce((s, d) => s + d.rev, 0) / chartLineData.length : 0;
+
+  // ── 聯動佔比數據 ──────────────────────────────────────────
+  const breakdownEntries: { label: string; rev: number; color: string }[] = useMemo(() => {
+    if (chartHosp) {
+      const catMap: Record<string, number> = {};
+      for (const [prod, { rev }] of Object.entries(HOSPITAL_PRODUCT_SALES[chartHosp] ?? {})) {
+        const cat = prodToCat(prod);
+        catMap[cat] = (catMap[cat] ?? 0) + rev;
+      }
+      return Object.entries(catMap)
+        .sort((a, b) => b[1] - a[1])
+        .map(([cat, rev]) => ({ label: CAT_ZH[cat] ?? cat, rev, color: CAT_COLORS[cat] ?? '#9ca3af' }));
+    }
+    if (chartCat) {
+      const hospMap: Record<string, number> = {};
+      for (const [hosp, products] of Object.entries(HOSPITAL_PRODUCT_SALES)) {
+        for (const [prod, { rev }] of Object.entries(products)) {
+          if (prodToCat(prod) === chartCat) hospMap[hosp] = (hospMap[hosp] ?? 0) + rev;
+        }
+      }
+      return Object.entries(hospMap)
+        .sort((a, b) => b[1] - a[1])
+        .map(([hosp, rev]) => ({ label: hosp, rev, color: HOSP_LINE_COLORS[hosp] ?? '#9ca3af' }));
+    }
+    return [];
+  }, [chartHosp, chartCat, HOSPITAL_PRODUCT_SALES]);
+
+  const breakdownMax = breakdownEntries[0]?.rev ?? 1;
+  const breakdownTotal = breakdownEntries.reduce((s, e) => s + e.rev, 0);
+
+  const selectHosp = (h: string | null) => { setChartHosp(h); setChartCat(null); };
+  const selectCat  = (c: string | null) => { setChartCat(c);  setChartHosp(null); };
+
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="bg-white border-b border-gray-200 px-6 py-4">
@@ -122,10 +167,9 @@ export default function SalesPage() {
               <p className="text-xs text-gray-400">不含長庚土城、台北慈濟</p>
             </div>
           </div>
-          {/* 年份 filter */}
           <div className="flex gap-2">
             {(['2025', '2026'] as const).map(y => (
-              <button key={y} onClick={() => { setYear(y); setSelectedHospital(null); }}
+              <button key={y} onClick={() => { setYear(y); setSelectedHospital(null); setChartHosp(null); setChartCat(null); }}
                 className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${
                   year === y ? 'bg-blue-600 text-white' : 'bg-white border border-gray-200 text-gray-500 hover:border-blue-400'
                 }`}>
@@ -155,24 +199,65 @@ export default function SalesPage() {
 
         {/* 月份業績趨勢 */}
         <div className="bg-white rounded-xl border border-gray-200 p-5">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-sm font-semibold text-gray-700">月份業績趨勢</h2>
-            <div className="flex gap-1">
-              {(['total', 'hospital', 'category'] as ChartMode[]).map(m => (
-                <button key={m} onClick={() => setChartMode(m)}
-                  className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors ${
-                    chartMode === m ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
-                  }`}>
-                  {m === 'total' ? '合計' : m === 'hospital' ? '醫院' : '分類'}
-                </button>
-              ))}
-            </div>
-          </div>
-          <ResponsiveContainer width="100%" height={240}>
-            <LineChart
-              data={chartMode === 'hospital' ? MONTHLY_BY_HOSPITAL : chartMode === 'category' ? MONTHLY_BY_CATEGORY : MONTHLY_REV}
-              margin={{ top: 8, right: 16, bottom: 4, left: 8 }}
+          <h2 className="text-sm font-semibold text-gray-700 mb-3">
+            月份業績趨勢
+            {chartHosp && <span className="ml-2 font-normal text-gray-400">— {chartHosp}</span>}
+            {chartCat  && <span className="ml-2 font-normal text-gray-400">— {CAT_ZH[chartCat]}</span>}
+          </h2>
+
+          {/* 醫院選擇 */}
+          <div className="flex flex-wrap gap-1.5 mb-2">
+            <button
+              onClick={() => selectHosp(null)}
+              className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${
+                !chartHosp && !chartCat
+                  ? 'bg-gray-800 text-white border-gray-800'
+                  : 'bg-white text-gray-500 border-gray-200 hover:border-gray-400'
+              }`}
             >
+              合計
+            </button>
+            {CHART_HOSPS.map(h => {
+              const active = chartHosp === h;
+              const color = HOSP_LINE_COLORS[h];
+              return (
+                <button key={h}
+                  onClick={() => selectHosp(active ? null : h)}
+                  className="px-3 py-1 rounded-full text-xs font-medium border transition-all"
+                  style={active
+                    ? { background: color, borderColor: color, color: '#fff' }
+                    : { background: '#fff', borderColor: '#e5e7eb', color: '#6b7280' }
+                  }
+                >
+                  {h}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* 分類選擇 */}
+          <div className="flex flex-wrap gap-1.5 mb-4">
+            {CHART_CATS.map(c => {
+              const active = chartCat === c;
+              const color = CAT_COLORS[c];
+              return (
+                <button key={c}
+                  onClick={() => selectCat(active ? null : c)}
+                  className="px-3 py-1 rounded-full text-xs font-medium border transition-all"
+                  style={active
+                    ? { background: color, borderColor: color, color: '#fff' }
+                    : { background: '#fff', borderColor: '#e5e7eb', color: '#6b7280' }
+                  }
+                >
+                  {CAT_ZH[c]}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* 折線圖 */}
+          <ResponsiveContainer width="100%" height={220}>
+            <LineChart data={chartLineData} margin={{ top: 8, right: 16, bottom: 4, left: 8 }}>
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3f4f6" />
               <XAxis dataKey="month" tick={{ fontSize: 12, fill: '#6b7280' }} />
               <YAxis
@@ -180,66 +265,54 @@ export default function SalesPage() {
                 tick={{ fontSize: 11, fill: '#9ca3af' }}
                 width={48}
               />
-              {chartMode === 'total' && (
-                <ReferenceLine
-                  y={totalRev / MONTHLY_REV.length}
-                  stroke="#d1d5db"
-                  strokeDasharray="4 4"
-                  label={{ value: '月均', position: 'insideTopRight', fontSize: 10, fill: '#9ca3af' }}
-                />
-              )}
+              <ReferenceLine
+                y={chartAvg}
+                stroke="#d1d5db"
+                strokeDasharray="4 4"
+                label={{ value: '月均', position: 'insideTopRight', fontSize: 10, fill: '#9ca3af' }}
+              />
               <Tooltip
                 content={({ active, payload, label: lbl }) => {
                   if (!active || !payload?.length) return null;
+                  const v = Number(payload[0].value ?? 0);
+                  const diff = v - chartAvg;
                   return (
-                    <div className="bg-white border border-gray-200 rounded-lg shadow-sm p-3 text-sm min-w-[160px]">
-                      <p className="font-semibold text-gray-800 mb-2">{lbl}</p>
-                      {chartMode === 'total' ? (() => {
-                        const v = Number(payload[0].value ?? 0);
-                        const avg = totalRev / MONTHLY_REV.length;
-                        const diff = v - avg;
-                        return <>
-                          <p className="text-blue-600 font-medium">{fmtRev(v)}</p>
-                          <p className={`text-xs mt-0.5 ${diff >= 0 ? 'text-green-500' : 'text-red-400'}`}>
-                            {diff >= 0 ? '+' : ''}{fmtRev(Math.abs(diff))} vs 月均
-                          </p>
-                        </>;
-                      })() : [...payload].sort((a, b) => Number(b.value ?? 0) - Number(a.value ?? 0)).map((p, i) => (
-                        <div key={i} className="flex items-center justify-between gap-3 mb-1">
-                          <span className="flex items-center gap-1.5 text-gray-600 text-xs">
-                            <span className="w-2 h-2 rounded-full inline-block" style={{ background: p.stroke }} />
-                            {chartMode === 'category' ? (CAT_ZH[p.dataKey as string] ?? String(p.dataKey)) : String(p.dataKey)}
-                          </span>
-                          <span className="font-medium text-gray-800 text-xs">{fmtRev(Number(p.value ?? 0))}</span>
-                        </div>
-                      ))}
+                    <div className="bg-white border border-gray-200 rounded-lg shadow-sm p-3 text-sm">
+                      <p className="font-semibold text-gray-800 mb-1">{lbl}</p>
+                      <p className="font-medium" style={{ color: chartLineColor }}>{fmtRev(v)}</p>
+                      <p className={`text-xs mt-0.5 ${diff >= 0 ? 'text-green-500' : 'text-red-400'}`}>
+                        {diff >= 0 ? '+' : ''}{fmtRev(Math.abs(diff))} vs 月均
+                      </p>
                     </div>
                   );
                 }}
               />
-              {chartMode === 'total' && (
-                <Line type="monotone" dataKey="rev" stroke="#3b82f6" strokeWidth={2.5}
-                  dot={{ r: 4, fill: '#3b82f6', strokeWidth: 0 }} activeDot={{ r: 6 }} />
-              )}
-              {chartMode === 'hospital' && CHART_HOSPS.map(h => (
-                <Line key={h} type="monotone" dataKey={h} stroke={HOSP_LINE_COLORS[h]} strokeWidth={2}
-                  dot={{ r: 3, fill: HOSP_LINE_COLORS[h], strokeWidth: 0 }} activeDot={{ r: 5 }} />
-              ))}
-              {chartMode === 'category' && CHART_CATS.map(c => (
-                <Line key={c} type="monotone" dataKey={c} stroke={CAT_COLORS[c]} strokeWidth={2}
-                  dot={{ r: 3, fill: CAT_COLORS[c], strokeWidth: 0 }} activeDot={{ r: 5 }} />
-              ))}
+              <Line type="monotone" dataKey="rev" stroke={chartLineColor} strokeWidth={2.5}
+                dot={{ r: 4, fill: chartLineColor, strokeWidth: 0 }} activeDot={{ r: 6 }} />
             </LineChart>
           </ResponsiveContainer>
-          {chartMode !== 'total' && (
-            <div className="flex flex-wrap gap-4 mt-2 justify-center">
-              {(chartMode === 'hospital' ? CHART_HOSPS : CHART_CATS).map(key => (
-                <div key={key} className="flex items-center gap-1.5 text-xs text-gray-600">
-                  <span className="w-3 h-1.5 rounded inline-block"
-                    style={{ background: chartMode === 'hospital' ? HOSP_LINE_COLORS[key] : CAT_COLORS[key] }} />
-                  {chartMode === 'category' ? (CAT_ZH[key] ?? key) : key}
-                </div>
-              ))}
+
+          {/* 聯動佔比 */}
+          {breakdownEntries.length > 0 && (
+            <div className="mt-4 pt-4 border-t border-gray-100">
+              <p className="text-xs font-semibold text-gray-500 mb-3">
+                {chartHosp ? `${chartHosp} 產品分類佔比` : `${CAT_ZH[chartCat!]} 各醫院佔比`}
+              </p>
+              <div className="space-y-2">
+                {breakdownEntries.map(({ label, rev, color }) => (
+                  <div key={label} className="flex items-center gap-3">
+                    <div className="w-20 shrink-0 flex items-center gap-1.5">
+                      <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: color }} />
+                      <span className="text-xs text-gray-700 truncate">{label}</span>
+                    </div>
+                    <div className="flex-1 h-4 bg-gray-100 rounded overflow-hidden">
+                      <div className="h-full rounded" style={{ width: `${(rev / breakdownMax) * 100}%`, background: color }} />
+                    </div>
+                    <div className="w-20 shrink-0 text-right text-xs font-medium text-gray-700">{fmtRev(rev)}</div>
+                    <div className="w-10 shrink-0 text-right text-xs text-gray-400">{((rev / breakdownTotal) * 100).toFixed(0)}%</div>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
         </div>
