@@ -5,6 +5,7 @@ import Link from 'next/link';
 import {
   PieChart, Pie, Cell, Legend, ResponsiveContainer,
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
+  LineChart, Line, ReferenceLine,
 } from 'recharts';
 import { SALES_BY_YEAR } from '@/data/salesHistory';
 
@@ -58,7 +59,7 @@ export default function SalesPage() {
   const [view, setView] = useState<View>('hospital');
   const [selectedHospital, setSelectedHospital] = useState<string | null>(null);
 
-  const { HOSPITAL_TOTALS, HOSPITAL_PRODUCT_SALES, PRODUCT_TOTALS, label } = SALES_BY_YEAR[year];
+  const { HOSPITAL_TOTALS, HOSPITAL_PRODUCT_SALES, PRODUCT_TOTALS, MONTHLY_REV, label } = SALES_BY_YEAR[year];
 
   const { totalRev, totalQty, catPieData, catTotal, hospPieData, barData,
           hospitalsSorted, productsSorted, maxHospitalRev, maxProductRev } = useMemo(() => {
@@ -138,6 +139,53 @@ export default function SalesPage() {
             <p className="text-xs text-gray-400 mb-1">涵蓋醫院</p>
             <p className="text-2xl font-bold text-gray-800">{Object.keys(HOSPITAL_TOTALS).length}</p>
           </div>
+        </div>
+
+        {/* 月份業績趨勢 */}
+        <div className="bg-white rounded-xl border border-gray-200 p-5">
+          <h2 className="text-sm font-semibold text-gray-700 mb-4">月份業績趨勢</h2>
+          <ResponsiveContainer width="100%" height={220}>
+            <LineChart data={MONTHLY_REV} margin={{ top: 8, right: 16, bottom: 4, left: 8 }}>
+              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3f4f6" />
+              <XAxis dataKey="month" tick={{ fontSize: 12, fill: '#6b7280' }} />
+              <YAxis
+                tickFormatter={v => v >= 1_000_000 ? `${(v / 1_000_000).toFixed(1)}M` : `${Math.round(v / 1000)}K`}
+                tick={{ fontSize: 11, fill: '#9ca3af' }}
+                width={48}
+              />
+              <ReferenceLine
+                y={totalRev / MONTHLY_REV.length}
+                stroke="#d1d5db"
+                strokeDasharray="4 4"
+                label={{ value: '月均', position: 'insideTopRight', fontSize: 10, fill: '#9ca3af' }}
+              />
+              <Tooltip
+                content={({ active, payload, label: lbl }) => {
+                  if (!active || !payload?.length) return null;
+                  const v = Number(payload[0].value ?? 0);
+                  const avg = totalRev / MONTHLY_REV.length;
+                  const diff = v - avg;
+                  return (
+                    <div className="bg-white border border-gray-200 rounded-lg shadow-sm p-3 text-sm">
+                      <p className="font-semibold text-gray-800 mb-1">{lbl}</p>
+                      <p className="text-blue-600 font-medium">{fmtRev(v)}</p>
+                      <p className={`text-xs mt-0.5 ${diff >= 0 ? 'text-green-500' : 'text-red-400'}`}>
+                        {diff >= 0 ? '+' : ''}{fmtRev(Math.abs(diff))} vs 月均
+                      </p>
+                    </div>
+                  );
+                }}
+              />
+              <Line
+                type="monotone"
+                dataKey="rev"
+                stroke="#3b82f6"
+                strokeWidth={2.5}
+                dot={{ r: 4, fill: '#3b82f6', strokeWidth: 0 }}
+                activeDot={{ r: 6 }}
+              />
+            </LineChart>
+          </ResponsiveContainer>
         </div>
 
         {/* 兩個圓餅圖 */}

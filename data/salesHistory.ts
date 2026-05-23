@@ -9,6 +9,7 @@ export type YearSalesData = {
   HOSPITAL_TOTALS: Record<string, SalesEntry>;
   HOSPITAL_PRODUCT_SALES: Record<string, HospitalSales>;
   PRODUCT_TOTALS: Record<string, SalesEntry>;
+  MONTHLY_REV: { month: string; rev: number }[];
 };
 
 // 各醫院有銷售紀錄的產品 ID
@@ -163,12 +164,32 @@ export const SALES_BY_YEAR: Record<string, YearSalesData> = {
     HOSPITAL_TOTALS: HOSPITAL_TOTALS_2025,
     HOSPITAL_PRODUCT_SALES: HOSPITAL_PRODUCT_SALES_2025,
     PRODUCT_TOTALS: PRODUCT_TOTALS_2025,
+    MONTHLY_REV: [
+      { month: '1月',  rev: 1_274_391 },
+      { month: '2月',  rev: 1_585_630 },
+      { month: '3月',  rev: 1_526_663 },
+      { month: '4月',  rev: 1_659_417 },
+      { month: '5月',  rev: 1_897_937 },
+      { month: '6月',  rev: 2_075_045 },
+      { month: '7月',  rev: 2_392_731 },
+      { month: '8月',  rev: 2_550_238 },
+      { month: '9月',  rev: 1_894_000 },
+      { month: '10月', rev: 2_509_294 },
+      { month: '11月', rev: 1_878_173 },
+      { month: '12月', rev: 2_107_762 },
+    ],
   },
   '2026': {
     label: '2026 1-4月',
     HOSPITAL_TOTALS: HOSPITAL_TOTALS_2026,
     HOSPITAL_PRODUCT_SALES: HOSPITAL_PRODUCT_SALES_2026,
     PRODUCT_TOTALS: PRODUCT_TOTALS_2026,
+    MONTHLY_REV: [
+      { month: '1月', rev: 1_843_271 },
+      { month: '2月', rev: 1_134_075 },
+      { month: '3月', rev: 2_031_837 },
+      { month: '4月', rev: 1_894_318 },
+    ],
   },
 };
 
