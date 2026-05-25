@@ -44,9 +44,7 @@ function saveStarred(set: Set<string>) {
 
 export default function WeeklyView({ hospitals, selectedDepts }: Props) {
   const [starred, setStarred] = useState<Set<string>>(new Set());
-  const [starOnly, setStarOnly] = useState(false);
   const [collapsedSessions, setCollapsedSessions] = useState<Set<string>>(new Set());
-  const [collapsed, setCollapsed] = useState(false);
 
   const toggleSession = (session: string) => {
     setCollapsedSessions(prev => {
@@ -69,29 +67,12 @@ export default function WeeklyView({ hospitals, selectedDepts }: Props) {
     });
   };
 
-  const getStarredByHospital = (day: number) => {
-    const map = new Map<string, Set<string>>();
-    hospitals.forEach(h => {
-      h.clinics.forEach(c => {
-        if (c.dayOfWeek !== day || !selectedDepts.has(c.department)) return;
-        const key = starKey(h.id, c.doctor);
-        if (!starred.has(key)) return;
-        if (!map.has(h.shortName)) map.set(h.shortName, new Set());
-        map.get(h.shortName)!.add(c.doctor);
-      });
-    });
-    return [...map.entries()]
-      .map(([shortName, docs]) => ({ shortName, count: docs.size }))
-      .sort((a, b) => b.count - a.count);
-  };
-
   const getSlots = (day: number, session: string) => {
     const result: { hospital: Hospital; doctor: string; department: Department; absent?: boolean }[] = [];
     hospitals.forEach(h => {
       h.clinics
         .filter(c => {
           if (c.dayOfWeek !== day || c.session !== session || !selectedDepts.has(c.department)) return false;
-          if (starOnly && !starred.has(starKey(h.id, c.doctor))) return false;
           return true;
         })
         .forEach(c => {
@@ -117,60 +98,6 @@ export default function WeeklyView({ hospitals, selectedDepts }: Props) {
 
   return (
     <div className="space-y-4">
-      {/* 重點客戶門診分佈 */}
-      <div className="bg-white rounded-xl border border-gray-200 p-4">
-        <div className="flex items-center justify-between mb-3">
-          <button onClick={() => setCollapsed(v => !v)} className="flex items-center gap-2 group">
-            <h2 className="text-sm font-semibold text-gray-700">重點客戶門診分佈 ★</h2>
-            <span className={`text-[10px] text-gray-400 transition-transform ${collapsed ? '' : 'rotate-180'}`}>▲</span>
-          </button>
-          <button
-            onClick={() => setStarOnly(v => !v)}
-            className={`flex items-center gap-1.5 text-xs px-3 py-1 rounded-full border transition-colors ${
-              starOnly
-                ? 'bg-yellow-400 border-yellow-400 text-white font-semibold'
-                : 'bg-white border-gray-200 text-gray-500 hover:border-yellow-400 hover:text-yellow-500'
-            }`}
-          >
-            ★ {starOnly ? '僅顯示星號' : '全部顯示'}
-          </button>
-        </div>
-        {!collapsed && <div className="grid grid-cols-7 gap-2">
-          {DAY_LABELS.map((label, day) => {
-            const breakdown = getStarredByHospital(day);
-            const isWeekend = day === 0 || day === 6;
-            const total = breakdown.reduce((s, h) => s + h.count, 0);
-            return (
-              <div
-                key={day}
-                className={`rounded-lg p-3 min-h-[72px] ${
-                  isWeekend ? 'bg-gray-50' :
-                  total > 0 ? 'bg-yellow-50 border border-yellow-100' : 'bg-gray-50'
-                }`}
-              >
-                <div className={`text-xs font-medium mb-2 ${isWeekend ? 'text-gray-300' : 'text-gray-500'}`}>
-                  週{label}
-                </div>
-                {isWeekend ? (
-                  <div className="text-gray-300 text-sm text-center">-</div>
-                ) : breakdown.length === 0 ? (
-                  <div className="text-gray-300 text-xs">-</div>
-                ) : (
-                  <div className="space-y-1">
-                    {breakdown.map(({ shortName, count }) => (
-                      <div key={shortName} className="flex items-center justify-between gap-1">
-                        <span className="text-xs text-gray-600 truncate">{shortName}</span>
-                        <span className="text-xs font-bold text-yellow-600 shrink-0">{count}位</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>}
-      </div>
-
       {/* 週曆詳細 */}
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
         <table className="w-full text-sm">
