@@ -157,7 +157,7 @@ export default function CustomersPage() {
   const [filterProducts, setFilterProducts] = useState<Set<string>>(new Set());
   const [filterTags, setFilterTags] = useState<Set<string>>(new Set());
   const [search, setSearch] = useState('');
-  const [sortBy, setSortBy] = useState<'hospital' | 'revenue'>('hospital');
+  const [sortBy, setSortBy] = useState<'hospital' | 'revenue' | 'visit_desc' | 'visit_asc'>('hospital');
 
   useEffect(() => {
     setDoctors(getDoctors());
@@ -245,6 +245,14 @@ export default function CustomersPage() {
   }).sort((a, b) => {
     if (sortBy === 'revenue') {
       return calcMonthlyRev(b) - calcMonthlyRev(a);
+    }
+    if (sortBy === 'visit_desc' || sortBy === 'visit_asc') {
+      const aDate = lastVisitMap[a.id]?.date ?? '';
+      const bDate = lastVisitMap[b.id]?.date ?? '';
+      if (!aDate && !bDate) return 0;
+      if (!aDate) return sortBy === 'visit_asc' ? -1 : 1;
+      if (!bDate) return sortBy === 'visit_asc' ? 1 : -1;
+      return sortBy === 'visit_desc' ? bDate.localeCompare(aDate) : aDate.localeCompare(bDate);
     }
     const aId = (a.hospitalIds?.[0] ?? a.hospitalId) || '';
     const bId = (b.hospitalIds?.[0] ?? b.hospitalId) || '';
@@ -420,6 +428,15 @@ export default function CustomersPage() {
             <button onClick={() => setSortBy('revenue')}
               className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${sortBy === 'revenue' ? 'bg-blue-600 text-white border-transparent' : 'bg-white border-gray-200 text-gray-500 hover:border-blue-400'}`}>
               月業績 ↓
+            </button>
+            <button
+              onClick={() => setSortBy(prev => prev === 'visit_desc' ? 'visit_asc' : 'visit_desc')}
+              className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${
+                sortBy === 'visit_desc' || sortBy === 'visit_asc'
+                  ? 'bg-green-600 text-white border-transparent'
+                  : 'bg-white border-gray-200 text-gray-500 hover:border-green-400'
+              }`}>
+              拜訪日期 {sortBy === 'visit_desc' ? '↓' : sortBy === 'visit_asc' ? '↑' : '↕'}
             </button>
           </div>
           <input type="text" placeholder="搜尋姓名、醫院、科別..."
