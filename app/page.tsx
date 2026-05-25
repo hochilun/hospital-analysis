@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Hospital, Department, ClinicSlot, WeeklyAbsence } from '@/types';
-import { HOSPITALS, TARGET_DEPARTMENTS, DEPT_LABEL } from '@/data/hospitals';
+import { HOSPITALS, TARGET_DEPARTMENTS, DEPT_LABEL, DAY_LABELS, SESSION_LABELS } from '@/data/hospitals';
 import Link from 'next/link';
 import HospitalCard from '@/components/HospitalCard';
 import WeeklyView from '@/components/WeeklyView';
@@ -12,6 +12,13 @@ import { pullFromCloud } from '@/lib/supabase';
 import GlobalTodosPanel from '@/components/GlobalTodosPanel';
 
 const VALID_DEPTS = new Set(['GYN', 'GU', 'GS', 'ENT']);
+
+const DEPT_COLOR: Record<string, string> = {
+  GYN: 'bg-pink-50 text-pink-700 border-pink-200',
+  GU:  'bg-blue-50 text-blue-700 border-blue-200',
+  GS:  'bg-green-50 text-green-700 border-green-200',
+  ENT: 'bg-orange-50 text-orange-700 border-orange-200',
+};
 
 function buildExtraHospitals(hospitals: Hospital[]): Hospital[] {
   if (typeof window === 'undefined') return hospitals;
@@ -50,6 +57,9 @@ export default function Home() {
   const [selectedHospitals, setSelectedHospitals] = useState<Set<string>>(new Set());
   const [view, setView] = useState<'hospitals' | 'weekly'>('weekly');
   const [updating, setUpdating] = useState<string | null>(null);
+  const [doctorSearch, setDoctorSearch] = useState('');
+  const [showDropdown, setShowDropdown] = useState(false);
+  const [selectedDoctor, setSelectedDoctor] = useState<string | null>(null);
 
   useEffect(() => {
     const loadData = () => {
@@ -111,6 +121,38 @@ export default function Home() {
   const filteredHospitals = selectedHospitals.size === 0
     ? hospitals
     : hospitals.filter(h => selectedHospitals.has(h.shortName));
+
+  const doctorSuggestions = (() => {
+    const q = doctorSearch.trim();
+    if (!q) return [];
+    const map = new Map<string, Set<string>>();
+    for (const h of hospitals) {
+      for (const c of h.clinics) {
+        if (c.doctor.includes(q)) {
+          if (!map.has(c.doctor)) map.set(c.doctor, new Set());
+          map.get(c.doctor)!.add(h.shortName);
+        }
+      }
+    }
+    return [...map.entries()].map(([name, hosps]) => ({ name, hospitals: [...hosps] })).slice(0, 8);
+  })();
+
+  const selectedDoctorSlots = (() => {
+    if (!selectedDoctor) return [];
+    const result: { hospitalName: string; dept: string; dayOfWeek: number; session: string }[] = [];
+    for (const h of hospitals) {
+      for (const c of h.clinics) {
+        if (c.doctor === selectedDoctor) {
+          result.push({ hospitalName: h.shortName, dept: c.department, dayOfWeek: c.dayOfWeek, session: c.session });
+        }
+      }
+    }
+    return result.sort((a, b) =>
+      a.dayOfWeek !== b.dayOfWeek
+        ? a.dayOfWeek - b.dayOfWeek
+        : SESSION_LABELS.indexOf(a.session) - SESSION_LABELS.indexOf(b.session)
+    );
+  })();
 
   const handleUpdate = async (hospitalId: string) => {
     setUpdating(hospitalId);
@@ -249,6 +291,60 @@ export default function Home() {
             </button>
           </div>
         </div>
+
+        {/* 醫師搜尋 */}
+        <div className="relative mb-4">
+          <input
+            type="text"
+            value={doctorSearch}
+            onChange={e => { setDoctorSearch(e.target.value); setShowDropdown(true); setSelectedDoctor(null); }}
+            onFocus={() => setShowDropdown(true)}
+            onBlur={() => setTimeout(() => setShowDropdown(false), 150)}
+            placeholder="搜尋醫師姓名..."
+            className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-300 bg-white"
+          />
+          {showDropdown && doctorSuggestions.length > 0 && (
+            <div className="absolute top-full left-0 right-0 z-50 mt-1 bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden">
+              {doctorSuggestions.map(({ name, hospitals: hospNames }) => (
+                <button
+                  key={name}
+                  onMouseDown={() => { setSelectedDoctor(name); setDoctorSearch(name); setShowDropdown(false); }}
+                  className="w-full px-4 py-2.5 text-left hover:bg-blue-50 flex items-center justify-between gap-3 border-b border-gray-100 last:border-0"
+                >
+                  <span className="font-medium text-gray-800 text-sm">{name}</span>
+                  <span className="text-xs text-gray-400">{hospNames.join(' · ')}</span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* 選定醫師的門診時段 */}
+        {selectedDoctor && selectedDoctorSlots.length > 0 && (
+          <div className="bg-white rounded-xl border border-blue-200 p-4 mb-4">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <h3 className="text-sm font-semibold text-gray-800">{selectedDoctor} 的門診時間</h3>
+                <span className="text-xs text-gray-400">{selectedDoctorSlots.length} 個時段</span>
+              </div>
+              <button
+                onClick={() => { setSelectedDoctor(null); setDoctorSearch(''); }}
+                className="text-xs text-gray-400 hover:text-gray-600"
+              >
+                ✕ 關閉
+              </button>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {selectedDoctorSlots.map((s, i) => (
+                <div key={i} className={`text-xs px-3 py-1.5 rounded-lg border ${DEPT_COLOR[s.dept] ?? 'bg-gray-50 border-gray-200 text-gray-600'}`}>
+                  <span className="font-medium">{s.hospitalName}</span>
+                  <span className="mx-1 opacity-40">·</span>
+                  <span>週{DAY_LABELS[s.dayOfWeek]}{s.session}診</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {view === 'weekly' ? (
           <div className="space-y-6">
