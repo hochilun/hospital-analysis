@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Product, ProductVariant } from '@/types';
+import { Product, ProductVariant, ProductCategory } from '@/types';
 import { getProducts, saveProduct } from '@/lib/storage';
 import { HOSPITALS } from '@/data/hospitals';
 
@@ -105,6 +105,7 @@ export default function EditProductPage() {
   const [licenseNumber, setLicenseNumber] = useState('');
   const [hospitalId, setHospitalId] = useState('');
   const [notes, setNotes] = useState('');
+  const [category, setCategory] = useState('');
   const [variants, setVariants] = useState<ProductVariant[]>([emptyVariant()]);
   const [loaded, setLoaded] = useState(false);
 
@@ -115,6 +116,7 @@ export default function EditProductPage() {
     setNameEn(p.nameEn ?? '');
     setLicenseNumber(p.licenseNumber ?? '');
     setHospitalId(p.hospitalId);
+    setCategory(p.category ?? '');
     setNotes(p.notes);
     setVariants(p.variants?.length ? p.variants : [emptyVariant()]);
     setLoaded(true);
@@ -144,6 +146,7 @@ export default function EditProductPage() {
       name: name.trim(),
       nameEn: nameEn.trim() || undefined,
       licenseNumber: licenseNumber.trim() || undefined,
+      category: (category as ProductCategory) || undefined,
       hospitalId,
       hospitalName: hospital?.name ?? '',
       variants: variants.filter(v => v.modelNumber.trim()),
