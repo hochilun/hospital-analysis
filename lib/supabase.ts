@@ -27,6 +27,19 @@ export async function pushToCloud(key: SyncKey, value: unknown) {
   } catch {}
 }
 
+/** 強制從 Supabase 覆蓋指定 key（不管本機有沒有資料） */
+export async function forceSync(key: SyncKey): Promise<boolean> {
+  if (!supabase) return false;
+  try {
+    const { data, error } = await supabase.from('app_storage').select('value').eq('key', key).single();
+    if (error || !data) return false;
+    localStorage.setItem(key, JSON.stringify(data.value));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 /**
  * 從 Supabase 拉回資料，合併策略：
  * - 若 localStorage 該 key 是空的 → 用雲端資料補上

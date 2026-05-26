@@ -7,7 +7,7 @@ import { getProducts, deleteProduct, saveProduct } from '@/lib/storage';
 import { HOSPITALS } from '@/data/hospitals';
 import { SEED_PRODUCTS } from '@/data/seedProducts';
 import { HOSPITAL_PRODUCT_IDS } from '@/data/salesHistory';
-import { pullFromCloud } from '@/lib/supabase';
+import { forceSync } from '@/lib/supabase';
 
 const CATEGORIES: { key: ProductCategory; label: string; color: string }[] = [
   { key: 'Hemostasis',           label: 'Hemostasis',           color: 'bg-red-100 text-red-800 border-red-200' },
@@ -24,7 +24,7 @@ export default function ProductsPage() {
 
   useEffect(() => {
     setProducts(getProducts());
-    pullFromCloud().then(synced => { if (synced) setProducts(getProducts()); });
+    forceSync('products-db').then(ok => { if (ok) setProducts(getProducts()); });
   }, []);
 
   const toggle = (cat: string) =>
@@ -59,8 +59,7 @@ export default function ProductsPage() {
   };
 
   const handleCloudSync = async () => {
-    localStorage.removeItem('products-db');
-    await pullFromCloud();
+    await forceSync('products-db');
     setProducts(getProducts());
   };
 
