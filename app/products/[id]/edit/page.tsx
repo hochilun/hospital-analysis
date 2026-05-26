@@ -12,12 +12,14 @@ function emptyVariant(): ProductVariant {
   return { id: uid(), modelNumber: '', description: '', hospitalPrice: 0, patientPrice: 0, unit: '個' };
 }
 
-function VariantRow({ v, onChange, onRemove, showRemove }: {
+function VariantRow({ v, onChange, onHospInfoChange, onRemove, showRemove }: {
   v: ProductVariant;
   onChange: (k: keyof ProductVariant, val: string | number) => void;
+  onHospInfoChange: (hospitalId: string, sponsorship: number | null | undefined) => void;
   onRemove: () => void;
   showRemove: boolean;
 }) {
+  const [showSponsor, setShowSponsor] = useState(false);
   const markup = v.hospitalPrice > 0
     ? Math.round(((v.patientPrice - v.hospitalPrice) / v.hospitalPrice) * 100) : null;
   return (
@@ -60,6 +62,36 @@ function VariantRow({ v, onChange, onRemove, showRemove }: {
           <button onClick={onRemove} className="mt-4 ml-auto text-xs text-red-400 hover:text-red-600">✕ 移除</button>
         )}
       </div>
+
+      {/* 各醫院學術贊助 */}
+      <div className="pt-2 border-t border-gray-200">
+        <button onClick={() => setShowSponsor(v => !v)}
+          className="text-xs text-gray-400 hover:text-gray-600 flex items-center gap-1">
+          學術贊助設定 <span>{showSponsor ? '▲' : '▼'}</span>
+        </button>
+        {showSponsor && (
+          <div className="mt-2 grid grid-cols-2 gap-2">
+            {HOSPITALS.map(h => {
+              const cur = v.hospitalInfo?.[h.id]?.academicSponsorship;
+              return (
+                <div key={h.id} className="flex items-center gap-2">
+                  <span className="text-xs text-gray-500 w-16 shrink-0">{h.shortName}</span>
+                  <input
+                    type="number"
+                    className="input text-xs py-1"
+                    placeholder="未設定"
+                    value={cur ?? ''}
+                    onChange={e => {
+                      const val = e.target.value === '' ? undefined : parseFloat(e.target.value);
+                      onHospInfoChange(h.id, val);
+                    }}
+                  />
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -90,6 +122,17 @@ export default function EditProductPage() {
 
   const updateVariant = (i: number, k: keyof ProductVariant, v: string | number) =>
     setVariants(prev => prev.map((x, j) => j === i ? { ...x, [k]: v } : x));
+
+  const updateVariantHospInfo = (variantIdx: number, hospitalId: string, sponsorship: number | null | undefined) =>
+    setVariants(prev => prev.map((x, j) => {
+      if (j !== variantIdx) return x;
+      const existing = x.hospitalInfo?.[hospitalId] ?? {};
+      const updated = { ...existing };
+      if (sponsorship === undefined) delete updated.academicSponsorship;
+      else updated.academicSponsorship = sponsorship;
+      return { ...x, hospitalInfo: { ...(x.hospitalInfo ?? {}), [hospitalId]: updated } };
+    }));
+
   const addVariant = () => setVariants(prev => [...prev, emptyVariant()]);
   const removeVariant = (i: number) => setVariants(prev => prev.filter((_, j) => j !== i));
 
@@ -163,6 +206,7 @@ export default function EditProductPage() {
             {variants.map((v, i) => (
               <VariantRow key={v.id} v={v}
                 onChange={(k, val) => updateVariant(i, k, val)}
+                onHospInfoChange={(hid, val) => updateVariantHospInfo(i, hid, val)}
                 onRemove={() => removeVariant(i)}
                 showRemove={variants.length > 1}
               />
