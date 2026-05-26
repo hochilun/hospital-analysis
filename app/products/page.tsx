@@ -22,7 +22,10 @@ export default function ProductsPage() {
   const [filterHospital, setFilterHospital] = useState('');
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
 
-  useEffect(() => { setProducts(getProducts()); }, []);
+  useEffect(() => {
+    setProducts(getProducts());
+    pullFromCloud().then(synced => { if (synced) setProducts(getProducts()); });
+  }, []);
 
   const toggle = (cat: string) =>
     setCollapsed(prev => {
