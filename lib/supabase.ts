@@ -40,6 +40,20 @@ export async function forceSync(key: SyncKey): Promise<boolean> {
   }
 }
 
+/** 一次從 Supabase 覆蓋所有 SYNC_KEYS（頁面載入時使用） */
+export async function syncAllFromCloud(): Promise<void> {
+  if (!supabase) return;
+  try {
+    const { data, error } = await supabase.from('app_storage').select('key, value');
+    if (error || !data?.length) return;
+    for (const row of data) {
+      if (SYNC_KEYS.includes(row.key as SyncKey)) {
+        localStorage.setItem(row.key, JSON.stringify(row.value));
+      }
+    }
+  } catch {}
+}
+
 /**
  * 從 Supabase 拉回資料，合併策略：
  * - 若 localStorage 該 key 是空的 → 用雲端資料補上
