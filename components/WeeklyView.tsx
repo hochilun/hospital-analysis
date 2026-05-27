@@ -44,6 +44,7 @@ function saveStarred(set: Set<string>) {
 
 export default function WeeklyView({ hospitals, selectedDepts }: Props) {
   const [starred, setStarred] = useState<Set<string>>(new Set());
+  const [starOnly, setStarOnly] = useState(false);
   const [collapsedSessions, setCollapsedSessions] = useState<Set<string>>(new Set());
 
   const toggleSession = (session: string) => {
@@ -73,6 +74,7 @@ export default function WeeklyView({ hospitals, selectedDepts }: Props) {
       h.clinics
         .filter(c => {
           if (c.dayOfWeek !== day || c.session !== session || !selectedDepts.has(c.department)) return false;
+          if (starOnly && !starred.has(starKey(h.id, c.doctor))) return false;
           return true;
         })
         .forEach(c => {
@@ -100,6 +102,18 @@ export default function WeeklyView({ hospitals, selectedDepts }: Props) {
     <div className="space-y-4">
       {/* 週曆詳細 */}
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+        <div className="flex items-center justify-end px-4 py-2 border-b border-gray-100">
+          <button
+            onClick={() => setStarOnly(v => !v)}
+            className={`flex items-center gap-1.5 text-xs px-3 py-1 rounded-full border transition-colors ${
+              starOnly
+                ? 'bg-yellow-400 border-yellow-400 text-white font-semibold'
+                : 'bg-white border-gray-200 text-gray-500 hover:border-yellow-400 hover:text-yellow-500'
+            }`}
+          >
+            ★ {starOnly ? '僅顯示星號' : '全部顯示'}
+          </button>
+        </div>
         <table className="w-full text-sm">
           <thead>
             <tr className="bg-gray-50 border-b border-gray-200">
