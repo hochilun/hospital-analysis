@@ -11,13 +11,14 @@ import { getDoctors } from '@/lib/storage';
 import { pullFromCloud } from '@/lib/supabase';
 import GlobalTodosPanel from '@/components/GlobalTodosPanel';
 
-const VALID_DEPTS = new Set(['GYN', 'GU', 'GS', 'ENT']);
+const VALID_DEPTS = new Set(['GYN', 'GU', 'GS', 'ENT', 'TS']);
 
 const DEPT_COLOR: Record<string, string> = {
   GYN: 'bg-pink-50 text-pink-700 border-pink-200',
   GU:  'bg-blue-50 text-blue-700 border-blue-200',
   GS:  'bg-green-50 text-green-700 border-green-200',
   ENT: 'bg-orange-50 text-orange-700 border-orange-200',
+  TS:  'bg-purple-50 text-purple-700 border-purple-200',
 };
 
 function buildExtraHospitals(hospitals: Hospital[]): Hospital[] {

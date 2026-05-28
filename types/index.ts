@@ -1,4 +1,4 @@
-export type Department = 'GYN' | 'GU' | 'GS' | 'ENT';
+export type Department = 'GYN' | 'GU' | 'GS' | 'ENT' | 'TS';
 
 export type ClinicSlot = {
   doctor: string;

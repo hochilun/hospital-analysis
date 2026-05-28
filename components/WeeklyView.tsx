@@ -15,6 +15,7 @@ const DEPT_COLOR: Record<string, string> = {
   GU:  'bg-blue-100 text-blue-800 border-blue-200',
   GS:  'bg-green-100 text-green-800 border-green-200',
   ENT: 'bg-orange-100 text-orange-800 border-orange-200',
+  TS:  'bg-purple-100 text-purple-800 border-purple-200',
 };
 
 const DEPT_DOT: Record<string, string> = {
