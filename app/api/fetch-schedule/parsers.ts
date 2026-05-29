@@ -303,6 +303,35 @@ export async function parseGrace(): Promise<ParseResult> {
 // ── 台北慈濟 ────────────────────────────────────────────────────────────
 const TZUCHI_DEPTS: Record<string, string> = { '15': 'GU', '03': 'GS' };
 
+async function parseTzuchiBreast(seen: Set<string>): Promise<Clinic[]> {
+  const html = await fetchHtml('https://reg-prod.tzuchi-healthcare.org.tw/tchw/HIS5OpdReg/OpdTimeShow?Pass=XD;0020');
+  if (!html) return [];
+  const clinics: Clinic[] = [];
+  const tableMatch = html.match(/id="MainContent_gvOpdList"[^>]*>([\s\S]*?)<\/table>/);
+  if (!tableMatch) return [];
+  const rows = [...tableMatch[1].matchAll(/<tr[^>]*>([\s\S]*?)<\/tr>/gi)].map(r => r[1]);
+  const SESSIONS: ('早' | '午' | '晚')[] = ['早', '午', '晚'];
+  for (const row of rows.slice(1)) {
+    const cells = [...row.matchAll(/<td[^>]*>([\s\S]*?)<\/td>/gi)]
+      .map(c => c[1].replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ').trim());
+    if (cells.length < 2) continue;
+    const dayMatch = cells[0].match(/星期([一二三四五六日])/);
+    if (!dayMatch) continue;
+    const dow = DAY_CN[dayMatch[1]];
+    if (dow === undefined) continue;
+    for (let si = 0; si < 3; si++) {
+      const cell = cells[si + 1] ?? '';
+      const session = SESSIONS[si];
+      for (const dm of cell.matchAll(/([一-鿿]{2,4})\s*[（(]/g)) {
+        const name = dm[1];
+        const key = `${name}_${dow}_${session}`;
+        if (!seen.has(key)) { seen.add(key); clinics.push({ doctor: name, department: 'BS', dayOfWeek: dow, session }); }
+      }
+    }
+  }
+  return clinics;
+}
+
 export async function parseTzuchi(): Promise<ParseResult> {
   const seen = new Set<string>();
   const all: Clinic[] = [];
@@ -311,6 +340,7 @@ export async function parseTzuchi(): Promise<ParseResult> {
     const html = await fetchHtml(url);
     if (html) all.push(...parseClinicTable(html, dept, seen));
   }
+  all.push(...await parseTzuchiBreast(seen));
   return { clinics: all, news: [] };
 }
 
