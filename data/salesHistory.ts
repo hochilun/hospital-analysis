@@ -21,11 +21,11 @@ const APIS_IDS = ['seed_愛沛斯_sling', 'seed_愛沛斯_mini', 'seed_愛沛斯
 // 各醫院有銷售紀錄的產品 ID
 export const HOSPITAL_PRODUCT_IDS: Record<string, string[]> = {
   tucheng: ['seed_宮安康', 'seed_止血顆粒', 'seed_賀邁補', 'seed_速巴定', ...APIS_IDS, 'seed_ventralight'],
-  tzuchi:  ['seed_宮安康', 'seed_止血顆粒', 'seed_賀邁補', 'seed_速巴定', 'seed_3DMAX', 'seed_塞納斯', ...APIS_IDS],
+  tzuchi:  ['seed_宮安康', 'seed_止血顆粒', 'seed_賀邁補', 'seed_速巴定', 'seed_3DMAX', 'seed_3DMAX_light', 'seed_塞納斯', ...APIS_IDS],
   sph:     ['seed_宮安康', 'seed_止血顆粒', 'seed_賀邁補', 'seed_速巴定', ...APIS_IDS, 'seed_ventralight'],
   grace:   ['seed_止血顆粒', 'seed_賀邁補', 'seed_塞納斯', 'seed_ventralight'],
-  eck:     ['seed_宮安康', 'seed_止血顆粒', 'seed_速巴定', 'seed_3DMAX', ...APIS_IDS],
-  tmuh:    ['seed_宮安康', 'seed_止血顆粒', 'seed_賀邁補', 'seed_速巴定', 'seed_3DMAX', ...APIS_IDS],
+  eck:     ['seed_宮安康', 'seed_止血顆粒', 'seed_速巴定', 'seed_3DMAX', 'seed_3DMAX_light', ...APIS_IDS, 'seed_ventralight', 'seed_ventrio_st'],
+  tmuh:    ['seed_宮安康', 'seed_止血顆粒', 'seed_賀邁補', 'seed_速巴定', 'seed_3DMAX', 'seed_3DMAX_light', ...APIS_IDS],
   clinic:  ['seed_宮安康', 'seed_止血顆粒', 'seed_賀邁補', 'seed_塞納斯', ...APIS_IDS],
 };
 

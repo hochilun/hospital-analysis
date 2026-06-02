@@ -176,6 +176,7 @@ export const SEED_PRODUCTS: Product[] = [
         hospitalInfo: {
           tucheng: { hospitalCode:'84-301-113082', patientPrice:11034, purchasePrice:7724 },
           sph:     { hospitalCode:'84-301-113082', patientPrice:11034, purchasePrice:7724 },
+          tzuchi:  { hospitalCode:'6ZSAU08015',    patientPrice:11034, purchasePrice:10000 },
           eck:     { hospitalCode:'9710320',        patientPrice:11034, purchasePrice:8500 },
           tmuh:    { hospitalCode:'2300000136',     patientPrice:11034, purchasePrice:8000 },
         },
@@ -249,53 +250,109 @@ export const SEED_PRODUCTS: Product[] = [
   },
   {
     id: 'seed_3DMAX',
-    name: '巴德 3DMAX LIGHT 立體修補網',
+    name: '巴德極致立體修補網',
+    nameEn: 'Bard 3DMax Mesh',
+    licenseNumber: '衛署醫器輸字第 009255 號',
     category: 'Hernia' as ProductCategory,
     hospitalId: '', hospitalName: '',
     notes: '腹腔鏡疝氣修補，一般外科',
     variants: [
-      v('0115310', '3D MAX 中/左', 6952, {
+      v('0115310', '中/左 (9×14cm)', 6952, {
         selfPayCode: 'FSZ009255001', patientPrice: 10000,
         hospitalPrices: { eck:6952 },
         hospitalInfo: { eck: { hospitalCode:'9200058', patientPrice:10000, purchasePrice:7300 } },
         unit: '片',
       }),
-      v('0115320', '3D MAX 中/右', 6952, {
+      v('0115320', '中/右 (9×14cm)', 6952, {
         selfPayCode: 'FSZ009255001', patientPrice: 10000,
         hospitalPrices: { eck:6952 },
         hospitalInfo: { eck: { hospitalCode:'9200059', patientPrice:10000, purchasePrice:7300 } },
         unit: '片',
       }),
-      v('0115311', '3D MAX 大/左', 6953, {
+      v('0115311', '大/左 (11×16cm)', 6953, {
         selfPayCode: 'FSZ009255001', patientPrice: 10000,
-        hospitalPrices: { eck:6952 },
-        hospitalInfo: { eck: { hospitalCode:'9200060', patientPrice:10000, purchasePrice:7300 } },
+        hospitalPrices: { eck:6952, tzuchi:6500 },
+        hospitalInfo: {
+          eck:    { hospitalCode:'9200060',    patientPrice:10000, purchasePrice:7300 },
+          tzuchi: { hospitalCode:'6FSP610019', patientPrice:9000,  purchasePrice:6500, academicSponsorship:2000 },
+        },
         unit: '片',
       }),
-      v('0115321', '3D MAX 大/右', 6953, {
+      v('0115321', '大/右 (11×16cm)', 6953, {
         selfPayCode: 'FSZ009255001', patientPrice: 10000,
-        hospitalPrices: { eck:6952 },
-        hospitalInfo: { eck: { hospitalCode:'9200061', patientPrice:10000, purchasePrice:7300 } },
+        hospitalPrices: { eck:6952, tzuchi:6500 },
+        hospitalInfo: {
+          eck:    { hospitalCode:'9200061',    patientPrice:10000, purchasePrice:7300 },
+          tzuchi: { hospitalCode:'6FSP610047', patientPrice:9000,  purchasePrice:6500, academicSponsorship:2000 },
+        },
         unit: '片',
       }),
-      v('0117311', '3DMAX LIGHT 大/左', 6190, {
-        selfPayCode: 'FSZ009255001', patientPrice: 12000,
-        hospitalPrices: { tmuh:6190 },
-        hospitalInfo: { tmuh: { hospitalCode:'2196009011', patientPrice:12000, purchasePrice:6500 } },
+    ],
+    createdAt: new Date().toISOString(),
+  },
+  {
+    id: 'seed_3DMAX_light',
+    name: '巴德立體輕質型修補網',
+    nameEn: '"Bard" 3DMAX Light Mesh',
+    licenseNumber: '衛署醫器輸字第 022205 號',
+    category: 'Hernia' as ProductCategory,
+    hospitalId: '', hospitalName: '',
+    notes: '腹腔鏡疝氣修補，一般外科（輕量型）',
+    variants: [
+      v('0117310', '中/左 (9×14cm)', 6800, {
+        selfPayCode: 'FSZ022205001', patientPrice: 10000,
+        hospitalPrices: { eck:6800, tzuchi:6800 },
+        hospitalInfo: {
+          eck:    { hospitalCode:'9200062' },
+          tzuchi: { hospitalCode:'6ZFSP61129', patientPrice:9000, purchasePrice:6800, academicSponsorship:2000 },
+        },
         unit: '片',
       }),
-      v('0117312', '3DMAX LIGHT 特大/左', 6168, {
-        selfPayCode: 'FSZ009255001', patientPrice: 12000,
+      v('0117311', '大/左 (11×16cm)', 6190, {
+        selfPayCode: 'FSZ022205001', patientPrice: 10000,
+        hospitalPrices: { eck:6800, tmuh:6190, tzuchi:6800 },
+        hospitalInfo: {
+          eck:    { hospitalCode:'9200062' },
+          tmuh:   { hospitalCode:'2196009011', patientPrice:12000, purchasePrice:6500 },
+          tzuchi: { hospitalCode:'6ZFSP61130', patientPrice:9000,  purchasePrice:6800, academicSponsorship:2000 },
+        },
         unit: '片',
       }),
-      v('0117321', '3DMAX LIGHT 大/右', 6189, {
-        selfPayCode: 'FSZ009255001', patientPrice: 12000,
-        hospitalPrices: { tmuh:6190 },
-        hospitalInfo: { tmuh: { hospitalCode:'2196009011', patientPrice:12000, purchasePrice:6500 } },
+      v('0117312', '特大/左 (12×17cm)', 6168, {
+        selfPayCode: 'FSZ022205001', patientPrice: 10000,
+        hospitalPrices: { eck:6800, tzuchi:6800 },
+        hospitalInfo: {
+          eck:    { hospitalCode:'9200062' },
+          tzuchi: { hospitalCode:'6ZFSP61123', patientPrice:9000, purchasePrice:6800, academicSponsorship:2000 },
+        },
         unit: '片',
       }),
-      v('0117322', '3DMAX LIGHT 特大/右', 6168, {
-        selfPayCode: 'FSZ009255001', patientPrice: 12000,
+      v('0117320', '中/右 (9×14cm)', 6800, {
+        selfPayCode: 'FSZ022205001', patientPrice: 10000,
+        hospitalPrices: { eck:6800, tzuchi:6800 },
+        hospitalInfo: {
+          eck:    { hospitalCode:'9200062' },
+          tzuchi: { hospitalCode:'6ZFSP61131', patientPrice:9000, purchasePrice:6800, academicSponsorship:2000 },
+        },
+        unit: '片',
+      }),
+      v('0117321', '大/右 (11×16cm)', 6189, {
+        selfPayCode: 'FSZ022205001', patientPrice: 10000,
+        hospitalPrices: { eck:6800, tmuh:6190, tzuchi:6800 },
+        hospitalInfo: {
+          eck:    { hospitalCode:'9200062' },
+          tmuh:   { hospitalCode:'2196009011', patientPrice:12000, purchasePrice:6500 },
+          tzuchi: { hospitalCode:'6ZFSP61132', patientPrice:9000,  purchasePrice:6800, academicSponsorship:2000 },
+        },
+        unit: '片',
+      }),
+      v('0117322', '特大/右 (12×17cm)', 6168, {
+        selfPayCode: 'FSZ022205001', patientPrice: 10000,
+        hospitalPrices: { eck:6800, tzuchi:6800 },
+        hospitalInfo: {
+          eck:    { hospitalCode:'9200062' },
+          tzuchi: { hospitalCode:'6ZFSP61124', patientPrice:9000, purchasePrice:6800, academicSponsorship:2000 },
+        },
         unit: '片',
       }),
     ],
@@ -303,37 +360,96 @@ export const SEED_PRODUCTS: Product[] = [
   },
   {
     id: 'seed_ventralight',
-    name: '巴德 Ventralight ST Mesh 凡萃拉絲提鋼片',
+    name: '巴德凡萃拉絲提網片',
+    nameEn: '"Bard" Ventralight ST Mesh',
+    licenseNumber: '衛署醫器輸字第 024945 號',
     category: 'Hernia' as ProductCategory,
     hospitalId: '', hospitalName: '',
     notes: '腹腔鏡疝氣修補，114/6/1 起轉健保，共 4 種尺寸',
     variants: [
       v('5954460', '4"×6" (10.2×15.2cm)', 21568, {
         nhiCode: 'FSP6454450BA', patientPrice: 25163,
+        hospitalPrices: { eck:21568 },
         hospitalInfo: {
+          eck:   { hospitalCode:'9200063' },
           grace: { patientPrice:25163, purchasePrice:22647 },
         },
         unit: '片',
       }),
       v('5954680', '6"×8" (15.2×20.3cm)', 12857, {
         nhiCode: 'FSP6454680BA', patientPrice: 27098,
-        hospitalPrices: { tucheng:12857, sph:12857, grace:23227 },
+        hospitalPrices: { tucheng:12857, sph:12857, eck:21568, grace:23227 },
         hospitalInfo: {
           tucheng: { hospitalCode:'84-286-954680', patientPrice:27098, purchasePrice:13500 },
           sph:     { hospitalCode:'84-286-954680', patientPrice:27098, purchasePrice:13500 },
+          eck:     { hospitalCode:'9200064' },
           grace:   { patientPrice:27098,            purchasePrice:24388 },
         },
         unit: '片',
       }),
       v('5954790', '7"×9" (17.8×22.9cm)', 27350, {
         nhiCode: 'FSP6454610BA', patientPrice: 31909,
+        hospitalPrices: { eck:27350 },
         hospitalInfo: {
+          eck:   { hospitalCode:'9200065' },
           grace: { patientPrice:31909, purchasePrice:28718 },
         },
         unit: '片',
       }),
       v('5954810', '8"×10" (20.3×25.4cm)', 39000, {
         nhiCode: 'FSP6454113BA', patientPrice: 40924,
+        hospitalPrices: { eck:39000 },
+        hospitalInfo: {
+          eck: { hospitalCode:'9200066' },
+        },
+        unit: '片',
+      }),
+    ],
+    createdAt: new Date().toISOString(),
+  },
+  {
+    id: 'seed_ventrio_st',
+    name: '巴德凡萃歐絲提疝氣補片',
+    nameEn: '"Bard" Ventrio ST Hernia Patch',
+    licenseNumber: '衛署醫器輸字第 023882 號',
+    category: 'Hernia' as ProductCategory,
+    hospitalId: '', hospitalName: '',
+    notes: '腹壁疝氣修補，自固定補片，一般外科',
+    variants: [
+      v('5950010', '7.6cm 圓形', 0, {
+        nhiCode: 'FSP6450020BA', patientPrice: 14384,
+        hospitalPrices: { eck:0 },
+        hospitalInfo: { eck: { hospitalCode:'9200034', patientPrice:14384 } },
+        unit: '片',
+      }),
+      v('5950030', '8×12cm', 0, {
+        nhiCode: 'FSP6450020BA', patientPrice: 14384,
+        hospitalPrices: { eck:0 },
+        hospitalInfo: { eck: { hospitalCode:'9200034', patientPrice:14384 } },
+        unit: '片',
+      }),
+      v('5950040', '11×14cm', 0, {
+        nhiCode: 'FSP6450040BA', patientPrice: 25163,
+        hospitalPrices: { eck:0 },
+        hospitalInfo: { eck: { hospitalCode:'9200037', patientPrice:25163 } },
+        unit: '片',
+      }),
+      v('5950050', '13.8×17.8cm', 0, {
+        nhiCode: 'FSP6450050BA', patientPrice: 27098,
+        hospitalPrices: { eck:0 },
+        hospitalInfo: { eck: { hospitalCode:'9200038', patientPrice:27098 } },
+        unit: '片',
+      }),
+      v('5950070', '19.6×24.6cm', 0, {
+        nhiCode: 'FSP6450060BA', patientPrice: 31909,
+        hospitalPrices: { eck:0 },
+        hospitalInfo: { eck: { hospitalCode:'9200030', patientPrice:31909 } },
+        unit: '片',
+      }),
+      v('5950080', '22.1×27.1cm', 0, {
+        nhiCode: 'FSP6450080BA', patientPrice: 40924,
+        hospitalPrices: { eck:0 },
+        hospitalInfo: { eck: { hospitalCode:'9200031', patientPrice:40924 } },
         unit: '片',
       }),
     ],
