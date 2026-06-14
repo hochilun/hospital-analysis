@@ -277,7 +277,7 @@ export default function PerformancePage() {
   const handleAdd = (prod: string) => {
     const qty = Number(form.qty);
     if (!form.name.trim() || qty < 1) return;
-    const existing = loadDoctors(latest.month, selectedHosp, prod);
+    const existing = loadDoctors(activeMonthKey, selectedHosp, prod);
     if (editingIdx !== null) {
       existing[editingIdx] = { dept: form.dept, name: form.name.trim(), qty };
     } else {
@@ -291,7 +291,7 @@ export default function PerformancePage() {
   };
 
   const handleDelete = (prod: string, idx: number) => {
-    const existing = loadDoctors(latest.month, selectedHosp, prod);
+    const existing = loadDoctors(activeMonthKey, selectedHosp, prod);
     existing.splice(idx, 1);
     saveDoctors(activeMonthKey, selectedHosp, prod, existing);
     refresh();
