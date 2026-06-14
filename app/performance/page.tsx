@@ -257,21 +257,37 @@ export default function PerformancePage() {
     .sort((a, b) => b[1] - a[1])
     .map(([cat, value]) => ({ name: CAT_ZH[cat] ?? cat, cat, value }));
 
+  // 整年度時跨月合計；單月時只讀該月
+  const months4Doctors = selectedMonth ? [activeMonthKey] : data.map(m => m.month);
+
+  // 讀取單一醫院＋產品的醫師資料（可跨月合計）
+  const loadDoctorsForPeriod = (hosp: string, prod: string): DoctorEntry[] => {
+    const map: Record<string, DoctorEntry> = {};
+    for (const mk of months4Doctors) {
+      for (const d of loadDoctors(mk, hosp, prod)) {
+        const key = `${d.dept}|${d.name}`;
+        if (map[key]) { map[key] = { ...map[key], qty: map[key].qty + d.qty }; }
+        else           { map[key] = { ...d }; }
+      }
+    }
+    return Object.values(map).sort((a, b) => b.qty - a.qty);
+  };
+
   const rankingDoctors: (DoctorEntry & { hosps?: string[] })[] = (() => {
     if (!selectedProd) return [];
-    if (isAll) {
-      const map: Record<string, DoctorEntry & { hosps: string[] }> = {};
-      hospList.forEach(hosp => {
-        loadDoctors(activeMonthKey, hosp, selectedProd).forEach(d => {
+    const targetHosps = isAll ? hospList : [selectedHosp];
+    const map: Record<string, DoctorEntry & { hosps: string[] }> = {};
+    for (const hosp of targetHosps) {
+      for (const mk of months4Doctors) {
+        loadDoctors(mk, hosp, selectedProd).forEach(d => {
           const key = `${d.dept}|${d.name}`;
           if (!map[key]) map[key] = { ...d, qty: 0, hosps: [] };
           map[key].qty += d.qty;
           if (!map[key].hosps.includes(hosp)) map[key].hosps.push(hosp);
         });
-      });
-      return Object.values(map).sort((a, b) => b.qty - a.qty);
+      }
     }
-    return [...loadDoctors(activeMonthKey, selectedHosp, selectedProd)].sort((a, b) => b.qty - a.qty);
+    return Object.values(map).sort((a, b) => b.qty - a.qty);
   })();
 
   const handleAdd = (prod: string) => {
@@ -499,7 +515,7 @@ export default function PerformancePage() {
             </div>
 
             {hospProds.map(prod => {
-              const doctors = isAll ? [] : loadDoctors(activeMonthKey, selectedHosp, prod.name);
+              const doctors = isAll ? [] : loadDoctorsForPeriod(selectedHosp, prod.name);
               const isAddingThis = addingTo?.prod === prod.name;
               const usedQty = doctors.reduce((s, d) => s + d.qty, 0);
               const isSelected = selectedProd === prod.name;
