@@ -48,6 +48,17 @@ export default function WeeklyView({ hospitals, selectedDepts }: Props) {
   const [starred, setStarred] = useState<Set<string>>(new Set());
   const [starOnly, setStarOnly] = useState(false);
   const [collapsedSessions, setCollapsedSessions] = useState<Set<string>>(new Set());
+  const [highlightedDoctor, setHighlightedDoctor] = useState<string | null>(null);
+
+  const toggleHighlight = (doctor: string) => {
+    setHighlightedDoctor(prev => prev === doctor ? null : doctor);
+  };
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setHighlightedDoctor(null); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
 
   const toggleSession = (session: string) => {
     setCollapsedSessions(prev => {
@@ -104,7 +115,22 @@ export default function WeeklyView({ hospitals, selectedDepts }: Props) {
     <div className="space-y-4">
       {/* 週曆詳細 */}
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-        <div className="flex items-center justify-end px-4 py-2 border-b border-gray-100">
+        <div className="flex items-center justify-between px-4 py-2 border-b border-gray-100">
+          <div className="flex items-center gap-2">
+            {highlightedDoctor ? (
+              <div className="flex items-center gap-2 bg-blue-50 border border-blue-200 rounded-full px-3 py-1">
+                <span className="text-xs font-medium text-blue-700">已選取：{highlightedDoctor}</span>
+                <button
+                  onClick={() => setHighlightedDoctor(null)}
+                  className="text-blue-400 hover:text-blue-600 text-xs leading-none"
+                >
+                  ✕
+                </button>
+              </div>
+            ) : (
+              <span className="text-xs text-gray-400">點擊醫師卡片可高亮顯示</span>
+            )}
+          </div>
           <button
             onClick={() => setStarOnly(v => !v)}
             className={`flex items-center gap-1.5 text-xs px-3 py-1 rounded-full border transition-colors ${
@@ -153,10 +179,18 @@ export default function WeeklyView({ hospitals, selectedDepts }: Props) {
                         {slots.map((s, i) => {
                           const key = starKey(s.hospital.id, s.doctor);
                           const isStarred = starred.has(key);
+                          const isHighlighted = highlightedDoctor === s.doctor;
+                          const isDimmed = highlightedDoctor !== null && !isHighlighted;
                           return (
                             <div
                               key={i}
-                              className={`text-xs px-2 py-1 rounded border ${s.absent ? 'bg-gray-50 border-gray-200 opacity-60' : DEPT_COLOR[s.department]}`}
+                              onClick={() => toggleHighlight(s.doctor)}
+                              className={`text-xs px-2 py-1 rounded border cursor-pointer transition-all select-none
+                                ${s.absent ? 'bg-gray-50 border-gray-200' : DEPT_COLOR[s.department]}
+                                ${s.absent && !isHighlighted ? 'opacity-60' : ''}
+                                ${isDimmed ? 'opacity-15' : ''}
+                                ${isHighlighted ? 'ring-2 ring-blue-400 ring-offset-1 shadow-sm' : ''}
+                              `}
                             >
                               <div className="font-medium flex items-center gap-1">
                                 {s.hospital.shortName}

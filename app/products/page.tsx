@@ -182,6 +182,8 @@ export default function ProductsPage() {
                               <tbody>
                                 {p.variants.map(v => {
                                   const info = filterHospital ? v.hospitalInfo?.[filterHospital] : undefined;
+                                  // 選了特定醫院時，沒有該醫院資料的 variant 不顯示
+                                  if (filterHospital && !info) return null;
                                   const displayPrice = filterHospital && v.hospitalPrices?.[filterHospital]
                                     ? v.hospitalPrices[filterHospital]
                                     : v.hospitalPrice;

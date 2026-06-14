@@ -41,6 +41,8 @@ const HOSPITAL_TOTALS_2025: Record<string, SalesEntry> = {
   '恩主公':   { qty: 109, rev: 1038139 },
   '台北醫學': { qty: 115, rev: 1056002 },
   '中心診所': { qty:  71, rev:  665924 },
+  '台北慈濟': { qty:  60, rev:   65714 },  // 賀邁補 15×15，2/6/9/11月
+  '長庚土城': { qty:  20, rev:   67379 },  // 速巴定+賀邁補 10×15
 };
 
 const HOSPITAL_PRODUCT_SALES_2025: Record<string, HospitalSales> = {
@@ -171,46 +173,46 @@ export const SALES_BY_YEAR: Record<string, YearSalesData> = {
     HOSPITAL_PRODUCT_SALES: HOSPITAL_PRODUCT_SALES_2025,
     PRODUCT_TOTALS: PRODUCT_TOTALS_2025,
     MONTHLY_REV: [
-      { month: '1月',  rev: 230_120 },
-      { month: '2月',  rev: 279_919 },
-      { month: '3月',  rev: 348_526 },
-      { month: '4月',  rev: 366_006 },
+      { month: '1月',  rev: 231_068 },   // +948 土城
+      { month: '2月',  rev: 302_772 },   // +21905 慈濟, +948 土城
+      { month: '3月',  rev: 350_421 },   // +1895 土城
+      { month: '4月',  rev: 368_849 },   // +2843 土城
       { month: '5月',  rev: 807_292 },
-      { month: '6月',  rev: 797_819 },
-      { month: '7月',  rev: 1_078_050 },
-      { month: '8月',  rev: 1_407_106 },
-      { month: '9月',  rev: 698_259 },
-      { month: '10月', rev: 1_048_895 },
-      { month: '11月', rev: 818_859 },
-      { month: '12月', rev: 657_256 },
+      { month: '6月',  rev: 819_724 },   // +21905 慈濟
+      { month: '7月',  rev: 1_078_998 }, // +948 土城
+      { month: '8月',  rev: 1_431_593 }, // +24487 土城
+      { month: '9月',  rev: 726_866 },   // +10952 慈濟, +17655 土城
+      { month: '10月', rev: 1_054_780 }, // +5885 土城
+      { month: '11月', rev: 835_696 },   // +10952 慈濟, +5885 土城
+      { month: '12月', rev: 663_141 },   // +5885 土城
     ],
     MONTHLY_BY_HOSPITAL: [
-      { month: '1月',  中心診所: 0,       台北醫學: 43_238,  宏恩醫療: 0,       恩主公: 83_733,  沙爾德聖: 103_149 },
-      { month: '2月',  中心診所: 0,       台北醫學: 50_190,  宏恩醫療: 0,       恩主公: 78_324,  沙爾德聖: 151_405 },
-      { month: '3月',  中心診所: 2_286,   台北醫學: 0,       宏恩醫療: 0,       恩主公: 96_648,  沙爾德聖: 249_592 },
-      { month: '4月',  中心診所: 1_143,   台北醫學: 108_571, 宏恩醫療: 0,       恩主公: 74_406,  沙爾德聖: 181_886 },
-      { month: '5月',  中心診所: 1_143,   台北醫學: 90_762,  宏恩醫療: 469_143, 恩主公: 11_619,  沙爾德聖: 234_626 },
-      { month: '6月',  中心診所: 31_638,  台北醫學: 42_571,  宏恩醫療: 450_286, 恩主公: 68_343,  沙爾德聖: 204_981 },
-      { month: '7月',  中心診所: 112_648, 台北醫學: 120_596, 宏恩醫療: 424_952, 恩主公: 134_495, 沙爾德聖: 285_359 },
-      { month: '8月',  中心診所: 223_010, 台北醫學: 97_453,  宏恩醫療: 568_571, 恩主公: 92_629,  沙爾德聖: 425_443 },
-      { month: '9月',  中心診所: 61_943,  台北醫學: 165_190, 宏恩醫療: 218_095, 恩主公: 68_190,  沙爾德聖: 184_840 },
-      { month: '10月', 中心診所: 149_810, 台北醫學: 127_714, 宏恩醫療: 350_476, 恩主公: 92_914,  沙爾德聖: 327_981 },
-      { month: '11月', 中心診所: 40_571,  台北醫學: 85_714,  宏恩醫療: 263_762, 恩主公: 110_000, 沙爾德聖: 318_811 },
-      { month: '12月', 中心診所: 41_733,  台北醫學: 124_000, 宏恩醫療: 40_190,  恩主公: 189_410, 沙爾德聖: 261_923 },
+      { month: '1月',  中心診所: 0,       台北醫學: 43_238,  宏恩醫療: 0,       恩主公: 83_733,  沙爾德聖: 103_149, 台北慈濟: 0,      長庚土城: 948 },
+      { month: '2月',  中心診所: 0,       台北醫學: 50_190,  宏恩醫療: 0,       恩主公: 78_324,  沙爾德聖: 151_405, 台北慈濟: 21_905, 長庚土城: 948 },
+      { month: '3月',  中心診所: 2_286,   台北醫學: 0,       宏恩醫療: 0,       恩主公: 96_648,  沙爾德聖: 249_592, 台北慈濟: 0,      長庚土城: 1_895 },
+      { month: '4月',  中心診所: 1_143,   台北醫學: 108_571, 宏恩醫療: 0,       恩主公: 74_406,  沙爾德聖: 181_886, 台北慈濟: 0,      長庚土城: 2_843 },
+      { month: '5月',  中心診所: 1_143,   台北醫學: 90_762,  宏恩醫療: 469_143, 恩主公: 11_619,  沙爾德聖: 234_626, 台北慈濟: 0,      長庚土城: 0 },
+      { month: '6月',  中心診所: 31_638,  台北醫學: 42_571,  宏恩醫療: 450_286, 恩主公: 68_343,  沙爾德聖: 204_981, 台北慈濟: 21_905, 長庚土城: 0 },
+      { month: '7月',  中心診所: 112_648, 台北醫學: 120_596, 宏恩醫療: 424_952, 恩主公: 134_495, 沙爾德聖: 285_359, 台北慈濟: 0,      長庚土城: 948 },
+      { month: '8月',  中心診所: 223_010, 台北醫學: 97_453,  宏恩醫療: 568_571, 恩主公: 92_629,  沙爾德聖: 425_443, 台北慈濟: 0,      長庚土城: 24_487 },
+      { month: '9月',  中心診所: 61_943,  台北醫學: 165_190, 宏恩醫療: 218_095, 恩主公: 68_190,  沙爾德聖: 184_840, 台北慈濟: 10_952, 長庚土城: 17_655 },
+      { month: '10月', 中心診所: 149_810, 台北醫學: 127_714, 宏恩醫療: 350_476, 恩主公: 92_914,  沙爾德聖: 327_981, 台北慈濟: 0,      長庚土城: 5_885 },
+      { month: '11月', 中心診所: 40_571,  台北醫學: 85_714,  宏恩醫療: 263_762, 恩主公: 110_000, 沙爾德聖: 318_811, 台北慈濟: 10_952, 長庚土城: 5_885 },
+      { month: '12月', 中心診所: 41_733,  台北醫學: 124_000, 宏恩醫療: 40_190,  恩主公: 189_410, 沙爾德聖: 261_923, 台北慈濟: 0,      長庚土城: 5_885 },
     ],
     MONTHLY_BY_CATEGORY: [
-      { month: '1月',  Hemostasis: 55_162,  'Adhesion Prevention': 163_810, Hernia: 11_149, 'Urinary Incontinence': 0 },
-      { month: '2月',  Hemostasis: 58_229,  'Adhesion Prevention': 215_810, Hernia: 5_881,  'Urinary Incontinence': 0 },
-      { month: '3月',  Hemostasis: 50_171,  'Adhesion Prevention': 266_476, Hernia: 10_926, 'Urinary Incontinence': 20_952 },
-      { month: '4月',  Hemostasis: 60_571,  'Adhesion Prevention': 281_905, Hernia: 14_076, 'Urinary Incontinence': 9_453 },
+      { month: '1月',  Hemostasis: 55_162,  'Adhesion Prevention': 163_810, Hernia: 12_097, 'Urinary Incontinence': 0 },
+      { month: '2月',  Hemostasis: 58_229,  'Adhesion Prevention': 215_810, Hernia: 28_734, 'Urinary Incontinence': 0 },
+      { month: '3月',  Hemostasis: 50_171,  'Adhesion Prevention': 266_476, Hernia: 12_821, 'Urinary Incontinence': 20_952 },
+      { month: '4月',  Hemostasis: 60_571,  'Adhesion Prevention': 281_905, Hernia: 16_919, 'Urinary Incontinence': 9_453 },
       { month: '5月',  Hemostasis: 490_838, 'Adhesion Prevention': 265_905, Hernia: 50_550, 'Urinary Incontinence': 0 },
-      { month: '6月',  Hemostasis: 490_914, 'Adhesion Prevention': 236_952, Hernia: 49_000, 'Urinary Incontinence': 20_952 },
-      { month: '7月',  Hemostasis: 547_771, 'Adhesion Prevention': 406_286, Hernia: 45_969, 'Urinary Incontinence': 78_025 },
-      { month: '8月',  Hemostasis: 788_743, 'Adhesion Prevention': 520_190, Hernia: 28_529, 'Urinary Incontinence': 69_644 },
-      { month: '9月',  Hemostasis: 292_943, 'Adhesion Prevention': 295_429, Hernia: 59_411, 'Urinary Incontinence': 50_476 },
-      { month: '10月', Hemostasis: 493_676, 'Adhesion Prevention': 392_381, Hernia: 39_600, 'Urinary Incontinence': 123_238 },
-      { month: '11月', Hemostasis: 267_171, 'Adhesion Prevention': 384_571, Hernia: 43_878, 'Urinary Incontinence': 123_238 },
-      { month: '12月', Hemostasis: 168_705, 'Adhesion Prevention': 393_714, Hernia: 69_599, 'Urinary Incontinence': 25_238 },
+      { month: '6月',  Hemostasis: 490_914, 'Adhesion Prevention': 236_952, Hernia: 70_905, 'Urinary Incontinence': 20_952 },
+      { month: '7月',  Hemostasis: 547_771, 'Adhesion Prevention': 406_286, Hernia: 46_917, 'Urinary Incontinence': 78_025 },
+      { month: '8月',  Hemostasis: 788_743, 'Adhesion Prevention': 520_190, Hernia: 53_016, 'Urinary Incontinence': 69_644 },
+      { month: '9月',  Hemostasis: 292_943, 'Adhesion Prevention': 295_429, Hernia: 88_018, 'Urinary Incontinence': 50_476 },
+      { month: '10月', Hemostasis: 493_676, 'Adhesion Prevention': 392_381, Hernia: 45_485, 'Urinary Incontinence': 123_238 },
+      { month: '11月', Hemostasis: 267_171, 'Adhesion Prevention': 384_571, Hernia: 60_715, 'Urinary Incontinence': 123_238 },
+      { month: '12月', Hemostasis: 168_705, 'Adhesion Prevention': 393_714, Hernia: 75_484, 'Urinary Incontinence': 25_238 },
     ],
   },
   '2026': {
@@ -223,18 +225,24 @@ export const SALES_BY_YEAR: Record<string, YearSalesData> = {
       { month: '2月', rev: 312_628 },
       { month: '3月', rev: 491_659 },
       { month: '4月', rev: 515_167 },
+      { month: '5月', rev: 504_452 },
+      { month: '6月', rev: 242_520 },  // 累積至第二週（6/1–6/11）
     ],
     MONTHLY_BY_HOSPITAL: [
-      { month: '1月', 中心診所: 28_190,  台北醫學: 48_952,  宏恩醫療: 0,      恩主公: 134_571, 沙爾德聖: 349_352 },
-      { month: '2月', 中心診所: 12_381,  台北醫學: 29_048,  宏恩醫療: 90_266, 恩主公: 51_429,  沙爾德聖: 129_505 },
-      { month: '3月', 中心診所: 67_638,  台北醫學: 31_333,  宏恩醫療: 12_190, 恩主公: 58_057,  沙爾德聖: 322_440 },
-      { month: '4月', 中心診所: 40_571,  台北醫學: 112_000, 宏恩醫療: 45_667, 恩主公: 34_857,  沙爾德聖: 282_071 },
+      { month: '1月', 中心診所: 28_190,  台北醫學: 48_952,   宏恩醫療: 0,       恩主公: 134_571, 沙爾德聖: 349_352 },
+      { month: '2月', 中心診所: 12_381,  台北醫學: 29_048,   宏恩醫療: 90_266,  恩主公: 51_429,  沙爾德聖: 129_505 },
+      { month: '3月', 中心診所: 67_638,  台北醫學: 31_333,   宏恩醫療: 12_190,  恩主公: 58_057,  沙爾德聖: 322_440 },
+      { month: '4月', 中心診所: 40_571,  台北醫學: 112_000,  宏恩醫療: 45_667,  恩主公: 34_857,  沙爾德聖: 282_071 },
+      { month: '5月', 中心診所: 18_095,  台北醫學: 160_571,  宏恩醫療: 0,       恩主公: 33_962,  沙爾德聖: 291_824 },
+      { month: '6月', 中心診所: 0,        台北醫學: 60_000,   宏恩醫療: 0,       恩主公: 45_581,  沙爾德聖: 123_966, 台北慈濟: 12_973 },
     ],
     MONTHLY_BY_CATEGORY: [
-      { month: '1月', Hemostasis: 42_990, 'Adhesion Prevention': 455_810, Hernia: 41_314, 'Urinary Incontinence': 20_952 },
-      { month: '2月', Hemostasis: 41_905, 'Adhesion Prevention': 209_143, Hernia: 61_580, 'Urinary Incontinence': 0 },
-      { month: '3月', Hemostasis: 48_438, 'Adhesion Prevention': 337_524, Hernia: 27_411, 'Urinary Incontinence': 78_286 },
-      { month: '4月', Hemostasis: 45_667, 'Adhesion Prevention': 326_286, Hernia: 85_881, 'Urinary Incontinence': 57_333 },
+      { month: '1月', Hemostasis: 42_990,  'Adhesion Prevention': 455_810, Hernia: 41_314,  'Urinary Incontinence': 20_952 },
+      { month: '2月', Hemostasis: 41_905,  'Adhesion Prevention': 209_143, Hernia: 61_580,  'Urinary Incontinence': 0 },
+      { month: '3月', Hemostasis: 48_438,  'Adhesion Prevention': 337_524, Hernia: 27_411,  'Urinary Incontinence': 78_286 },
+      { month: '4月', Hemostasis: 45_667,  'Adhesion Prevention': 326_286, Hernia: 85_881,  'Urinary Incontinence': 57_333 },
+      { month: '5月', Hemostasis: 8_914,   'Adhesion Prevention': 332_571, Hernia: 76_109,  'Urinary Incontinence': 86_858 },
+      { month: '6月', Hemostasis: 8_914,   'Adhesion Prevention': 161_333, Hernia: 72_272,  'Urinary Incontinence': 0 },
     ],
   },
 };
