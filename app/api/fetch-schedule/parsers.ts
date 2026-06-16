@@ -167,7 +167,7 @@ export async function parseClinic(): Promise<ParseResult> {
 }
 
 // ── 土城長庚 ─────────────────────────────────────────────────────────────
-const TUCHENG_DEPTS: Record<string, string> = { V7000A: 'GYN', V2100A: 'GS', V2100E: 'GS', V2600A: 'GU', V3500A: 'ENT' };
+const TUCHENG_DEPTS: Record<string, string> = { V7000A: 'GYN', V2100A: 'GS', V2100E: 'GS', V2600A: 'GU', V3500A: 'ENT', V2200A: 'TS' };
 const DAY_KAN: Record<string, number> = { 日: 0, 一: 1, 二: 2, 三: 3, 四: 4, 五: 5, 六: 6 };
 
 function parseTuchengPage(html: string, dept: string, seen: Set<string>): Clinic[] {
