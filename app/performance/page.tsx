@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
 import Link from 'next/link';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -11,6 +11,7 @@ import {
   type DoctorEntry, type HospProdEntry, type MonthPerf,
 } from '@/data/myPerformance';
 import { SALES_BY_YEAR } from '@/data/salesHistory';
+import { pushToCloud, pullFromCloud } from '@/lib/supabase';
 
 const fmt = (n: number) =>
   n >= 1_000_000 ? `${(n / 1_000_000).toFixed(1)}M`
@@ -26,17 +27,50 @@ const sortByCategory = (prods: HospProdEntry[]) =>
     return diff !== 0 ? diff : b.rev - a.rev;
   });
 
-const lsKey = (month: string, hosp: string, prod: string) =>
-  `perf-doctors-${month}-${hosp}-${prod}`;
+// 醫師資料統一存成單一物件 perf-doctors（key = `${月}-${醫院}-${產品}`），
+// 接上 Supabase 同步，避免動態 key 無法備份、跨裝置/本地線上不一致的問題。
+const PERF_DOCTORS_KEY = 'perf-doctors';
+type PerfDoctorsMap = Record<string, DoctorEntry[]>;
+const subKey = (month: string, hosp: string, prod: string) => `${month}-${hosp}-${prod}`;
 
-const loadDoctors = (month: string, hosp: string, prod: string): DoctorEntry[] => {
-  if (typeof window === 'undefined') return [];
-  try { return JSON.parse(localStorage.getItem(lsKey(month, hosp, prod)) ?? '[]'); }
-  catch { return []; }
+const loadAllDoctors = (): PerfDoctorsMap => {
+  if (typeof window === 'undefined') return {};
+  try { return JSON.parse(localStorage.getItem(PERF_DOCTORS_KEY) ?? '{}'); }
+  catch { return {}; }
 };
 
+const persistAllDoctors = (map: PerfDoctorsMap) => {
+  localStorage.setItem(PERF_DOCTORS_KEY, JSON.stringify(map));
+  pushToCloud('perf-doctors', map);
+};
+
+const loadDoctors = (month: string, hosp: string, prod: string): DoctorEntry[] =>
+  loadAllDoctors()[subKey(month, hosp, prod)] ?? [];
+
 const saveDoctors = (month: string, hosp: string, prod: string, data: DoctorEntry[]) => {
-  localStorage.setItem(lsKey(month, hosp, prod), JSON.stringify(data));
+  const map = loadAllDoctors();
+  if (data.length) map[subKey(month, hosp, prod)] = data;
+  else delete map[subKey(month, hosp, prod)];
+  persistAllDoctors(map);
+};
+
+/** 一次性遷移：把舊版分散的 perf-doctors-{月}-{醫院}-{產品} 個別 key 合併進統一物件並推上雲端 */
+const migrateOldDoctorKeys = (): boolean => {
+  if (typeof window === 'undefined') return false;
+  const map = loadAllDoctors();
+  let changed = false;
+  for (let i = 0; i < localStorage.length; i++) {
+    const k = localStorage.key(i);
+    if (!k || !k.startsWith('perf-doctors-')) continue; // 舊格式（含尾端 dash），排除統一 key 本身
+    const sub = k.slice('perf-doctors-'.length);
+    if (map[sub]?.length) continue; // 已遷移過就不覆蓋
+    try {
+      const v = JSON.parse(localStorage.getItem(k) ?? '[]');
+      if (Array.isArray(v) && v.length) { map[sub] = v; changed = true; }
+    } catch {}
+  }
+  if (changed) persistAllDoctors(map);
+  return changed;
 };
 
 const ChartTip = ({ active, payload, label }: any) => {
@@ -189,6 +223,14 @@ export default function PerformancePage() {
   const [form, setForm] = useState<{ dept: string; name: string; qty: number | string }>({ dept: 'GYN', name: '', qty: 1 });
   const [editingIdx, setEditingIdx] = useState<number | null>(null);
   const refresh = useCallback(() => forceUpdate(n => n + 1), []);
+
+  // 載入時：先從雲端補資料（本機空才補），再把舊版分散 key 遷移合併，最後重繪
+  useEffect(() => {
+    pullFromCloud().then(() => {
+      migrateOldDoctorKeys();
+      refresh();
+    });
+  }, [refresh]);
 
   // 月份篩選資料：null = 整年度累積，否則顯示單月（全部轉為加權業績）
   const monthData = useMemo(() => {
