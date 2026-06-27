@@ -17,6 +17,7 @@ export type HospProdEntry = {
 export type MonthPerf = {
   month: string;          // e.g. '2026-05'
   label: string;          // e.g. '5月'
+  asOf?: string;          // 資料更新至 e.g. '2026-06-25'（未填代表整月已結算）
   revenue: number;
   weighted: number;
   byHospital: Record<string, number>;
@@ -114,6 +115,7 @@ export const MY_PERFORMANCE: MonthPerf[] = [
   {
     month: '2026-06',
     label: '6月',
+    asOf: '2026-06-25',
     revenue: 520_777,
     weighted: 485_284,
     byHospital: {

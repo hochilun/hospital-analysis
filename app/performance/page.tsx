@@ -325,7 +325,19 @@ export default function PerformancePage() {
         <div className="max-w-6xl mx-auto flex items-center justify-between">
           <div>
             <h1 className="text-xl font-bold text-gray-900">個人業績</h1>
-            <p className="text-sm text-gray-500">何季倫 · 2026 年</p>
+            <p className="text-sm text-gray-500">
+              何季倫 · 2026 年
+              {(() => {
+                const a = [...data].reverse().find((m) => m.asOf);
+                if (!a?.asOf) return null;
+                const [, mm, dd] = a.asOf.split('-');
+                return (
+                  <span className="ml-2 text-gray-400">
+                    · 資料更新至 {Number(mm)}/{Number(dd)}
+                  </span>
+                );
+              })()}
+            </p>
           </div>
           <div className="flex items-center gap-3">
             <Link href="/" className="text-sm text-gray-600 hover:text-blue-600">主頁</Link>
