@@ -2,8 +2,9 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Doctor, DoctorGrade, ProductCategory, VisitRecord, ClinicSlot } from '@/types';
-import { getDoctors, deleteDoctor, getHospitalStrategies, saveHospitalStrategy, getProducts, getVisits, getHospitalsData } from '@/lib/storage';
+import { Doctor, DoctorGrade, VisitRecord, ClinicSlot } from '@/types';
+import { visitStatus, freqLabel, VISIT_FREQ_OPTIONS } from '@/lib/visitFrequency';
+import { getDoctors, deleteDoctor, getHospitalStrategies, saveHospitalStrategy, getProducts, getVisits, getHospitalsData, saveDoctor } from '@/lib/storage';
 import { DEPT_LABEL } from '@/data/hospitals';
 import { HOSPITALS } from '@/data/hospitals';
 
@@ -48,40 +49,11 @@ const HOSP_CARD_BG: Record<string, string> = {
   tucheng: 'bg-yellow-50',
 };
 
-const CAT_ZH: Record<string, string> = {
-  'Hemostasis':           '止血',
-  'Adhesion Prevention':  '防沾黏',
-  'Hernia':               '疝氣',
-  'Urinary Incontinence': '泌尿',
-};
-const CAT_COLOR: Record<string, string> = {
-  'Hemostasis':           'bg-blue-600',
-  'Adhesion Prevention':  'bg-emerald-500',
-  'Hernia':               'bg-amber-500',
-  'Urinary Incontinence': 'bg-purple-500',
-};
-const CATEGORIES: ProductCategory[] = ['Hemostasis', 'Adhesion Prevention', 'Hernia', 'Urinary Incontinence'];
-
 // ── 工具函式 ──────────────────────────────────────────────
 
 function monthlyTotal(monthlyData?: Record<string, number>): number {
   if (!monthlyData) return 0;
   return Object.values(monthlyData).reduce((s, v) => s + v, 0);
-}
-
-function doctorCatTotal(doc: Doctor, cat: ProductCategory | 'all'): number {
-  return doc.productTargets.reduce((s, t) => {
-    if (cat !== 'all' && t.category !== cat) return s;
-    return s + monthlyTotal(t.monthlyData);
-  }, 0);
-}
-
-function prodToCat(name: string): ProductCategory {
-  if (name.startsWith('宮安康') || name.startsWith('塞納斯')) return 'Adhesion Prevention';
-  if (name.startsWith('止血')) return 'Hemostasis';
-  if (name.startsWith('賀邁補') || name.startsWith('速巴定') || name.includes('3DMAX') || name.toLowerCase().includes('ventralight')) return 'Hernia';
-  if (name.startsWith('愛沛斯')) return 'Urinary Incontinence';
-  return 'Hemostasis';
 }
 
 // ── 示範資料 seed ─────────────────────────────────────────
@@ -97,46 +69,6 @@ function StrategyField({ hospitalId, initial }: { hospitalId: string; initial: s
       placeholder="輸入目前對此醫院的主要策略..."
       rows={2}
       className="w-full text-sm text-gray-700 placeholder-gray-300 border border-dashed border-gray-200 rounded-lg px-3 py-2 resize-none focus:outline-none focus:border-blue-400 bg-white" />
-  );
-}
-
-function LeaderBoard({ title, cat, doctors, color }: {
-  title: string; cat: ProductCategory | 'all'; doctors: Doctor[]; color: string;
-}) {
-  const ranked = [...doctors]
-    .map(d => ({ d, total: doctorCatTotal(d, cat) }))
-    .filter(x => x.total > 0)
-    .sort((a, b) => b.total - a.total)
-    .slice(0, 5);
-
-  const max = ranked[0]?.total ?? 1;
-
-  return (
-    <div className="bg-white rounded-xl border border-gray-200 p-4 min-w-[180px]">
-      <div className="flex items-center gap-2 mb-3">
-        <span className={`w-2.5 h-2.5 rounded-full ${color}`} />
-        <h3 className="text-xs font-semibold text-gray-700">{title}</h3>
-      </div>
-      {ranked.length === 0 ? (
-        <p className="text-xs text-gray-300 text-center py-3">無資料</p>
-      ) : (
-        <div className="space-y-2">
-          {ranked.map(({ d, total }, i) => (
-            <div key={d.id}>
-              <div className="flex items-center justify-between text-xs mb-0.5">
-                <span className="text-gray-600 truncate max-w-[100px]">
-                  <span className="text-gray-400 mr-1">#{i + 1}</span>{d.name}
-                </span>
-                <span className="font-medium text-gray-800 ml-1">{total}</span>
-              </div>
-              <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                <div className={`h-full rounded-full ${color}`} style={{ width: `${(total / max) * 100}%` }} />
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
   );
 }
 
@@ -158,8 +90,11 @@ export default function CustomersPage() {
   const [filterTags, setFilterTags] = useState<Set<string>>(new Set());
   const [search, setSearch] = useState('');
   const [sortBy, setSortBy] = useState<'hospital' | 'revenue' | 'visit_desc' | 'visit_asc'>('hospital');
+  const [perDay, setPerDay] = useState(6);  // 每天可拜訪客戶數（產能規劃用，存 localStorage）
 
   useEffect(() => {
+    const pd = localStorage.getItem('visit-capacity-per-day');
+    if (pd) setPerDay(Number(pd) || 6);
     setDoctors(getDoctors());
     setStrategies(getHospitalStrategies());
     const prods = getProducts();
@@ -287,17 +222,109 @@ export default function CustomersPage() {
 
       <div className="max-w-5xl mx-auto px-6 py-6 space-y-6">
 
-        {/* ── 排行榜 ── */}
-        <div>
-          <h2 className="text-sm font-semibold text-gray-600 mb-3">業績貢獻排行榜</h2>
-          <div className="grid grid-cols-5 gap-3">
-            {CATEGORIES.map(cat => (
-              <LeaderBoard key={cat} title={CAT_ZH[cat]} cat={cat} doctors={doctors}
-                color={CAT_COLOR[cat]} />
-            ))}
-            <LeaderBoard title="總計" cat="all" doctors={doctors} color="bg-gray-600" />
-          </div>
-        </div>
+        {/* ── 拜訪頻率規劃儀表板（產能評估）── */}
+        {(() => {
+          const FREQS: { days: number; label: string; color: string }[] = [
+            { days: 7,  label: '每週',   color: 'text-red-600' },
+            { days: 14, label: '每兩週', color: 'text-orange-600' },
+            { days: 30, label: '每月',   color: 'text-blue-600' },
+            { days: 90, label: '每季',   color: 'text-violet-600' },
+          ];
+          const countBy = (d: number) => doctors.filter(x => (x.visitFrequencyDays ?? 0) === d).length;
+          const unset = doctors.filter(x => !(x.visitFrequencyDays ?? 0)).length;
+          const weeklyLoad = FREQS.reduce((s, f) => s + countBy(f.days) * (7 / f.days), 0);
+          const capacity = Math.max(perDay, 0) * 5;
+          const util = capacity > 0 ? Math.round((weeklyLoad / capacity) * 100) : 0;
+          const over = weeklyLoad > capacity;
+          const barColor = over ? 'bg-red-500' : util >= 80 ? 'bg-yellow-400' : 'bg-emerald-500';
+          return (
+            <div className="bg-white rounded-xl border border-gray-200 p-5">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-sm font-semibold text-gray-700">拜訪頻率規劃</h2>
+                <div className="flex items-center gap-2 text-xs text-gray-500">
+                  每天可拜訪
+                  <input type="number" min={1} value={perDay}
+                    onChange={e => { const n = Number(e.target.value) || 0; setPerDay(n); localStorage.setItem('visit-capacity-per-day', String(n)); }}
+                    className="w-14 border border-gray-300 rounded-md px-2 py-1 text-center text-gray-800 focus:outline-none focus:ring-1 focus:ring-blue-400" />
+                  位 → 每週量能 <span className="font-bold text-gray-700">{capacity}</span> 位
+                </div>
+              </div>
+
+              <div className="grid grid-cols-5 gap-3 mb-4">
+                {FREQS.map(f => {
+                  const n = countBy(f.days);
+                  const load = n * (7 / f.days);
+                  return (
+                    <div key={f.days} className="rounded-lg border border-gray-100 bg-gray-50/60 p-3 text-center">
+                      <div className="text-xs text-gray-400">{f.label}</div>
+                      <div className={`text-2xl font-black ${f.color}`}>{n}</div>
+                      <div className="text-[11px] text-gray-400 mt-0.5">≈ {load.toFixed(1)} 次/週</div>
+                    </div>
+                  );
+                })}
+                <div className="rounded-lg border border-gray-100 bg-gray-50/60 p-3 text-center">
+                  <div className="text-xs text-gray-400">未設定</div>
+                  <div className="text-2xl font-black text-gray-300">{unset}</div>
+                  <div className="text-[11px] text-gray-300 mt-0.5">未納入規劃</div>
+                </div>
+              </div>
+
+              <div>
+                <div className="flex items-baseline justify-between mb-1.5">
+                  <span className="text-xs text-gray-500">每週所需拜訪量</span>
+                  <span className="text-sm">
+                    <span className={`font-black ${over ? 'text-red-600' : 'text-gray-800'}`}>{weeklyLoad.toFixed(1)}</span>
+                    <span className="text-gray-400"> / {capacity} 位　({util}%)</span>
+                  </span>
+                </div>
+                <div className="h-3 bg-gray-100 rounded-full overflow-hidden">
+                  <div className={`h-full rounded-full transition-all ${barColor}`} style={{ width: `${Math.min(util, 100)}%` }} />
+                </div>
+                <p className={`text-xs mt-1.5 font-medium ${over ? 'text-red-600' : util >= 80 ? 'text-yellow-600' : 'text-emerald-600'}`}>
+                  {over
+                    ? `⚠️ 已超過量能 ${(weeklyLoad - capacity).toFixed(1)} 位／週，建議降低部分客戶頻率或減少客戶數`
+                    : util >= 80
+                      ? `接近滿載，量能還剩 ${(capacity - weeklyLoad).toFixed(1)} 位／週`
+                      : `✓ 規劃合理，量能還有 ${(capacity - weeklyLoad).toFixed(1)} 位／週`}
+                </p>
+              </div>
+            </div>
+          );
+        })()}
+
+        {/* ── 需跟進客戶（超過拜訪頻率目標）── */}
+        {(() => {
+          const today = new Date();
+          const list = doctors
+            .map(d => ({ d, st: visitStatus(d.visitFrequencyDays, lastVisitMap[d.id]?.date, today) }))
+            .filter(x => x.st.state === 'overdue' || x.st.state === 'never')
+            .sort((a, b) => {
+              if (a.st.state !== b.st.state) return a.st.state === 'overdue' ? -1 : 1;
+              return b.st.overdueBy - a.st.overdueBy;
+            });
+          if (list.length === 0) return null;
+          return (
+            <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
+              <h2 className="text-sm font-semibold text-amber-800 mb-3 flex items-center gap-2">
+                ⚠️ 需跟進客戶
+                <span className="text-xs font-normal text-amber-600">{list.length} 位已超過拜訪頻率目標</span>
+              </h2>
+              <div className="flex flex-wrap gap-2">
+                {list.map(({ d, st }) => (
+                  <Link key={d.id} href={`/customers/${d.id}`}
+                    className="flex items-center gap-2 bg-white border border-amber-200 rounded-lg px-3 py-1.5 hover:border-amber-400 transition-colors">
+                    <span className="text-sm font-medium text-gray-800">{d.name}</span>
+                    {d.department && <span className="text-[10px] text-gray-500 bg-gray-100 px-1 rounded">{DEPT_LABEL[d.department] ?? d.department}</span>}
+                    <span className="text-xs font-semibold text-red-500">
+                      {st.state === 'never' ? '從未拜訪' : `逾期 ${st.overdueBy} 天`}
+                    </span>
+                    <span className="text-[10px] text-gray-400">目標{freqLabel(st.freqDays)}</span>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          );
+        })()}
 
         {/* ── 醫院策略 (可折疊) ── */}
         <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
@@ -449,7 +476,7 @@ export default function CustomersPage() {
           {filtered.length === 0 ? (
             <p className="text-center text-gray-400 py-10">找不到符合的醫師</p>
           ) : (
-            filtered.map(doc => <DoctorCard key={doc.id} doc={doc} lastVisit={lastVisitMap[doc.id]} clinicSummary={clinicMap[doc.name]} priceMap={priceMap} onDelete={handleDelete} />)
+            filtered.map(doc => <DoctorCard key={doc.id} doc={doc} lastVisit={lastVisitMap[doc.id]} clinicSummary={clinicMap[doc.name]} priceMap={priceMap} onDelete={handleDelete} onChanged={reload} />)
           )}
         </div>
       </div>
@@ -459,10 +486,11 @@ export default function CustomersPage() {
 
 // ── DoctorCard ────────────────────────────────────────────
 
-function DoctorCard({ doc, lastVisit, clinicSummary, priceMap, onDelete }: {
+function DoctorCard({ doc, lastVisit, clinicSummary, priceMap, onDelete, onChanged }: {
   doc: Doctor; lastVisit?: VisitRecord; clinicSummary?: string;
   priceMap: Record<string, { base: number; byHosp: Record<string, number> }>;
   onDelete: (id: string, name: string) => void;
+  onChanged: () => void;
 }) {
   const g = doc.grade ? GRADE_STYLE[doc.grade] : null;
   const allHospIds = doc.hospitalIds ?? (doc.hospitalId ? [doc.hospitalId] : []);
@@ -495,6 +523,7 @@ function DoctorCard({ doc, lastVisit, clinicSummary, priceMap, onDelete }: {
     return Math.floor((today.getTime() - visitDay.getTime()) / 86400000);
   })();
   const staleness = daysSince === null ? 'none' : daysSince > 30 ? 'red' : daysSince > 14 ? 'yellow' : 'green';
+  const fStatus = visitStatus(doc.visitFrequencyDays, lastVisit?.date);
 
   return (
     <div className={`${cardBg} rounded-lg border border-gray-100 pl-0 overflow-hidden flex ${borderClass}`}>
@@ -514,6 +543,15 @@ function DoctorCard({ doc, lastVisit, clinicSummary, priceMap, onDelete }: {
               </span>
             );
           })}
+          {fStatus.state === 'overdue' && (
+            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-red-100 text-red-600">🔴 逾期 {fStatus.overdueBy} 天</span>
+          )}
+          {fStatus.state === 'never' && (
+            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-red-100 text-red-600">🔴 從未拜訪</span>
+          )}
+          {fStatus.state === 'soon' && (
+            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-yellow-100 text-yellow-700">🟡 快到期</span>
+          )}
         </div>
         {doc.productTargets.length > 0 && (
           <div className="flex gap-2 mt-1 flex-wrap">
@@ -566,6 +604,18 @@ function DoctorCard({ doc, lastVisit, clinicSummary, priceMap, onDelete }: {
         </div>
       </Link>
       <div className="flex items-center gap-3 px-4 shrink-0">
+        <div className="text-center">
+          <select
+            value={doc.visitFrequencyDays ?? 0}
+            onChange={e => { saveDoctor({ ...doc, visitFrequencyDays: Number(e.target.value) }); onChanged(); }}
+            className={`text-xs border rounded-md px-1.5 py-1 bg-white focus:outline-none focus:ring-1 focus:ring-blue-400 ${
+              (doc.visitFrequencyDays ?? 0) > 0 ? 'border-gray-300 text-gray-700' : 'border-gray-200 text-gray-400'
+            }`}
+          >
+            {VISIT_FREQ_OPTIONS.map(o => <option key={o.days} value={o.days}>{o.label}</option>)}
+          </select>
+          <div className="text-[10px] text-gray-400 mt-0.5">拜訪頻率</div>
+        </div>
         {monthlyRev > 0 && (
           <div className="text-center">
             <div className="text-sm font-bold text-blue-600">

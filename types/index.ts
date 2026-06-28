@@ -87,6 +87,7 @@ export type Doctor = {
   visitHabit: string;
   attitude: string;
   visitPlan: string;
+  visitFrequencyDays?: number;  // 目標拜訪頻率（天數，0/未設=不設定）
   productTargets: ProductTarget[];
   monthlyInvestment: number;
   extraClinicSlots: ExtraClinicSlot[];

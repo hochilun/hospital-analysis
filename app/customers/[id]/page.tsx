@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { Doctor, VisitRecord, ExtraClinicSlot, ClinicSlot, TodoItem } from '@/types';
 import { getDoctors, saveDoctor, getVisits, saveVisit, deleteVisit, getHospitalsData, getProducts } from '@/lib/storage';
 import { HOSPITALS } from '@/data/hospitals';
+import { visitStatus, freqLabel } from '@/lib/visitFrequency';
 
 function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2); }
 
@@ -287,6 +288,24 @@ export default function CustomerDetailPage() {
           {doctor.visitHabit && <div className="mt-3 pt-3 border-t border-gray-100"><p className="text-xs text-gray-400 mb-1">拜訪習慣模式</p><p className="text-sm text-blue-700 whitespace-pre-wrap font-medium">{doctor.visitHabit}</p></div>}
           {doctor.attitude && <div className="mt-3 pt-3 border-t border-gray-100"><p className="text-xs text-gray-400 mb-1">對產品的態度</p><p className="text-sm text-gray-700 whitespace-pre-wrap">{doctor.attitude}</p></div>}
           {doctor.visitPlan && <div className="mt-3 pt-3 border-t border-gray-100"><p className="text-xs text-gray-400 mb-1">拜訪目標 / 策略</p><p className="text-sm text-gray-700 whitespace-pre-wrap">{doctor.visitPlan}</p></div>}
+          {(doctor.visitFrequencyDays ?? 0) > 0 && (() => {
+            const st = visitStatus(doctor.visitFrequencyDays, visits[0]?.date);
+            const tone = st.state === 'overdue' || st.state === 'never' ? 'text-red-600'
+              : st.state === 'soon' ? 'text-yellow-600' : 'text-green-600';
+            const msg = st.state === 'never' ? '尚未拜訪過'
+              : st.state === 'overdue' ? `已逾期 ${st.overdueBy} 天（距上次 ${st.daysSince} 天）`
+              : st.state === 'soon' ? `即將到期（距上次 ${st.daysSince} 天）`
+              : `正常（距上次 ${st.daysSince} 天）`;
+            return (
+              <div className="mt-3 pt-3 border-t border-gray-100">
+                <p className="text-xs text-gray-400 mb-1">拜訪頻率目標</p>
+                <p className="text-sm">
+                  <span className="font-medium text-gray-700">{freqLabel(doctor.visitFrequencyDays)}</span>
+                  <span className={`ml-2 font-semibold ${tone}`}>· {msg}</span>
+                </p>
+              </div>
+            );
+          })()}
         </div>
 
         {/* 標籤 */}

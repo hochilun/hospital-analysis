@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { Doctor, DoctorGrade, Product, ProductTarget, ProductCategory } from '@/types';
 import { saveDoctor, getProducts } from '@/lib/storage';
 import { HOSPITALS, DEPT_LABEL } from '@/data/hospitals';
+import { VISIT_FREQ_OPTIONS } from '@/lib/visitFrequency';
 
 function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2); }
 
@@ -27,6 +28,7 @@ function NewCustomerForm() {
     name: '', grade: '' as DoctorGrade,
     department: '', title: '', phone: '',
     habits: '', visitHabit: '', attitude: '', visitPlan: '', monthlyInvestment: '',
+    visitFrequencyDays: 0,
   });
   const [hospitalIds, setHospitalIds] = useState<string[]>(
     prefilledHospitalId ? [prefilledHospitalId] : []
@@ -39,7 +41,7 @@ function NewCustomerForm() {
   const toggleHospital = (hid: string) =>
     setHospitalIds(prev => prev.includes(hid) ? prev.filter(x => x !== hid) : [...prev, hid]);
 
-  const set = (k: string, v: string) => setForm(f => ({ ...f, [k]: v }));
+  const set = (k: string, v: string | number) => setForm(f => ({ ...f, [k]: v }));
 
   const addTarget = () => setTargets(t => [...t, { productId: '', productName: '', targetQty: 0, unit: '個', monthlyData: {} }]);
   const selectProduct = (i: number, productId: string) => {
@@ -75,6 +77,7 @@ function NewCustomerForm() {
       visitHabit: form.visitHabit,
       attitude: form.attitude,
       visitPlan: form.visitPlan,
+      visitFrequencyDays: form.visitFrequencyDays,
       productTargets: targets,
       monthlyInvestment: parseFloat(form.monthlyInvestment) || 0,
       extraClinicSlots: [],
@@ -176,6 +179,12 @@ function NewCustomerForm() {
             <div>
               <label className="text-xs text-gray-500">拜訪習慣模式</label>
               <textarea className="input-field mt-1 h-20" placeholder="例：每週四早上門診前，可以買早餐過去給他..." value={form.visitHabit} onChange={e => set('visitHabit', e.target.value)} />
+            </div>
+            <div>
+              <label className="text-xs text-gray-500">拜訪頻率目標</label>
+              <select className="input-field mt-1" value={form.visitFrequencyDays} onChange={e => set('visitFrequencyDays', Number(e.target.value))}>
+                {VISIT_FREQ_OPTIONS.map(o => <option key={o.days} value={o.days}>{o.label}</option>)}
+              </select>
             </div>
             <div>
               <label className="text-xs text-gray-500">對產品的態度</label>
