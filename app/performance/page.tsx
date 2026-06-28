@@ -215,6 +215,7 @@ export default function PerformancePage() {
     ? data[0].label
     : `${data[0].label}–${data[data.length - 1].label}`;
 
+  const [viewMode, setViewMode] = useState<'month' | 'hospital'>('month');
   const [selectedHosp, setSelectedHosp] = useState<string>(ALL);
   const [selectedProd, setSelectedProd] = useState<string | null>(null);
   const [selectedMonth, setSelectedMonth] = useState<string | null>(null);
@@ -222,10 +223,13 @@ export default function PerformancePage() {
   const [addingTo, setAddingTo] = useState<{ prod: string } | null>(null);
   const [form, setForm] = useState<{ dept: string; name: string; qty: number | string }>({ dept: 'GYN', name: '', qty: 1 });
   const [editingIdx, setEditingIdx] = useState<number | null>(null);
+  const [expandedDoc, setExpandedDoc] = useState<string | null>(null);
+  const [mounted, setMounted] = useState(false);  // 避免 localStorage 造成 SSR/client hydration 不一致
   const refresh = useCallback(() => forceUpdate(n => n + 1), []);
 
   // 載入時：先從雲端補資料（本機空才補），再把舊版分散 key 遷移合併，最後重繪
   useEffect(() => {
+    setMounted(true);
     pullFromCloud().then(() => {
       migrateOldDoctorKeys();
       refresh();
@@ -280,6 +284,26 @@ export default function PerformancePage() {
       .map(([name, rev]) => ({ name, [latest.label]: rev }));
   }, [latest]);
 
+  // 依醫院模式：選定醫院的每月加權業績走勢
+  const hospTrend = useMemo(() => {
+    return data.map(m => {
+      const w = toWeighted(m);
+      const rev = selectedHosp === ALL ? w.revenue : (w.byHospital[selectedHosp] ?? 0);
+      return { label: m.label, 業績: Math.round(rev) };
+    });
+  }, [data, selectedHosp]);
+
+  // 切換檢視模式：進「依醫院」時，詳情需要具體月份＋具體醫院，補上預設值
+  const switchMode = (mode: 'month' | 'hospital') => {
+    setViewMode(mode);
+    setAddingTo(null);
+    setSelectedProd(null);
+    if (mode === 'hospital') {
+      if (selectedMonth === null) setSelectedMonth(latest.label);
+      if (selectedHosp === ALL && latestHospData[0]) setSelectedHosp(latestHospData[0].name);
+    }
+  };
+
   const hospList = Object.keys(monthData.byHospital);
   const isAll = selectedHosp === ALL;
 
@@ -304,6 +328,7 @@ export default function PerformancePage() {
 
   // 讀取單一醫院＋產品的醫師資料（可跨月合計）
   const loadDoctorsForPeriod = (hosp: string, prod: string): DoctorEntry[] => {
+    if (!mounted) return [];  // 掛載前回傳空，與 SSR 一致避免 hydration mismatch
     const map: Record<string, DoctorEntry> = {};
     for (const mk of months4Doctors) {
       for (const d of loadDoctors(mk, hosp, prod)) {
@@ -330,6 +355,26 @@ export default function PerformancePage() {
       }
     }
     return Object.values(map).sort((a, b) => b.qty - a.qty);
+  })();
+
+  // 醫師業績排行榜：反推每位醫師的業績貢獻（產品業績 × 該醫師佔該產品數量比例）
+  type DocLB = { name: string; dept: string; qty: number; rev: number; products: { name: string; qty: number; rev: number; hosp: string }[] };
+  const doctorLeaderboard: DocLB[] = (() => {
+    const targetHosps = isAll ? hospList : [selectedHosp];
+    const agg: Record<string, DocLB> = {};
+    for (const h of targetHosps) {
+      for (const p of (monthData.hospitalProducts[h] ?? [])) {
+        for (const d of loadDoctorsForPeriod(h, p.name)) {
+          const revShare = p.qty > 0 ? Math.round(p.rev * d.qty / p.qty) : 0;
+          const key = `${d.dept}|${d.name}`;
+          if (!agg[key]) agg[key] = { name: d.name, dept: d.dept, qty: 0, rev: 0, products: [] };
+          agg[key].qty += d.qty;
+          agg[key].rev += revShare;
+          agg[key].products.push({ name: p.name, qty: d.qty, rev: revShare, hosp: h });
+        }
+      }
+    }
+    return Object.values(agg).sort((a, b) => b.rev - a.rev);
   })();
 
   const handleAdd = (prod: string) => {
@@ -360,6 +405,43 @@ export default function PerformancePage() {
     setEditingIdx(idx);
     setForm({ dept: entry.dept, name: entry.name, qty: entry.qty });
   };
+
+  // 醫院選擇 pills（依月份／依醫院兩種模式共用）
+  const hospPills = (
+    <div className="flex gap-3 flex-wrap">
+      <button
+        onClick={() => { setSelectedHosp(ALL); setAddingTo(null); setSelectedProd(null); }}
+        className={`flex items-center gap-3 px-5 py-3 rounded-2xl border-2 text-sm font-medium transition-all ${
+          isAll ? 'border-blue-500 bg-blue-50 text-blue-700 shadow-sm' : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300'
+        }`}
+      >
+        <div className="w-2 h-2 rounded-full bg-gray-400" />
+        <span>全部</span>
+        <span className={`text-xs ${isAll ? 'text-blue-500' : 'text-gray-400'}`}>
+          {fmtMoney(monthData.revenue)} · 100%
+        </span>
+      </button>
+      {hospList.map(hosp => {
+        const rev = monthData.byHospital[hosp];
+        const pct = Math.round((rev / monthData.revenue) * 100);
+        const isActive = hosp === selectedHosp;
+        return (
+          <button key={hosp}
+            onClick={() => { setSelectedHosp(hosp); setAddingTo(null); setSelectedProd(null); }}
+            className={`flex items-center gap-3 px-5 py-3 rounded-2xl border-2 text-sm font-medium transition-all ${
+              isActive ? 'border-blue-500 bg-blue-50 text-blue-700 shadow-sm' : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300'
+            }`}
+          >
+            <div className="w-2 h-2 rounded-full" style={{ background: HOSP_COLOR[hosp] ?? '#94a3b8' }} />
+            <span>{hosp}</span>
+            <span className={`text-xs ${isActive ? 'text-blue-500' : 'text-gray-400'}`}>
+              {fmtMoney(rev)} · {pct}%
+            </span>
+          </button>
+        );
+      })}
+    </div>
+  );
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -470,59 +552,90 @@ export default function PerformancePage() {
           </div>
         </div>
 
-        {/* 醫院選擇器（月份篩選） */}
+        {/* 檢視模式切換 + 篩選 */}
         <div>
           <div className="flex items-center gap-2 mb-3">
-            <span className="text-xs text-gray-400 font-medium">月份篩選：</span>
-            {[null, ...data.map(d => d.label)].map(mo => (
-              <button key={mo ?? 'all'}
-                onClick={() => { setSelectedMonth(mo); setAddingTo(null); setSelectedProd(null); }}
+            <span className="text-xs text-gray-400 font-medium">檢視方式：</span>
+            {([['month', '依月份'], ['hospital', '依醫院']] as const).map(([m, label]) => (
+              <button key={m}
+                onClick={() => switchMode(m)}
                 className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
-                  selectedMonth === mo
-                    ? 'bg-gray-900 text-white'
+                  viewMode === m
+                    ? 'bg-blue-600 text-white'
                     : 'bg-white border border-gray-200 text-gray-500 hover:border-gray-400'
                 }`}
               >
-                {mo === null ? '整年度' : mo}
+                {label}
               </button>
             ))}
           </div>
-          <p className="text-xs text-gray-400 font-medium mb-2 uppercase tracking-wide">
-            選擇醫院查看詳情（{selectedMonth ? selectedMonth : `${ytdLabel} 累積`}）
-          </p>
-          <div className="flex gap-3 flex-wrap">
-            <button
-              onClick={() => { setSelectedHosp(ALL); setAddingTo(null); setSelectedProd(null); }}
-              className={`flex items-center gap-3 px-5 py-3 rounded-2xl border-2 text-sm font-medium transition-all ${
-                isAll ? 'border-blue-500 bg-blue-50 text-blue-700 shadow-sm' : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300'
-              }`}
-            >
-              <div className="w-2 h-2 rounded-full bg-gray-400" />
-              <span>全部</span>
-              <span className={`text-xs ${isAll ? 'text-blue-500' : 'text-gray-400'}`}>
-                {fmtMoney(monthData.revenue)} · 100%
-              </span>
-            </button>
-            {hospList.map(hosp => {
-              const rev = monthData.byHospital[hosp];
-              const pct = Math.round((rev / monthData.revenue) * 100);
-              const isActive = hosp === selectedHosp;
-              return (
-                <button key={hosp}
-                  onClick={() => { setSelectedHosp(hosp); setAddingTo(null); setSelectedProd(null); }}
-                  className={`flex items-center gap-3 px-5 py-3 rounded-2xl border-2 text-sm font-medium transition-all ${
-                    isActive ? 'border-blue-500 bg-blue-50 text-blue-700 shadow-sm' : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300'
-                  }`}
-                >
-                  <div className="w-2 h-2 rounded-full" style={{ background: HOSP_COLOR[hosp] ?? '#94a3b8' }} />
-                  <span>{hosp}</span>
-                  <span className={`text-xs ${isActive ? 'text-blue-500' : 'text-gray-400'}`}>
-                    {fmtMoney(rev)} · {pct}%
-                  </span>
-                </button>
-              );
-            })}
-          </div>
+
+          {viewMode === 'month' ? (
+            <>
+              {/* 依月份：先選月份 → 再選醫院看詳情 */}
+              <div className="flex items-center gap-2 mb-3">
+                <span className="text-xs text-gray-400 font-medium">月份篩選：</span>
+                {[null, ...data.map(d => d.label)].map(mo => (
+                  <button key={mo ?? 'all'}
+                    onClick={() => { setSelectedMonth(mo); setAddingTo(null); setSelectedProd(null); }}
+                    className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
+                      selectedMonth === mo
+                        ? 'bg-gray-900 text-white'
+                        : 'bg-white border border-gray-200 text-gray-500 hover:border-gray-400'
+                    }`}
+                  >
+                    {mo === null ? '整年度' : mo}
+                  </button>
+                ))}
+              </div>
+              <p className="text-xs text-gray-400 font-medium mb-2 uppercase tracking-wide">
+                選擇醫院查看詳情（{selectedMonth ? selectedMonth : `${ytdLabel} 累積`}）
+              </p>
+              {hospPills}
+            </>
+          ) : (
+            <>
+              {/* 依醫院：先選醫院 → 看該院每月走勢 → 再選月份看詳情 */}
+              <p className="text-xs text-gray-400 font-medium mb-2 uppercase tracking-wide">
+                選擇醫院查看每月走勢
+              </p>
+              {hospPills}
+
+              <div className="bg-white rounded-2xl border border-gray-100 p-6 mt-4">
+                <h2 className="text-base font-semibold text-gray-800 mb-4">
+                  {isAll ? '全部醫院' : selectedHosp} · 每月業績走勢（加權）
+                </h2>
+                <ResponsiveContainer width="100%" height={220}>
+                  <LineChart data={hospTrend} margin={{ top: 8, right: 16, left: 0, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" vertical={false} />
+                    <XAxis dataKey="label" tick={{ fontSize: 12, fill: '#9ca3af' }} axisLine={false} tickLine={false} />
+                    <YAxis tickFormatter={fmt} tick={{ fontSize: 11, fill: '#9ca3af' }} axisLine={false} tickLine={false} width={48} />
+                    <Tooltip content={<ChartTip />} />
+                    <Line type="monotone" dataKey="業績"
+                      stroke={isAll ? '#3b82f6' : (HOSP_COLOR[selectedHosp] ?? '#3b82f6')} strokeWidth={2.5}
+                      dot={{ r: 4, fill: isAll ? '#3b82f6' : (HOSP_COLOR[selectedHosp] ?? '#3b82f6'), strokeWidth: 0 }}
+                      activeDot={{ r: 6 }} />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+
+              <div className="flex items-center gap-2 mt-4">
+                <span className="text-xs text-gray-400 font-medium">查看月份詳情：</span>
+                {data.map(d => d.label).map(mo => (
+                  <button key={mo}
+                    onClick={() => { setSelectedMonth(mo); setAddingTo(null); setSelectedProd(null); }}
+                    className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
+                      selectedMonth === mo
+                        ? 'bg-gray-900 text-white'
+                        : 'bg-white border border-gray-200 text-gray-500 hover:border-gray-400'
+                    }`}
+                  >
+                    {mo}
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
         </div>
 
         {/* 品類圓餅 + 產品明細 */}
@@ -667,6 +780,71 @@ export default function PerformancePage() {
               );
             })}
           </div>
+        </div>
+
+        {/* 醫師業績排行榜 */}
+        <div className="bg-white rounded-2xl border border-gray-100 p-6">
+          <div className="flex items-baseline justify-between mb-4">
+            <h2 className="text-base font-semibold text-gray-800">醫師使用分析</h2>
+            <span className="text-xs text-gray-400">{isAll ? '全部醫院' : selectedHosp} · {periodLabel} · 依業績排行</span>
+          </div>
+          {!mounted ? (
+            <p className="text-sm text-gray-300 py-6 text-center">載入中…</p>
+          ) : doctorLeaderboard.length === 0 ? (
+            <p className="text-sm text-gray-400 py-6 text-center">尚未輸入使用醫師資料，可至上方各產品「+ 新增醫師」</p>
+          ) : (
+            <div className="space-y-2">
+              {doctorLeaderboard.map((d, i) => {
+                const maxRev = doctorLeaderboard[0].rev || 1;
+                const pct = Math.round((d.rev / maxRev) * 100);
+                const key = `${d.dept}|${d.name}`;
+                const isExp = expandedDoc === key;
+                return (
+                  <div key={key} className="border border-gray-100 rounded-xl overflow-hidden">
+                    <button onClick={() => setExpandedDoc(isExp ? null : key)}
+                      className="w-full flex items-center gap-3 p-3 text-left hover:bg-gray-50/60 transition-colors">
+                      <span className={`text-sm font-bold w-6 text-center ${i === 0 ? 'text-amber-500' : i === 1 ? 'text-gray-400' : i === 2 ? 'text-orange-400' : 'text-gray-300'}`}>
+                        {i < 3 ? ['🥇', '🥈', '🥉'][i] : i + 1}
+                      </span>
+                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium min-w-[52px] text-center ${DEPT_COLOR_MAP[d.dept] ?? 'bg-gray-100 text-gray-600'}`}>
+                        {DEPT_LABEL[d.dept] ?? d.dept}
+                      </span>
+                      <span className="text-sm font-semibold text-gray-800 w-20 shrink-0">{d.name}</span>
+                      <div className="flex-1 flex items-center gap-3 min-w-0">
+                        <div className="flex-1 h-2.5 bg-gray-100 rounded-full overflow-hidden">
+                          <div className="h-full rounded-full bg-blue-500 transition-all" style={{ width: `${pct}%` }} />
+                        </div>
+                        <span className="text-sm font-bold text-gray-900 w-20 text-right">{fmtMoney(d.rev)}</span>
+                      </div>
+                      <span className="text-xs text-gray-400 w-10 text-right shrink-0">{d.qty} 件</span>
+                      <span className="text-gray-300 text-xs w-3">{isExp ? '▾' : '▸'}</span>
+                    </button>
+                    <div className="px-3 pb-3 pl-12">
+                      {!isExp ? (
+                        <p className="text-xs text-gray-400 -mt-1">
+                          {d.products.map(p => `${p.name} ${p.qty}件`).join(' · ')}
+                        </p>
+                      ) : (
+                        <div className="space-y-1 pt-1">
+                          {d.products.map((p, idx) => (
+                            <div key={idx} className="flex items-center justify-between text-sm">
+                              <span className="text-gray-600">
+                                {p.name}{isAll && <span className="text-gray-400 text-xs ml-1">@{p.hosp}</span>}
+                              </span>
+                              <div className="flex gap-3 items-center">
+                                <span className="text-gray-400 text-xs">{p.qty} 件</span>
+                                <span className="font-semibold text-gray-800 w-20 text-right">{fmtMoney(p.rev)}</span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
 
         {/* 醫師用量排行 */}
