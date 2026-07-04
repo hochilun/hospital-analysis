@@ -8,6 +8,7 @@ import {
 } from 'recharts';
 import {
   MY_PERFORMANCE, CAT_ZH, CAT_COLOR, HOSP_COLOR, DEPT_LABEL,
+  SHARED_HOSPITALS, SHARED_PERFORMANCE,
   type DoctorEntry, type HospProdEntry, type MonthPerf,
 } from '@/data/myPerformance';
 import { SALES_BY_YEAR } from '@/data/salesHistory';
@@ -72,6 +73,129 @@ const migrateOldDoctorKeys = (): boolean => {
   if (changed) persistAllDoctors(map);
   return changed;
 };
+
+// ── 認領：共跑醫院（北慈/土長）Mars 只認領自己的那幾支 ─────────────────────
+// perf-claims：單一物件，key = `${月}-${醫院}-${產品}` → 我的支數，接 Supabase 同步。
+const PERF_CLAIMS_KEY = 'perf-claims';
+type ClaimsMap = Record<string, number>;
+const isShared = (h: string) => (SHARED_HOSPITALS as readonly string[]).includes(h);
+
+const loadClaims = (): ClaimsMap => {
+  if (typeof window === 'undefined') return {};
+  try { return JSON.parse(localStorage.getItem(PERF_CLAIMS_KEY) ?? '{}'); }
+  catch { return {}; }
+};
+const getClaim = (claims: ClaimsMap, month: string, hosp: string, prod: string): number =>
+  claims[subKey(month, hosp, prod)] ?? 0;
+const saveClaim = (month: string, hosp: string, prod: string, myQty: number) => {
+  const map = loadClaims();
+  const k = subKey(month, hosp, prod);
+  if (myQty > 0) map[k] = myQty; else delete map[k];
+  localStorage.setItem(PERF_CLAIMS_KEY, JSON.stringify(map));
+  pushToCloud('perf-claims', map);
+};
+
+// 共跑醫院視圖：整院產品逐列，附我的認領支數／認領後金額
+export type SharedProdView = HospProdEntry & { gross: number; grossQty: number; mine: number; shared: true };
+
+// 單月的「已認領共跑業績」聚合（金額皆為加權業績）
+function claimedSharedMonth(monthKey: string, claims: ClaimsMap) {
+  const byHospital: Record<string, number> = {};      // 認領加權
+  const byHospitalRev: Record<string, number> = {};   // 認領應收
+  const hospitalProducts: Record<string, SharedProdView[]> = {};
+  const byCategory: Record<string, number> = {};
+  const byProductMap: Record<string, HospProdEntry> = {};
+  let weightedTotal = 0, revTotal = 0;
+  const src = SHARED_PERFORMANCE[monthKey];
+  if (!src) return { byHospital, byHospitalRev, hospitalProducts, byCategory, byProduct: [] as HospProdEntry[], weightedTotal, revTotal };
+  for (const [hosp, prods] of Object.entries(src)) {
+    byHospital[hosp] = 0;   // 共跑醫院一律列出（即使尚未認領），讓使用者能點進去認領
+    byHospitalRev[hosp] = 0;
+    const views: SharedProdView[] = [];
+    for (const p of prods) {
+      const grossW = p.weighted ?? p.rev;
+      const mine = Math.min(getClaim(claims, monthKey, hosp, p.name), p.qty);
+      const ratio = p.qty > 0 ? mine / p.qty : 0;
+      const cw = Math.round(grossW * ratio);   // 認領加權
+      const cr = Math.round(p.rev * ratio);    // 認領應收
+      views.push({ name: p.name, category: p.category, qty: mine, rev: cw, weighted: cw, gross: grossW, grossQty: p.qty, mine, shared: true });
+      if (cw > 0) {
+        byHospital[hosp] += cw;
+        byHospitalRev[hosp] += cr;
+        byCategory[p.category] = (byCategory[p.category] ?? 0) + cw;
+        if (byProductMap[p.name]) { byProductMap[p.name] = { ...byProductMap[p.name], qty: byProductMap[p.name].qty + mine, rev: byProductMap[p.name].rev + cw }; }
+        else byProductMap[p.name] = { name: p.name, category: p.category, qty: mine, rev: cw };
+        weightedTotal += cw; revTotal += cr;
+      }
+    }
+    hospitalProducts[hosp] = views;
+  }
+  return { byHospital, byHospitalRev, hospitalProducts, byCategory, byProduct: Object.values(byProductMap), weightedTotal, revTotal };
+}
+
+// 單月「有效業績」= 獨跑醫院全額（加權）+ 共跑醫院已認領部分
+function effectiveMonth(m: MonthPerf, claims: ClaimsMap) {
+  const w = toWeighted(m);
+  const cs = claimedSharedMonth(m.month, claims);
+  const byHospital: Record<string, number> = {};
+  const hospitalProducts: Record<string, HospProdEntry[]> = {};
+  for (const [h, v] of Object.entries(w.byHospital)) if (!isShared(h)) byHospital[h] = v;
+  for (const [h, prods] of Object.entries(w.hospitalProducts)) if (!isShared(h)) hospitalProducts[h] = prods;
+  const byCategory: Record<string, number> = { ...w.byCategory };
+  for (const [h, v] of Object.entries(cs.byHospital)) byHospital[h] = v;
+  for (const [h, prods] of Object.entries(cs.hospitalProducts)) hospitalProducts[h] = prods;
+  for (const [c, v] of Object.entries(cs.byCategory)) byCategory[c] = (byCategory[c] ?? 0) + v;
+  const bpMap: Record<string, HospProdEntry> = {};
+  for (const p of w.byProduct) bpMap[p.name] = { ...p };
+  for (const p of cs.byProduct) {
+    if (bpMap[p.name]) bpMap[p.name] = { ...bpMap[p.name], qty: bpMap[p.name].qty + p.qty, rev: bpMap[p.name].rev + p.rev };
+    else bpMap[p.name] = { ...p };
+  }
+  const byProduct = Object.values(bpMap).sort((a, b) => b.rev - a.rev);
+  const weighted = Object.values(byHospital).reduce((s, v) => s + v, 0);
+  const revenueApplied = m.revenue + cs.revTotal;   // 應收（獨跑全額 + 共跑認領）
+  return { revenue: weighted, weighted, byHospital, byCategory, byProduct, hospitalProducts, revenueApplied };
+}
+
+// 整年度累積（有效業績）
+function effectiveAggregate(months: MonthPerf[], claims: ClaimsMap) {
+  const byHospital: Record<string, number> = {};
+  const byCategory: Record<string, number> = {};
+  const byProductMap: Record<string, HospProdEntry> = {};
+  const hospProdMap: Record<string, Record<string, HospProdEntry>> = {};
+  let weighted = 0, revenueApplied = 0;
+  for (const m of months) {
+    const e = effectiveMonth(m, claims);
+    weighted += e.weighted;
+    revenueApplied += e.revenueApplied;
+    for (const [h, v] of Object.entries(e.byHospital)) byHospital[h] = (byHospital[h] ?? 0) + v;
+    for (const [c, v] of Object.entries(e.byCategory)) byCategory[c] = (byCategory[c] ?? 0) + v;
+    for (const p of e.byProduct) {
+      if (byProductMap[p.name]) byProductMap[p.name] = { ...byProductMap[p.name], qty: byProductMap[p.name].qty + p.qty, rev: byProductMap[p.name].rev + p.rev };
+      else byProductMap[p.name] = { ...p };
+    }
+    for (const [h, prods] of Object.entries(e.hospitalProducts)) {
+      if (!hospProdMap[h]) hospProdMap[h] = {};
+      for (const p of prods) {
+        const cur = hospProdMap[h][p.name];
+        if (cur) {
+          const sv = p as SharedProdView;
+          hospProdMap[h][p.name] = {
+            ...cur, qty: cur.qty + p.qty, rev: cur.rev + p.rev,
+            ...(sv.shared ? { gross: ((cur as SharedProdView).gross ?? 0) + sv.gross, grossQty: ((cur as SharedProdView).grossQty ?? 0) + sv.grossQty, mine: ((cur as SharedProdView).mine ?? 0) + sv.mine } : {}),
+          };
+        } else hospProdMap[h][p.name] = { ...p };
+      }
+    }
+  }
+  return {
+    revenue: weighted, weighted, revenueApplied, byHospital, byCategory,
+    byProduct: Object.values(byProductMap).sort((a, b) => b.rev - a.rev),
+    hospitalProducts: Object.fromEntries(
+      Object.entries(hospProdMap).map(([h, mp]) => [h, Object.values(mp).sort((a, b) => b.rev - a.rev)])
+    ),
+  };
+}
 
 const ChartTip = ({ active, payload, label }: any) => {
   if (!active || !payload?.length) return null;
@@ -161,55 +285,9 @@ function toWeighted(m: MonthPerf) {
   return { revenue: m.weighted, weighted: m.weighted, byHospital, byCategory, byProduct, hospitalProducts };
 }
 
-function aggregatePerf(months: MonthPerf[]) {
-  const byHospital: Record<string, number> = {};
-  const byCategory: Record<string, number> = {};
-  const byProductMap: Record<string, HospProdEntry> = {};
-  const hospProdMap: Record<string, Record<string, HospProdEntry>> = {};
-  let total = 0;
-
-  for (const m of months) {
-    const w = toWeighted(m);
-    total += w.revenue;
-    for (const [h, v] of Object.entries(w.byHospital)) {
-      byHospital[h] = (byHospital[h] ?? 0) + v;
-    }
-    for (const [c, v] of Object.entries(w.byCategory)) {
-      byCategory[c] = (byCategory[c] ?? 0) + v;
-    }
-    for (const p of w.byProduct) {
-      if (byProductMap[p.name]) {
-        byProductMap[p.name] = { ...byProductMap[p.name], qty: byProductMap[p.name].qty + p.qty, rev: byProductMap[p.name].rev + p.rev };
-      } else {
-        byProductMap[p.name] = { ...p };
-      }
-    }
-    for (const [h, prods] of Object.entries(w.hospitalProducts)) {
-      if (!hospProdMap[h]) hospProdMap[h] = {};
-      for (const p of prods) {
-        if (hospProdMap[h][p.name]) {
-          hospProdMap[h][p.name] = { ...hospProdMap[h][p.name], qty: hospProdMap[h][p.name].qty + p.qty, rev: hospProdMap[h][p.name].rev + p.rev };
-        } else {
-          hospProdMap[h][p.name] = { ...p };
-        }
-      }
-    }
-  }
-
-  return {
-    revenue: total, weighted: total, byHospital, byCategory,
-    byProduct: Object.values(byProductMap).sort((a, b) => b.rev - a.rev),
-    hospitalProducts: Object.fromEntries(
-      Object.entries(hospProdMap).map(([h, mp]) => [h, Object.values(mp).sort((a, b) => b.rev - a.rev)])
-    ),
-  };
-}
-
 export default function PerformancePage() {
   const data = MY_PERFORMANCE;
   const latest = data[data.length - 1];
-  const ytd = useMemo(() => aggregatePerf(data), []);
-  const totalRevenue = useMemo(() => data.reduce((s, m) => s + m.revenue, 0), []);
 
   const ytdLabel = data.length === 1
     ? data[0].label
@@ -219,7 +297,7 @@ export default function PerformancePage() {
   const [selectedHosp, setSelectedHosp] = useState<string>(ALL);
   const [selectedProd, setSelectedProd] = useState<string | null>(null);
   const [selectedMonth, setSelectedMonth] = useState<string | null>(null);
-  const [, forceUpdate] = useState(0);
+  const [claimTick, forceUpdate] = useState(0);
   const [addingTo, setAddingTo] = useState<{ prod: string } | null>(null);
   const [form, setForm] = useState<{ dept: string; name: string; qty: number | string }>({ dept: 'GYN', name: '', qty: 1 });
   const [editingIdx, setEditingIdx] = useState<number | null>(null);
@@ -236,62 +314,76 @@ export default function PerformancePage() {
     });
   }, [refresh]);
 
+  // 認領資料（掛載後才讀 localStorage，避免 hydration 不一致）；claimTick 變動時重算
+  const claims = useMemo<ClaimsMap>(() => (mounted ? loadClaims() : {}), [mounted, claimTick]);
+  const ytd = useMemo(() => effectiveAggregate(data, claims), [data, claims]);
+  const totalRevenue = ytd.revenueApplied;   // 累積應收（獨跑全額 + 共跑認領）
+
   // 月份篩選資料：null = 整年度累積，否則顯示單月（全部轉為加權業績）
   const monthData = useMemo(() => {
     if (!selectedMonth) return ytd;
     const m = data.find(d => d.label === selectedMonth);
     if (!m) return ytd;
-    return toWeighted(m);
-  }, [selectedMonth, ytd, data]);
+    return effectiveMonth(m, claims);
+  }, [selectedMonth, ytd, data, claims]);
 
   const periodLabel = selectedMonth ?? ytdLabel;
   const activeMonthKey = selectedMonth
     ? (data.find(d => d.label === selectedMonth)?.month ?? latest.month)
     : latest.month;
 
-  // 月份趨勢：salesHistory 2026 vs 2025 同期
+  // 月份趨勢：2026 有效業績（含共跑認領）vs 2025 同期。5–6月用有效業績，其餘用 salesHistory
   const trendData = useMemo(() => {
     const rev2026 = SALES_BY_YEAR['2026'].MONTHLY_REV;
     const rev2025 = SALES_BY_YEAR['2025'].MONTHLY_REV;
+    const effByLabel: Record<string, number> = {};
+    for (const m of data) effByLabel[m.label] = effectiveMonth(m, claims).weighted;
     return rev2026.map(r => {
+      const v26 = effByLabel[r.month] ?? r.rev;
       const v25 = rev2025.find(x => x.month === r.month)?.rev ?? 0;
-      const yoy = v25 > 0 ? Math.round(((r.rev - v25) / v25) * 100) : null;
-      return { label: r.month, '2026': r.rev, '2025': v25, yoy };
+      const yoy = v25 > 0 ? Math.round(((v26 - v25) / v25) * 100) : null;
+      return { label: r.month, '2026': v26, '2025': v25, yoy };
     });
-  }, []);
+  }, [data, claims]);
 
-  // 年度累積醫院排名（salesHistory 全 6 個月加總）
+  // 年度累積醫院排名：未納入個人明細的月份用 salesHistory，5–6月用有效業績（含共跑認領）
   const ytdHospData = useMemo(() => {
-    const rows = SALES_BY_YEAR['2026'].MONTHLY_BY_HOSPITAL;
     const map: Record<string, number> = {};
-    const names = ['沙爾德聖', '恩主公', '台北醫學', '宏恩醫療', '中心診所', '台北慈濟', '長庚土城'];
-    for (const row of rows) {
-      for (const h of names) {
-        if (row[h]) map[h] = (map[h] ?? 0) + (row[h] as number);
+    const effLabels = new Set(data.map(m => m.label));
+    for (const row of SALES_BY_YEAR['2026'].MONTHLY_BY_HOSPITAL) {
+      if (effLabels.has(row.month as string)) continue;
+      for (const [k, v] of Object.entries(row)) {
+        if (k !== 'month' && typeof v === 'number' && v > 0) map[k] = (map[k] ?? 0) + v;
+      }
+    }
+    for (const m of data) {
+      for (const [h, v] of Object.entries(effectiveMonth(m, claims).byHospital)) {
+        if (v > 0) map[h] = (map[h] ?? 0) + v;
       }
     }
     return Object.entries(map)
       .filter(([, v]) => v > 0)
       .sort((a, b) => b[1] - a[1])
       .map(([name, rev]) => ({ name, 年度累積: rev }));
-  }, []);
+  }, [data, claims]);
 
-  // 最新月份醫院排名（加權業績）
+  // 最新月份醫院排名（有效業績，含共跑認領；未認領的共跑醫院不列入排名）
   const latestHospData = useMemo(() => {
-    const w = toWeighted(latest);
-    return Object.entries(w.byHospital)
+    const e = effectiveMonth(latest, claims);
+    return Object.entries(e.byHospital)
+      .filter(([, v]) => v > 0)
       .sort((a, b) => b[1] - a[1])
       .map(([name, rev]) => ({ name, [latest.label]: rev }));
-  }, [latest]);
+  }, [latest, claims]);
 
-  // 依醫院模式：選定醫院的每月加權業績走勢
+  // 依醫院模式：選定醫院的每月有效業績走勢
   const hospTrend = useMemo(() => {
     return data.map(m => {
-      const w = toWeighted(m);
-      const rev = selectedHosp === ALL ? w.revenue : (w.byHospital[selectedHosp] ?? 0);
+      const e = effectiveMonth(m, claims);
+      const rev = selectedHosp === ALL ? e.weighted : (e.byHospital[selectedHosp] ?? 0);
       return { label: m.label, 業績: Math.round(rev) };
     });
-  }, [data, selectedHosp]);
+  }, [data, selectedHosp, claims]);
 
   // 切換檢視模式：進「依醫院」時，詳情需要具體月份＋具體醫院，補上預設值
   const switchMode = (mode: 'month' | 'hospital') => {
@@ -306,11 +398,23 @@ export default function PerformancePage() {
 
   const hospList = Object.keys(monthData.byHospital);
   const isAll = selectedHosp === ALL;
+  const isSharedHosp = !isAll && isShared(selectedHosp);
 
-  const hospProds: HospProdEntry[] = isAll
-    ? sortByCategory(monthData.byProduct)
-    : sortByCategory(monthData.hospitalProducts[selectedHosp] ?? []);
+  // 共跑醫院：依整院金額排序（未認領的大產品也留在上方方便認領）；否則依認領/加權金額
+  const rawHospProds: HospProdEntry[] = isAll
+    ? monthData.byProduct
+    : (monthData.hospitalProducts[selectedHosp] ?? []);
+  const hospProds: HospProdEntry[] = isSharedHosp
+    ? [...rawHospProds].sort((a, b) => {
+        const diff = CAT_ORDER.indexOf(a.category) - CAT_ORDER.indexOf(b.category);
+        return diff !== 0 ? diff : ((b as SharedProdView).gross ?? b.rev) - ((a as SharedProdView).gross ?? a.rev);
+      })
+    : sortByCategory(rawHospProds);
   const hospTotal = isAll ? monthData.revenue : (monthData.byHospital[selectedHosp] ?? 0);
+  // 共跑醫院整院參考總額（加權）
+  const sharedGrossTotal = isSharedHosp
+    ? (hospProds as SharedProdView[]).reduce((s, p) => s + (p.gross ?? 0), 0)
+    : 0;
 
   const catAgg: Record<string, number> = {};
   if (isAll) {
@@ -376,6 +480,13 @@ export default function PerformancePage() {
     }
     return Object.values(agg).sort((a, b) => b.rev - a.rev);
   })();
+
+  // 認領：寫入某月某共跑醫院某產品「我的支數」
+  const handleClaim = (hosp: string, prod: string, grossQty: number, val: string | number) => {
+    const q = Math.max(0, Math.min(Math.floor(Number(val) || 0), grossQty));
+    saveClaim(activeMonthKey, hosp, prod, q);
+    refresh();
+  };
 
   const handleAdd = (prod: string) => {
     const qty = Number(form.qty);
@@ -643,9 +754,19 @@ export default function PerformancePage() {
           <div className="col-span-2 bg-white rounded-2xl border border-gray-100 p-6">
             <div className="flex items-baseline gap-2 mb-1">
               <h2 className="text-base font-semibold text-gray-800">{isAll ? '全部醫院' : selectedHosp}</h2>
+              {isSharedHosp && (
+                <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 font-semibold">共跑</span>
+              )}
               <span className="text-xs text-gray-400">{periodLabel}</span>
             </div>
-            <p className="text-2xl font-black text-gray-900 mb-4">{fmtMoney(hospTotal)}</p>
+            <p className="text-2xl font-black text-gray-900 mb-1">{fmtMoney(hospTotal)}</p>
+            {isSharedHosp && (
+              <p className="text-xs text-gray-400 mb-4">
+                我的認領 · 整院加權 {fmtMoney(sharedGrossTotal)}
+                {sharedGrossTotal > 0 && <span className="ml-1">（我佔 {Math.round((hospTotal / sharedGrossTotal) * 100)}%）</span>}
+              </p>
+            )}
+            {!isSharedHosp && <div className="mb-4" />}
             <div className="flex justify-center">
               <PieChart width={220} height={180}>
                 <Pie data={catPieData} cx="50%" cy="50%"
@@ -701,19 +822,43 @@ export default function PerformancePage() {
                         {CAT_ZH[prod.category] ?? prod.category}
                       </span>
                       <span className="font-bold text-gray-900">{prod.name}</span>
-                      <span className="text-gray-400 text-sm">{prod.qty} 件</span>
+                      <span className="text-gray-400 text-sm">
+                        {isSharedHosp ? `整院 ${(prod as SharedProdView).grossQty} 件` : `${prod.qty} 件`}
+                      </span>
                     </div>
                     <div className="flex items-center gap-3" onClick={e => e.stopPropagation()}>
-                      <span className="font-bold text-gray-900">{fmtMoney(prod.rev)}</span>
+                      <div className="text-right">
+                        <span className="font-bold text-gray-900">{fmtMoney(prod.rev)}</span>
+                        {isSharedHosp && (
+                          <span className="block text-[11px] text-gray-400">整院 {fmtMoney((prod as SharedProdView).gross ?? 0)}</span>
+                        )}
+                      </div>
+                      {isSharedHosp && (
+                        selectedMonth ? (
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-xs text-gray-500">我的</span>
+                            <input
+                              type="number" min={0} max={(prod as SharedProdView).grossQty}
+                              value={(prod as SharedProdView).mine || 0}
+                              onChange={e => handleClaim(selectedHosp, prod.name, (prod as SharedProdView).grossQty, e.target.value)}
+                              style={{ color: '#111827' }}
+                              className="w-16 text-sm text-center border border-gray-300 rounded-lg px-2 py-1 focus:outline-none focus:ring-2 focus:ring-amber-400"
+                            />
+                            <span className="text-xs text-gray-400">支</span>
+                          </div>
+                        ) : (
+                          <span className="text-xs text-gray-400">我的 {(prod as SharedProdView).mine || 0} 支（選單月認領）</span>
+                        )
+                      )}
                       {!isAll && (
                         <button
                           onClick={() => {
                             if (isAddingThis) { setAddingTo(null); setEditingIdx(null); }
                             else { setAddingTo({ prod: prod.name }); setEditingIdx(null); setForm({ dept: 'GYN', name: '', qty: prod.qty - usedQty > 0 ? prod.qty - usedQty : 1 }); }
                           }}
-                          className="text-xs px-3 py-1 rounded-lg border border-blue-200 text-blue-600 hover:bg-blue-50 font-medium"
+                          className="text-xs px-3 py-1 rounded-lg border border-blue-200 text-blue-600 hover:bg-blue-50 font-medium whitespace-nowrap"
                         >
-                          {isAddingThis ? '取消' : '+ 新增醫師'}
+                          {isAddingThis ? '取消' : '+ 醫師'}
                         </button>
                       )}
                     </div>
