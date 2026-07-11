@@ -3,7 +3,7 @@
 import { useState, useCallback, useMemo, useEffect } from 'react';
 import Link from 'next/link';
 import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, LineChart, Line, Legend,
 } from 'recharts';
 import {
@@ -620,47 +620,12 @@ export default function PerformancePage() {
           </ResponsiveContainer>
         </div>
 
-        {/* 醫院業績排名：年度累積 + 最新月份 */}
+        {/* 醫院業績排名：年度累積 + 最新月份（排行榜列，顯示確切金額與佔比）*/}
         <div className="grid grid-cols-2 gap-4">
-          <div className="bg-white rounded-2xl border border-gray-100 p-6">
-            <h2 className="text-base font-semibold text-gray-800 mb-4">醫院業績排名・年度累積</h2>
-            <ResponsiveContainer width="100%" height={ytdHospData.length * 50}>
-              <BarChart layout="vertical" data={ytdHospData} barSize={16}
-                margin={{ left: 8, right: 72, top: 4, bottom: 4 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" horizontal={false} />
-                <XAxis type="number" tickFormatter={fmt}
-                  tick={{ fontSize: 11, fill: '#9ca3af' }} axisLine={false} tickLine={false} />
-                <YAxis type="category" dataKey="name" width={72}
-                  tick={{ fontSize: 13, fill: '#374151', fontWeight: 500 }} axisLine={false} tickLine={false} />
-                <Tooltip content={<ChartTip />} />
-                <Bar dataKey="年度累積" radius={[0, 4, 4, 0]}>
-                  {ytdHospData.map((entry, i) => (
-                    <Cell key={i} fill={HOSP_COLOR[entry.name] ?? '#94a3b8'} />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-
-          <div className="bg-white rounded-2xl border border-gray-100 p-6">
-            <h2 className="text-base font-semibold text-gray-800 mb-4">醫院業績排名・{latest.label}</h2>
-            <ResponsiveContainer width="100%" height={latestHospData.length * 50}>
-              <BarChart layout="vertical" data={latestHospData} barSize={16}
-                margin={{ left: 8, right: 72, top: 4, bottom: 4 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" horizontal={false} />
-                <XAxis type="number" tickFormatter={fmt}
-                  tick={{ fontSize: 11, fill: '#9ca3af' }} axisLine={false} tickLine={false} />
-                <YAxis type="category" dataKey="name" width={72}
-                  tick={{ fontSize: 13, fill: '#374151', fontWeight: 500 }} axisLine={false} tickLine={false} />
-                <Tooltip content={<ChartTip />} />
-                <Bar dataKey={latest.label} radius={[0, 4, 4, 0]}>
-                  {latestHospData.map((entry, i) => (
-                    <Cell key={i} fill={HOSP_COLOR[entry.name] ?? '#94a3b8'} />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
+          <HospRankBoard title="醫院業績排名・年度累積"
+            rows={ytdHospData.map(d => ({ name: d.name, rev: d['年度累積'] as number }))} />
+          <HospRankBoard title={`醫院業績排名・${latest.label}`}
+            rows={latestHospData.map(d => ({ name: d.name, rev: d[latest.label] as number }))} />
         </div>
 
         {/* 檢視模式切換 + 篩選 */}
@@ -1040,6 +1005,40 @@ export default function PerformancePage() {
         )}
 
       </div>
+    </div>
+  );
+}
+
+function HospRankBoard({ title, rows }: { title: string; rows: { name: string; rev: number }[] }) {
+  const total = rows.reduce((s, r) => s + r.rev, 0) || 1;
+  const max = rows[0]?.rev || 1;
+  return (
+    <div className="bg-white rounded-2xl border border-gray-100 p-6">
+      <h2 className="text-base font-semibold text-gray-800 mb-4">{title}</h2>
+      {rows.length === 0 ? (
+        <p className="text-sm text-gray-400 py-6 text-center">尚無資料</p>
+      ) : (
+        <div className="space-y-2.5">
+          {rows.map((r, i) => {
+            const pct = Math.round((r.rev / total) * 100);
+            const barPct = Math.max(2, Math.round((r.rev / max) * 100));
+            const color = HOSP_COLOR[r.name] ?? '#94a3b8';
+            return (
+              <div key={r.name} className="flex items-center gap-2.5">
+                <span className={`text-sm font-bold w-6 text-center shrink-0 ${i === 0 ? 'text-amber-500' : i === 1 ? 'text-gray-400' : i === 2 ? 'text-orange-400' : 'text-gray-300'}`}>
+                  {i < 3 ? ['🥇', '🥈', '🥉'][i] : i + 1}
+                </span>
+                <span className="text-sm font-semibold text-gray-800 w-16 shrink-0 truncate" title={r.name}>{r.name}</span>
+                <div className="flex-1 h-2.5 bg-gray-100 rounded-full overflow-hidden min-w-[24px]">
+                  <div className="h-full rounded-full transition-all" style={{ width: `${barPct}%`, background: color }} />
+                </div>
+                <span className="text-sm font-bold text-gray-900 w-[86px] text-right shrink-0 tabular-nums">{fmtMoney(r.rev)}</span>
+                <span className="text-xs text-gray-400 w-8 text-right shrink-0">{pct}%</span>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
