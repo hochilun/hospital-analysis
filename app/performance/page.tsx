@@ -481,6 +481,20 @@ export default function PerformancePage() {
     return Object.values(agg).sort((a, b) => b.rev - a.rev);
   })();
 
+  // 醫師名冊：所有輸入過的醫師去重（{科別,姓名}），新增時自動比對，避免選字錯誤造成重複醫師
+  const doctorRoster = useMemo(() => {
+    if (!mounted) return [] as { dept: string; name: string; count: number }[];
+    const map: Record<string, { dept: string; name: string; count: number }> = {};
+    for (const arr of Object.values(loadAllDoctors())) {
+      for (const d of arr) {
+        const k = `${d.dept}|${d.name}`;
+        if (!map[k]) map[k] = { dept: d.dept, name: d.name, count: 0 };
+        map[k].count += d.qty;
+      }
+    }
+    return Object.values(map).sort((a, b) => b.count - a.count);
+  }, [mounted, claimTick]);
+
   // 認領：寫入某月某共跑醫院某產品「我的支數」
   const handleClaim = (hosp: string, prod: string, grossQty: number, val: string | number) => {
     const q = Math.max(0, Math.min(Math.floor(Number(val) || 0), grossQty));
@@ -772,6 +786,11 @@ export default function PerformancePage() {
               const isAddingThis = addingTo?.prod === prod.name;
               const usedQty = doctors.reduce((s, d) => s + d.qty, 0);
               const isSelected = selectedProd === prod.name;
+              // 姓名比對建議：名冊中含目前輸入字串、且不完全相同者（前 6 筆）
+              const nq = form.name.trim();
+              const nameSuggestions = (isAddingThis && nq)
+                ? doctorRoster.filter(d => d.name.includes(nq) && d.name !== nq).slice(0, 6)
+                : [];
 
               return (
                 <div key={prod.name}
@@ -859,18 +878,41 @@ export default function PerformancePage() {
                           ))}
                         </select>
                       </div>
-                      <div className="flex flex-col gap-1 flex-1">
+                      <div className="flex flex-col gap-1 flex-1 relative">
                         <label className="text-xs text-gray-600 font-medium">醫師姓名</label>
-                        <input type="text" placeholder="例：王醫師" value={form.name}
+                        <input type="text" placeholder="打前幾個字，可從下方選既有醫師" value={form.name}
+                          autoComplete="off"
                           onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
                           onKeyDown={e => {
                             if (e.key === 'Enter') {
                               e.preventDefault();
+                              // 有建議且尚未完全命中 → Enter 先帶入第一個建議
+                              if (nameSuggestions.length > 0) {
+                                const s = nameSuggestions[0];
+                                setForm(f => ({ ...f, dept: s.dept, name: s.name }));
+                                return;
+                              }
                               (e.currentTarget.closest('.flex')?.parentElement?.querySelector('input[type="number"]') as HTMLElement)?.focus();
                             }
                           }}
                           style={{ color: '#111827' }}
                           className="text-sm placeholder:text-gray-400 border border-gray-300 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-400" />
+                        {nameSuggestions.length > 0 && (
+                          <div className="absolute z-20 top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg overflow-hidden">
+                            <p className="px-3 py-1 text-[10px] text-gray-400 bg-gray-50 border-b border-gray-100">既有醫師（點選帶入，避免重複）</p>
+                            {nameSuggestions.map(s => (
+                              <button key={`${s.dept}|${s.name}`} type="button"
+                                onClick={() => setForm(f => ({ ...f, dept: s.dept, name: s.name }))}
+                                className="w-full flex items-center gap-2 px-3 py-1.5 text-left hover:bg-blue-50 transition-colors">
+                                <span className={`text-[11px] px-1.5 py-0.5 rounded-full font-medium ${DEPT_COLOR_MAP[s.dept] ?? 'bg-gray-100 text-gray-600'}`}>
+                                  {DEPT_LABEL[s.dept] ?? s.dept}
+                                </span>
+                                <span className="text-sm text-gray-800">{s.name}</span>
+                                <span className="text-gray-300 text-xs ml-auto">{s.count} 件</span>
+                              </button>
+                            ))}
+                          </div>
+                        )}
                       </div>
                       <div className="flex flex-col gap-1 w-20">
                         <label className="text-xs text-gray-600 font-medium">數量</label>
