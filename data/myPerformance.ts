@@ -171,6 +171,62 @@ export const MY_PERFORMANCE: MonthPerf[] = [
       ],
     },
   },
+  {
+    month: '2026-07',
+    label: '7月',
+    asOf: '2026-07-10',
+    revenue: 439_258,
+    weighted: 416_350,
+    byHospital: {
+      '台北醫學': 202_952,
+      '沙爾德聖':  77_000,
+      '宏恩醫療':  76_800,
+      '恩主公':    56_506,
+      '中心診所':  26_000,
+    },
+    byCategory: {
+      'Adhesion Prevention': 227_800,
+      'Hernia':              139_130,
+      'Hemostasis':           42_550,
+      'Urinary Incontinence': 29_778,
+    },
+    byProduct: [
+      { name: '宮安康',         category: 'Adhesion Prevention',  qty: 11, rev: 125_000 },
+      { name: '3DMAX LIGHT',    category: 'Hernia',               qty: 17, rev: 110_500 },
+      { name: '塞納斯',          category: 'Adhesion Prevention',  qty:  8, rev: 102_800 },
+      { name: '止血顆粒 5g',     category: 'Hemostasis',           qty:  1, rev:  24_600 },
+      { name: '凡萃拉',          category: 'Hernia',               qty:  1, rev:  20_130 },
+      { name: 'IS-6',           category: 'Urinary Incontinence', qty:  2, rev:  19_852 },
+      { name: '止血顆粒 3g',     category: 'Hemostasis',           qty:  1, rev:  16_000 },
+      { name: 'IS-1',           category: 'Urinary Incontinence', qty:  1, rev:   9_926 },
+      { name: '速巴定',          category: 'Hernia',               qty:  1, rev:   8_500 },
+      { name: '止血塗佈器',      category: 'Hemostasis',           qty:  1, rev:   1_950 },
+    ],
+    hospitalProducts: {
+      '台北醫學': [
+        { name: '3DMAX LIGHT', category: 'Hernia',               qty: 17, rev: 110_500 },
+        { name: '宮安康',      category: 'Adhesion Prevention',  qty:  4, rev:  48_000 },
+        { name: '止血顆粒 5g', category: 'Hemostasis',           qty:  1, rev:  24_600 },
+        { name: 'IS-6',        category: 'Urinary Incontinence', qty:  2, rev:  19_852 },
+      ],
+      '沙爾德聖': [
+        { name: '宮安康', category: 'Adhesion Prevention', qty: 7, rev: 77_000 },
+      ],
+      '宏恩醫療': [
+        { name: '塞納斯', category: 'Adhesion Prevention', qty: 6, rev: 76_800 },
+      ],
+      '恩主公': [
+        { name: '凡萃拉',      category: 'Hernia',               qty: 1, rev: 20_130 },
+        { name: '止血顆粒 3g', category: 'Hemostasis',           qty: 1, rev: 16_000 },
+        { name: 'IS-1',        category: 'Urinary Incontinence', qty: 1, rev:  9_926 },
+        { name: '速巴定',      category: 'Hernia',               qty: 1, rev:  8_500 },
+        { name: '止血塗佈器',  category: 'Hemostasis',           qty: 1, rev:  1_950 },
+      ],
+      '中心診所': [
+        { name: '塞納斯', category: 'Adhesion Prevention', qty: 2, rev: 26_000 },
+      ],
+    },
+  },
   // 後續月份在此追加 ↓
 ];
 
@@ -217,6 +273,22 @@ export const SHARED_PERFORMANCE: Record<string, Record<string, HospProdEntry[]>>
       { name: '止血顆粒 3g', category: 'Hemostasis', qty: 32, rev: 454400, weighted: 389486 },
       { name: '止血顆粒 1g', category: 'Hemostasis', qty: 4, rev: 29120, weighted: 27733 },
       { name: '止血顆粒 5g', category: 'Hemostasis', qty: 1, rev: 23500, weighted: 22381 },
+    ],
+  },
+  '2026-07': {  // 7/1–7/10（partial）
+    '台北慈濟': [ // 整院 應收 244,100 / 加權 232,476
+      { name: '宮安康', category: 'Adhesion Prevention', qty: 8, rev: 104000, weighted: 99048 },
+      { name: '宮安康 10ML', category: 'Adhesion Prevention', qty: 1, rev: 22500, weighted: 21429 },
+      { name: '止血顆粒 5g', category: 'Hemostasis', qty: 3, rev: 73500, weighted: 70000 },
+      { name: '止血顆粒 3g', category: 'Hemostasis', qty: 3, rev: 44100, weighted: 42000 },
+    ],
+    '長庚土城': [ // 整院 應收 241,880 / 加權 227,657
+      { name: '宮安康', category: 'Adhesion Prevention', qty: 9, rev: 99000, weighted: 94286 },
+      { name: 'P-STOP-8', category: 'Urinary Incontinence', qty: 1, rev: 38200, weighted: 36381 },
+      { name: 'IS-M1', category: 'Urinary Incontinence', qty: 1, rev: 22000, weighted: 20952 },
+      { name: '止血顆粒 5g', category: 'Hemostasis', qty: 2, rev: 47000, weighted: 44762 },
+      { name: '止血顆粒 3g', category: 'Hemostasis', qty: 2, rev: 28400, weighted: 24343 },
+      { name: '止血顆粒 1g', category: 'Hemostasis', qty: 1, rev: 7280, weighted: 6933 },
     ],
   },
 };

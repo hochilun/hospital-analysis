@@ -227,6 +227,7 @@ export const SALES_BY_YEAR: Record<string, YearSalesData> = {
       { month: '4月', rev: 515_167 },
       { month: '5月', rev: 504_452 },
       { month: '6月', rev: 475_349 },  // 6/1–6/30（台北慈濟改列共跑，見 SHARED_PERFORMANCE）
+      { month: '7月', rev: 416_350 },  // 7/1–7/10（partial；含共跑認領由前端動態加上）
     ],
     MONTHLY_BY_HOSPITAL: [
       { month: '1月', 中心診所: 28_190,  台北醫學: 48_952,   宏恩醫療: 0,       恩主公: 134_571, 沙爾德聖: 349_352 },
