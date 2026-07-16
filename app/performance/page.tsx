@@ -8,7 +8,7 @@ import {
 } from 'recharts';
 import {
   MY_PERFORMANCE, CAT_ZH, CAT_COLOR, HOSP_COLOR, DEPT_LABEL,
-  SHARED_HOSPITALS, SHARED_PERFORMANCE,
+  SHARED_HOSPITALS, SHARED_PERFORMANCE, SHARED_AUTO,
   type DoctorEntry, type HospProdEntry, type MonthPerf,
 } from '@/data/myPerformance';
 import { SALES_BY_YEAR } from '@/data/salesHistory';
@@ -95,38 +95,48 @@ const saveClaim = (month: string, hosp: string, prod: string, myQty: number) => 
   pushToCloud('perf-claims', map);
 };
 
-// 共跑醫院視圖：整院產品逐列，附我的認領支數／認領後金額
-export type SharedProdView = HospProdEntry & { gross: number; grossQty: number; mine: number; shared: true };
+// 共跑醫院視圖：整院產品逐列。auto=true 表示 Mars 檔本人業績（全計、不需認領）；否則為整院認領池。
+export type SharedProdView = HospProdEntry & { gross: number; grossQty: number; mine: number; shared: true; auto: boolean };
 
-// 單月的「已認領共跑業績」聚合（金額皆為加權業績）
+// 單月的「共跑醫院業績」聚合 = 本人業績(SHARED_AUTO，全計) + 整院認領(SHARED_PERFORMANCE，依認領支數)
 function claimedSharedMonth(monthKey: string, claims: ClaimsMap) {
-  const byHospital: Record<string, number> = {};      // 認領加權
-  const byHospitalRev: Record<string, number> = {};   // 認領應收
+  const byHospital: Record<string, number> = {};      // 有效加權（本人+認領）
+  const byHospitalRev: Record<string, number> = {};   // 有效應收
   const hospitalProducts: Record<string, SharedProdView[]> = {};
   const byCategory: Record<string, number> = {};
   const byProductMap: Record<string, HospProdEntry> = {};
   let weightedTotal = 0, revTotal = 0;
-  const src = SHARED_PERFORMANCE[monthKey];
-  if (!src) return { byHospital, byHospitalRev, hospitalProducts, byCategory, byProduct: [] as HospProdEntry[], weightedTotal, revTotal };
-  for (const [hosp, prods] of Object.entries(src)) {
-    byHospital[hosp] = 0;   // 共跑醫院一律列出（即使尚未認領），讓使用者能點進去認領
-    byHospitalRev[hosp] = 0;
+  const pool = SHARED_PERFORMANCE[monthKey] ?? {};
+  const auto = SHARED_AUTO[monthKey] ?? {};
+  const hosps = Array.from(new Set([...Object.keys(pool), ...Object.keys(auto)]));
+  if (!hosps.length) return { byHospital, byHospitalRev, hospitalProducts, byCategory, byProduct: [] as HospProdEntry[], weightedTotal, revTotal };
+
+  const addAgg = (hosp: string, cat: string, name: string, w: number, r: number, qty: number) => {
+    byHospital[hosp] += w; byHospitalRev[hosp] += r;
+    byCategory[cat] = (byCategory[cat] ?? 0) + w;
+    if (byProductMap[name]) byProductMap[name] = { ...byProductMap[name], qty: byProductMap[name].qty + qty, rev: byProductMap[name].rev + w };
+    else byProductMap[name] = { name, category: cat, qty, rev: w };
+    weightedTotal += w; revTotal += r;
+  };
+
+  for (const hosp of hosps) {
+    byHospital[hosp] = 0; byHospitalRev[hosp] = 0;   // 一律列出，讓使用者能點進去認領
     const views: SharedProdView[] = [];
-    for (const p of prods) {
+    // 本人業績（Mars 檔）→ 全計，不需認領
+    for (const p of (auto[hosp] ?? [])) {
+      const aw = p.weighted ?? p.rev;
+      views.push({ name: p.name, category: p.category, qty: p.qty, rev: aw, weighted: aw, gross: aw, grossQty: p.qty, mine: p.qty, shared: true, auto: true });
+      addAgg(hosp, p.category, p.name, aw, p.rev, p.qty);
+    }
+    // 整院認領池 → 依認領支數比例
+    for (const p of (pool[hosp] ?? [])) {
       const grossW = p.weighted ?? p.rev;
       const mine = Math.min(getClaim(claims, monthKey, hosp, p.name), p.qty);
       const ratio = p.qty > 0 ? mine / p.qty : 0;
-      const cw = Math.round(grossW * ratio);   // 認領加權
-      const cr = Math.round(p.rev * ratio);    // 認領應收
-      views.push({ name: p.name, category: p.category, qty: mine, rev: cw, weighted: cw, gross: grossW, grossQty: p.qty, mine, shared: true });
-      if (cw > 0) {
-        byHospital[hosp] += cw;
-        byHospitalRev[hosp] += cr;
-        byCategory[p.category] = (byCategory[p.category] ?? 0) + cw;
-        if (byProductMap[p.name]) { byProductMap[p.name] = { ...byProductMap[p.name], qty: byProductMap[p.name].qty + mine, rev: byProductMap[p.name].rev + cw }; }
-        else byProductMap[p.name] = { name: p.name, category: p.category, qty: mine, rev: cw };
-        weightedTotal += cw; revTotal += cr;
-      }
+      const cw = Math.round(grossW * ratio);
+      const cr = Math.round(p.rev * ratio);
+      views.push({ name: p.name, category: p.category, qty: mine, rev: cw, weighted: cw, gross: grossW, grossQty: p.qty, mine, shared: true, auto: false });
+      if (cw > 0) addAgg(hosp, p.category, p.name, cw, cr, mine);
     }
     hospitalProducts[hosp] = views;
   }
@@ -411,10 +421,11 @@ export default function PerformancePage() {
       })
     : sortByCategory(rawHospProds);
   const hospTotal = isAll ? monthData.revenue : (monthData.byHospital[selectedHosp] ?? 0);
-  // 共跑醫院整院參考總額（加權）
-  const sharedGrossTotal = isSharedHosp
-    ? (hospProds as SharedProdView[]).reduce((s, p) => s + (p.gross ?? 0), 0)
-    : 0;
+  // 共跑醫院拆解（加權）：本人業績(Mars檔) / 認領 / 整院認領池
+  const sharedRows = isSharedHosp ? (hospProds as SharedProdView[]) : [];
+  const autoTotal  = sharedRows.filter(p => p.auto).reduce((s, p) => s + p.rev, 0);
+  const claimTotal = sharedRows.filter(p => !p.auto).reduce((s, p) => s + p.rev, 0);
+  const poolGrossTotal = sharedRows.filter(p => !p.auto).reduce((s, p) => s + (p.gross ?? 0), 0);
 
   const catAgg: Record<string, number> = {};
   if (isAll) {
@@ -741,8 +752,9 @@ export default function PerformancePage() {
             <p className="text-2xl font-black text-gray-900 mb-1">{fmtMoney(hospTotal)}</p>
             {isSharedHosp && (
               <p className="text-xs text-gray-400 mb-4">
-                我的認領 · 整院加權 {fmtMoney(sharedGrossTotal)}
-                {sharedGrossTotal > 0 && <span className="ml-1">（我佔 {Math.round((hospTotal / sharedGrossTotal) * 100)}%）</span>}
+                本人業績 <span className="text-gray-600 font-medium">{fmtMoney(autoTotal)}</span>
+                {' ＋ 認領 '}<span className="text-emerald-600 font-medium">{fmtMoney(claimTotal)}</span>
+                <span className="text-gray-300"> · 整院可認領池 {fmtMoney(poolGrossTotal)}</span>
               </p>
             )}
             {!isSharedHosp && <div className="mb-4" />}
@@ -791,6 +803,9 @@ export default function PerformancePage() {
               const nameSuggestions = (isAddingThis && nq)
                 ? doctorRoster.filter(d => d.name.includes(nq) && d.name !== nq).slice(0, 6)
                 : [];
+              const sv = prod as SharedProdView;
+              const isAutoRow = isSharedHosp && sv.auto === true;   // 本人業績（Mars 檔），全計
+              const isPoolRow = isSharedHosp && sv.auto === false;  // 整院認領池，需認領
 
               return (
                 <div key={prod.name}
@@ -806,18 +821,21 @@ export default function PerformancePage() {
                         {CAT_ZH[prod.category] ?? prod.category}
                       </span>
                       <span className="font-bold text-gray-900">{prod.name}</span>
+                      {isAutoRow && (
+                        <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 font-semibold">本人</span>
+                      )}
                       <span className="text-gray-400 text-sm">
-                        {isSharedHosp ? `整院 ${(prod as SharedProdView).grossQty} 件` : `${prod.qty} 件`}
+                        {isAutoRow ? `本人 ${prod.qty} 件` : isPoolRow ? `整院 ${sv.grossQty} 件` : `${prod.qty} 件`}
                       </span>
                     </div>
                     <div className="flex items-center gap-3" onClick={e => e.stopPropagation()}>
                       <div className="text-right">
                         <span className="font-bold text-gray-900">{fmtMoney(prod.rev)}</span>
-                        {isSharedHosp && (
-                          <span className="block text-[11px] text-gray-400">整院 {fmtMoney((prod as SharedProdView).gross ?? 0)}</span>
+                        {isPoolRow && (
+                          <span className="block text-[11px] text-gray-400">整院 {fmtMoney(sv.gross ?? 0)}</span>
                         )}
                       </div>
-                      {isSharedHosp && (
+                      {isPoolRow && (
                         selectedMonth ? (
                           <div className="flex items-center gap-1.5">
                             <span className="text-xs text-gray-500">我的</span>

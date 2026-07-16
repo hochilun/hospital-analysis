@@ -292,3 +292,16 @@ export const SHARED_PERFORMANCE: Record<string, Record<string, HospProdEntry[]>>
     ],
   },
 };
+
+// 共跑醫院的「本人業績」：來自檔名含 Mars 的個人報表中，台北慈濟／長庚土城的紀錄。
+// 這些一定是 Mars 的，直接自動計入（不需認領）；與 SHARED_PERFORMANCE（整院手動認領池）互不重疊。
+export const SHARED_AUTO: Record<string, Record<string, HospProdEntry[]>> = {
+  // 2026-05：Mars 檔無共跑醫院業績
+  '2026-06': {
+    '台北慈濟': [ // 本人業績 應收 28,360 / 加權 25,308
+      { name: '3DMAX LIGHT', category: 'Hernia', qty: 3, rev: 19428, weighted: 18503 },
+      { name: '速巴定', category: 'Hernia', qty: 1, rev: 8932, weighted: 6805 },
+    ],
+  },
+  // 2026-07：Mars 檔無共跑醫院業績
+};
