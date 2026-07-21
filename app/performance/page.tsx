@@ -306,7 +306,7 @@ export default function PerformancePage() {
   const [viewMode, setViewMode] = useState<'month' | 'hospital'>('month');
   const [selectedHosp, setSelectedHosp] = useState<string>(ALL);
   const [selectedProd, setSelectedProd] = useState<string | null>(null);
-  const [selectedMonth, setSelectedMonth] = useState<string | null>(null);
+  const [selectedMonths, setSelectedMonths] = useState<string[]>([]);   // 空=整年度；可複選多月加總
   const [claimTick, forceUpdate] = useState(0);
   const [addingTo, setAddingTo] = useState<{ prod: string } | null>(null);
   const [form, setForm] = useState<{ dept: string; name: string; qty: number | string }>({ dept: 'GYN', name: '', qty: 1 });
@@ -329,18 +329,57 @@ export default function PerformancePage() {
   const ytd = useMemo(() => effectiveAggregate(data, claims), [data, claims]);
   const totalRevenue = ytd.revenueApplied;   // 累積應收（獨跑全額 + 共跑認領）
 
-  // 月份篩選資料：null = 整年度累積，否則顯示單月（全部轉為加權業績）
-  const monthData = useMemo(() => {
-    if (!selectedMonth) return ytd;
-    const m = data.find(d => d.label === selectedMonth);
-    if (!m) return ytd;
-    return effectiveMonth(m, claims);
-  }, [selectedMonth, ytd, data, claims]);
+  // 月份多選：空=整年度累積；1個月=單月；2個月以上=加總（唯讀，不能認領）
+  const selMonthObjs = useMemo(() => data.filter(d => selectedMonths.includes(d.label)), [data, selectedMonths]);
+  const singleMonth = selectedMonths.length === 1 ? selectedMonths[0] : null;   // 只有選剛好 1 個月才可認領/編輯
 
-  const periodLabel = selectedMonth ?? ytdLabel;
-  const activeMonthKey = selectedMonth
-    ? (data.find(d => d.label === selectedMonth)?.month ?? latest.month)
+  const monthData = useMemo(() => {
+    if (selMonthObjs.length === 0) return ytd;
+    if (selMonthObjs.length === 1) return effectiveMonth(selMonthObjs[0], claims);
+    return effectiveAggregate(selMonthObjs, claims);
+  }, [selMonthObjs, ytd, claims]);
+
+  const activeMonthKey = singleMonth
+    ? (data.find(d => d.label === singleMonth)?.month ?? latest.month)
     : latest.month;
+
+  // 季度快捷（只顯示有資料的季）
+  const monthNum = (label: string) => parseInt(label, 10);
+  const QUARTERS: number[][] = [[1, 2, 3], [4, 5, 6], [7, 8, 9], [10, 11, 12]];
+  const QUARTER_NAME = ['第一季', '第二季', '第三季', '第四季'];
+  const availQuarters = QUARTERS
+    .map((q, i) => ({ i, months: data.filter(d => q.includes(monthNum(d.label))).map(d => d.label) }))
+    .filter(q => q.months.length > 0);
+  const sameSet = (a: string[], b: string[]) => a.length === b.length && a.every(x => b.includes(x));
+  const activeQuarter = selectedMonths.length > 1 ? availQuarters.find(q => sameSet(q.months, selectedMonths)) : undefined;
+
+  const periodLabel = selectedMonths.length === 0
+    ? ytdLabel
+    : selectedMonths.length === 1
+      ? selectedMonths[0]
+      : activeQuarter
+        ? QUARTER_NAME[activeQuarter.i]
+        : [...selectedMonths].sort((a, b) => monthNum(a) - monthNum(b)).join('＋');
+
+  // 月份篩選列（依月份／依醫院共用）
+  const clearDetail = () => { setAddingTo(null); setSelectedProd(null); };
+  const toggleMonth = (label: string) => { clearDetail(); setSelectedMonths(prev => prev.includes(label) ? prev.filter(x => x !== label) : [...prev, label]); };
+  const pillCls = (active: boolean) => `px-3 py-1 rounded-full text-xs font-medium transition-colors ${active ? 'bg-gray-900 text-white' : 'bg-white border border-gray-200 text-gray-500 hover:border-gray-400'}`;
+  const monthFilterBar = (
+    <div className="flex items-center gap-2 flex-wrap">
+      <span className="text-xs text-gray-400 font-medium">月份篩選：</span>
+      <button onClick={() => { clearDetail(); setSelectedMonths([]); }} className={pillCls(selectedMonths.length === 0)}>整年度</button>
+      {availQuarters.map(q => (
+        <button key={q.i} onClick={() => { clearDetail(); setSelectedMonths(q.months); }}
+          className={pillCls(!!activeQuarter && activeQuarter.i === q.i)}>{QUARTER_NAME[q.i]}</button>
+      ))}
+      <span className="text-gray-200 select-none">｜</span>
+      {data.map(d => d.label).map(mo => (
+        <button key={mo} onClick={() => toggleMonth(mo)} className={pillCls(selectedMonths.includes(mo))}>{mo}</button>
+      ))}
+      {selectedMonths.length > 1 && <span className="text-xs text-amber-500 ml-1">多月加總・唯讀（認領請選單月）</span>}
+    </div>
+  );
 
   // 月份趨勢：2026 有效業績（含共跑認領）vs 2025 同期。5–6月用有效業績，其餘用 salesHistory
   const trendData = useMemo(() => {
@@ -401,7 +440,7 @@ export default function PerformancePage() {
     setAddingTo(null);
     setSelectedProd(null);
     if (mode === 'hospital') {
-      if (selectedMonth === null) setSelectedMonth(latest.label);
+      if (selectedMonths.length === 0) setSelectedMonths([latest.label]);
       if (selectedHosp === ALL && latestHospData[0]) setSelectedHosp(latestHospData[0].name);
     }
   };
@@ -439,7 +478,7 @@ export default function PerformancePage() {
     .map(([cat, value]) => ({ name: CAT_ZH[cat] ?? cat, cat, value }));
 
   // 整年度時跨月合計；單月時只讀該月
-  const months4Doctors = selectedMonth ? [activeMonthKey] : data.map(m => m.month);
+  const months4Doctors = selectedMonths.length ? selMonthObjs.map(m => m.month) : data.map(m => m.month);
 
   // 讀取單一醫院＋產品的醫師資料（可跨月合計）
   const loadDoctorsForPeriod = (hosp: string, prod: string): DoctorEntry[] => {
@@ -673,24 +712,10 @@ export default function PerformancePage() {
 
           {viewMode === 'month' ? (
             <>
-              {/* 依月份：先選月份 → 再選醫院看詳情 */}
-              <div className="flex items-center gap-2 mb-3">
-                <span className="text-xs text-gray-400 font-medium">月份篩選：</span>
-                {[null, ...data.map(d => d.label)].map(mo => (
-                  <button key={mo ?? 'all'}
-                    onClick={() => { setSelectedMonth(mo); setAddingTo(null); setSelectedProd(null); }}
-                    className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
-                      selectedMonth === mo
-                        ? 'bg-gray-900 text-white'
-                        : 'bg-white border border-gray-200 text-gray-500 hover:border-gray-400'
-                    }`}
-                  >
-                    {mo === null ? '整年度' : mo}
-                  </button>
-                ))}
-              </div>
+              {/* 依月份：先選月份（可複選/季）→ 再選醫院看詳情 */}
+              <div className="mb-3">{monthFilterBar}</div>
               <p className="text-xs text-gray-400 font-medium mb-2 uppercase tracking-wide">
-                選擇醫院查看詳情（{selectedMonth ? selectedMonth : `${ytdLabel} 累積`}）
+                選擇醫院查看詳情（{periodLabel}{selectedMonths.length === 0 ? ' 累積' : ''}）
               </p>
               {hospPills}
             </>
@@ -720,21 +745,7 @@ export default function PerformancePage() {
                 </ResponsiveContainer>
               </div>
 
-              <div className="flex items-center gap-2 mt-4">
-                <span className="text-xs text-gray-400 font-medium">查看月份詳情：</span>
-                {data.map(d => d.label).map(mo => (
-                  <button key={mo}
-                    onClick={() => { setSelectedMonth(mo); setAddingTo(null); setSelectedProd(null); }}
-                    className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
-                      selectedMonth === mo
-                        ? 'bg-gray-900 text-white'
-                        : 'bg-white border border-gray-200 text-gray-500 hover:border-gray-400'
-                    }`}
-                  >
-                    {mo}
-                  </button>
-                ))}
-              </div>
+              <div className="mt-4">{monthFilterBar}</div>
             </>
           )}
         </div>
@@ -836,7 +847,7 @@ export default function PerformancePage() {
                         )}
                       </div>
                       {isPoolRow && (
-                        selectedMonth ? (
+                        singleMonth ? (
                           <div className="flex items-center gap-1.5">
                             <span className="text-xs text-gray-500">我的</span>
                             <input
@@ -852,7 +863,7 @@ export default function PerformancePage() {
                           <span className="text-xs text-gray-400">我的 {(prod as SharedProdView).mine || 0} 支（選單月認領）</span>
                         )
                       )}
-                      {!isAll && (
+                      {!isAll && singleMonth && (
                         <button
                           onClick={() => {
                             if (isAddingThis) { setAddingTo(null); setEditingIdx(null); }
@@ -874,8 +885,8 @@ export default function PerformancePage() {
                           <span>·</span>
                           <span>{d.name}</span>
                           <span className="opacity-60">×{d.qty}</span>
-                          <button onClick={() => openEdit(prod.name, i, d)} className="ml-1 opacity-50 hover:opacity-100">✎</button>
-                          <button onClick={() => handleDelete(prod.name, i)} className="opacity-40 hover:opacity-100">×</button>
+                          {singleMonth && <button onClick={() => openEdit(prod.name, i, d)} className="ml-1 opacity-50 hover:opacity-100">✎</button>}
+                          {singleMonth && <button onClick={() => handleDelete(prod.name, i)} className="opacity-40 hover:opacity-100">×</button>}
                         </div>
                       ))}
                       {usedQty < prod.qty && (
