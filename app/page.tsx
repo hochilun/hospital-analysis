@@ -8,7 +8,7 @@ import HospitalCard from '@/components/HospitalCard';
 import WeeklyView from '@/components/WeeklyView';
 import PersonalCalendar from '@/components/PersonalCalendar';
 import { getDoctors } from '@/lib/storage';
-import { pullFromCloud } from '@/lib/supabase';
+import { pullFromCloud, syncAllFromCloud } from '@/lib/supabase';
 import GlobalTodosPanel from '@/components/GlobalTodosPanel';
 
 const VALID_DEPTS = new Set(['GYN', 'GU', 'GS', 'ENT', 'TS', 'BS']);
@@ -62,6 +62,7 @@ export default function Home() {
   const [doctorSearch, setDoctorSearch] = useState('');
   const [showDropdown, setShowDropdown] = useState(false);
   const [selectedDoctor, setSelectedDoctor] = useState<string | null>(null);
+  const [syncing, setSyncing] = useState(false);
 
   useEffect(() => {
     const loadData = () => {
@@ -96,6 +97,19 @@ export default function Home() {
       document.removeEventListener('visibilitychange', onVisibility);
     };
   }, []);
+
+  // 從雲端拉最新資料覆蓋本機（解決 localStorage 優先、看不到雲端更新的問題）
+  const handleSyncFromCloud = async () => {
+    if (!confirm('從雲端拉取最新資料並覆蓋本機？\n（會用雲端資料蓋掉本機；尚未同步到雲端的本機修改會遺失）')) return;
+    setSyncing(true);
+    try {
+      await syncAllFromCloud();
+      window.location.reload();
+    } catch {
+      setSyncing(false);
+      alert('同步失敗，請稍後再試');
+    }
+  };
 
   const saveHospitals = (data: Hospital[]) => {
     // 只存真正的醫院資料，過濾掉 extra_xxx 的院外門診假醫院
@@ -218,6 +232,14 @@ export default function Home() {
               className="text-sm px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
             >
               {updating ? '更新中...' : '全部更新'}
+            </button>
+            <button
+              onClick={handleSyncFromCloud}
+              disabled={syncing}
+              title="從雲端拉取最新資料覆蓋本機"
+              className="text-sm px-3 py-2 border border-gray-300 text-gray-600 rounded-lg hover:bg-gray-50 disabled:opacity-50"
+            >
+              {syncing ? '同步中…' : '⟳ 從雲端同步'}
             </button>
           </div>
         </div>
