@@ -1,5 +1,18 @@
 import { Doctor, VisitRecord, Product, Hospital, GlobalTodo } from '@/types';
 import { pushToCloud } from './supabase';
+import { Seminar, SEED_SEMINARS } from '@/data/seminars';
+
+// ── Seminars（活動：seminar/晨會/產品介紹）──
+export const getSeminars = (): Seminar[] => {
+  if (typeof window === 'undefined') return [];
+  const raw = localStorage.getItem('seminars');
+  if (raw === null) return SEED_SEMINARS;   // 首次無資料 → 用種子（會在存檔時寫入）
+  try { return JSON.parse(raw); } catch { return SEED_SEMINARS; }
+};
+export const saveSeminars = (data: Seminar[]) => {
+  localStorage.setItem('seminars', JSON.stringify(data));
+  pushToCloud('seminars', data);
+};
 
 // ── Doctors ──
 export const getDoctors = (): Doctor[] => {

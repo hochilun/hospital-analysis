@@ -225,6 +225,7 @@ export default function Home() {
             <Link href="/visits" className="text-sm text-gray-600 hover:text-blue-600 font-medium">拜訪</Link>
             <Link href="/products" className="text-sm text-gray-600 hover:text-blue-600 font-medium">產品</Link>
             <Link href="/sales" className="text-sm text-gray-600 hover:text-blue-600 font-medium">業績</Link>
+            <Link href="/seminars" className="text-sm text-gray-600 hover:text-blue-600 font-medium">活動</Link>
             <Link href="/performance" className="text-sm text-blue-600 font-semibold hover:text-blue-700">我的</Link>
             <button
               onClick={handleUpdateAll}

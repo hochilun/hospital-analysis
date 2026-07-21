@@ -17,6 +17,7 @@ export const SYNC_KEYS = [
   'global-todos',
   'perf-doctors',
   'perf-claims',
+  'seminars',
 ] as const;
 
 export type SyncKey = typeof SYNC_KEYS[number];
