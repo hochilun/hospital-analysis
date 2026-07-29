@@ -381,6 +381,17 @@ export default function PerformancePage() {
     </div>
   );
 
+  // 尚未結算完的月份（asOf 日期早於該月最後一天）→ YoY 是不完整月 vs 完整月，需標註
+  const partialMonth = useMemo(() => {
+    for (const m of [...data].reverse()) {
+      if (!m.asOf) continue;
+      const [y, mo, d] = m.asOf.split('-').map(Number);
+      const lastDay = new Date(y, mo, 0).getDate();
+      if (d < lastDay) return { label: m.label, asOf: `${mo}/${d}` };
+    }
+    return null;
+  }, [data]);
+
   // 月份趨勢：2026 有效業績（含共跑認領）vs 2025 同期。5–6月用有效業績，其餘用 salesHistory
   const trendData = useMemo(() => {
     const rev2026 = SALES_BY_YEAR['2026'].MONTHLY_REV;
@@ -682,6 +693,8 @@ export default function PerformancePage() {
                 strokeDasharray="5 3" dot={{ r: 3, fill: '#d1d5db', strokeWidth: 0 }} activeDot={{ r: 5 }} />
             </LineChart>
           </ResponsiveContainer>
+
+          <MonthlyYoyTable rows={trendData} partialLabel={partialMonth?.label} partialAsOf={partialMonth?.asOf} />
         </div>
 
         {/* 醫院業績排名：年度累積 + 最新月份（排行榜列，顯示確切金額與佔比）*/}
@@ -1110,6 +1123,100 @@ function HospRankBoard({ title, rows }: { title: string; rows: { name: string; r
           })}
         </div>
       )}
+    </div>
+  );
+}
+
+// ── 逐月業績數字表（2026 vs 2025 同期 YoY）─────────────────────────────
+type TrendRow = { label: string; '2026': number; '2025': number; yoy: number | null };
+
+function MonthlyYoyTable({ rows, partialLabel, partialAsOf }: {
+  rows: TrendRow[]; partialLabel?: string; partialAsOf?: string;
+}) {
+  if (!rows.length) return null;
+
+  const max = Math.max(...rows.map(r => r['2026']), 1);   // 長條比例只看 2026 自身高低
+  const sum26 = rows.reduce((s, r) => s + r['2026'], 0);
+  const sum25 = rows.reduce((s, r) => s + r['2025'], 0);
+  const sumYoy = sum25 > 0 ? Math.round(((sum26 - sum25) / sum25) * 100) : null;
+
+  const diffCls = (d: number) => d > 0 ? 'text-emerald-600' : d < 0 ? 'text-rose-500' : 'text-gray-400';
+  const signed = (d: number) => (d > 0 ? '+' : d < 0 ? '−' : '') + Math.abs(d).toLocaleString('zh-TW');
+
+  const YoyBadge = ({ v }: { v: number | null }) => {
+    if (v === null) return <span className="text-gray-300">—</span>;
+    const cls = v > 0
+      ? 'bg-emerald-50 text-emerald-600'
+      : v < 0 ? 'bg-rose-50 text-rose-500' : 'bg-gray-100 text-gray-400';
+    return (
+      <span className={`inline-block min-w-[58px] px-2 py-0.5 rounded-md text-xs font-bold ${cls}`}>
+        {v > 0 ? '▲' : v < 0 ? '▼' : '－'} {Math.abs(v)}%
+      </span>
+    );
+  };
+
+  return (
+    <div className="mt-5 pt-5 border-t border-gray-100">
+      <div className="flex items-baseline justify-between mb-2">
+        <h3 className="text-sm font-semibold text-gray-700">逐月數字・2026 vs 2025 同期</h3>
+        {partialLabel && (
+          <span className="text-xs text-amber-600">
+            ※ {partialLabel}僅計至 {partialAsOf}，與 2025 整月相比會偏低
+          </span>
+        )}
+      </div>
+
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm tabular-nums">
+          <thead>
+            <tr className="text-xs text-gray-400 border-b border-gray-100">
+              <th className="text-left font-medium py-2 pr-3 w-16">月份</th>
+              <th className="text-right font-medium py-2 px-3">2026 加權業績</th>
+              <th className="text-right font-medium py-2 px-3">2025 同期</th>
+              <th className="text-right font-medium py-2 px-3">增減</th>
+              <th className="text-right font-medium py-2 pl-3 w-24">YoY</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map(r => {
+              const diff = r['2026'] - r['2025'];
+              const isPartial = r.label === partialLabel;
+              return (
+                <tr key={r.label} className="border-b border-gray-50 hover:bg-gray-50/60 transition-colors">
+                  <td className="py-2 pr-3 text-gray-700 font-medium whitespace-nowrap">
+                    {r.label}
+                    {isPartial && <span className="ml-1 text-[10px] text-amber-500 font-normal">※</span>}
+                  </td>
+                  <td className="py-2 px-3 text-right relative">
+                    {/* 背景長條：一眼看出月份高低 */}
+                    <span className="absolute inset-y-1 right-3 rounded bg-blue-50"
+                      style={{ width: `${(r['2026'] / max) * 100}%`, maxWidth: '100%' }} />
+                    <span className="relative font-semibold text-gray-900">
+                      {r['2026'].toLocaleString('zh-TW')}
+                    </span>
+                  </td>
+                  <td className="py-2 px-3 text-right text-gray-400">
+                    {r['2025'] > 0 ? r['2025'].toLocaleString('zh-TW') : '—'}
+                  </td>
+                  <td className={`py-2 px-3 text-right font-medium ${diffCls(diff)}`}>
+                    {r['2025'] > 0 ? signed(diff) : '—'}
+                  </td>
+                  <td className="py-2 pl-3 text-right"><YoyBadge v={r.yoy} /></td>
+                </tr>
+              );
+            })}
+            <tr className="bg-gray-50/80">
+              <td className="py-2.5 pr-3 font-bold text-gray-700 whitespace-nowrap">
+                累計 {rows[0].label}–{rows[rows.length - 1].label}
+              </td>
+              <td className="py-2.5 px-3 text-right font-black text-blue-600">{sum26.toLocaleString('zh-TW')}</td>
+              <td className="py-2.5 px-3 text-right font-medium text-gray-500">{sum25.toLocaleString('zh-TW')}</td>
+              <td className={`py-2.5 px-3 text-right font-bold ${diffCls(sum26 - sum25)}`}>{signed(sum26 - sum25)}</td>
+              <td className="py-2.5 pl-3 text-right"><YoyBadge v={sumYoy} /></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
