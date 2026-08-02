@@ -302,14 +302,37 @@ export const SHARED_PERFORMANCE: Record<string, Record<string, HospProdEntry[]>>
 };
 
 // 共跑醫院的「本人業績」：來自檔名含 Mars 的個人報表中，台北慈濟／長庚土城的紀錄。
-// 這些一定是 Mars 的，直接自動計入（不需認領）；與 SHARED_PERFORMANCE（整院手動認領池）互不重疊。
+// 這些一定是 Mars 的，直接自動計入（不需認領）。
+// ⚠️ 是否與 SHARED_PERFORMANCE（整院池）重疊，要看月份 —— 見 SETTLED_SHARED_MONTHS。
 export const SHARED_AUTO: Record<string, Record<string, HospProdEntry[]>> = {
-  // 2026-05：Mars 檔無共跑醫院業績
+  // 2026-05、06：主管 0729 更正檔已確認屬於 Mars 的共跑支數
+  // 來源 `farmlands/sales/YYYYMMDD-DDMars -0729更正.xlsx`
+  '2026-05': {
+    '台北慈濟': [ // 本人業績 應收 61,452 / 加權 58,526
+      { name: '止血顆粒 1g', category: 'Hemostasis', qty: 4, rev: 33800, weighted: 32190 },
+      { name: '止血顆粒 3g', category: 'Hemostasis', qty: 1, rev: 14700, weighted: 14000 },
+      { name: '3DMAX LIGHT', category: 'Hernia', qty: 2, rev: 12952, weighted: 12335 },
+    ],
+    '長庚土城': [ // 本人業績 應收 14,560 / 加權 13,867
+      { name: '止血顆粒 1g', category: 'Hemostasis', qty: 2, rev: 14560, weighted: 13867 },
+    ],
+  },
   '2026-06': {
-    '台北慈濟': [ // 本人業績 應收 28,360 / 加權 25,308
+    '台北慈濟': [ // 本人業績 應收 77,360 / 加權 71,975
+      { name: '止血顆粒 5g', category: 'Hemostasis', qty: 2, rev: 49000, weighted: 46667 },
       { name: '3DMAX LIGHT', category: 'Hernia', qty: 3, rev: 19428, weighted: 18503 },
       { name: '速巴定', category: 'Hernia', qty: 1, rev: 8932, weighted: 6805 },
     ],
+    '長庚土城': [ // 本人業績 應收 14,560 / 加權 13,867
+      { name: '止血顆粒 1g', category: 'Hemostasis', qty: 2, rev: 14560, weighted: 13867 },
+    ],
   },
-  // 2026-07：Mars 檔無共跑醫院業績
+  // 2026-07：Mars 檔無共跑醫院業績（尚未定案，共跑部分走手動認領）
 };
+
+// 共跑部分已由主管確認定案的月份。
+// 這些月份 SHARED_AUTO 與 SHARED_PERFORMANCE（整院池）是「重疊」的 —— 主管直接把屬於 Mars 的
+// 支數寫進個人報表，同一批貨兩邊都有。因此整院認領池一律唯讀、計算時忽略手動認領，
+// 全部以 SHARED_AUTO 為準，否則會重複計算。
+export const SETTLED_SHARED_MONTHS: readonly string[] = ['2026-05', '2026-06'];
+export const isSettledMonth = (monthKey: string) => SETTLED_SHARED_MONTHS.includes(monthKey);

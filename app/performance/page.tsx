@@ -8,7 +8,7 @@ import {
 } from 'recharts';
 import {
   MY_PERFORMANCE, CAT_ZH, CAT_COLOR, HOSP_COLOR, DEPT_LABEL,
-  SHARED_HOSPITALS, SHARED_PERFORMANCE, SHARED_AUTO,
+  SHARED_HOSPITALS, SHARED_PERFORMANCE, SHARED_AUTO, isSettledMonth,
   type DoctorEntry, type HospProdEntry, type MonthPerf,
 } from '@/data/myPerformance';
 import { SALES_BY_YEAR } from '@/data/salesHistory';
@@ -128,7 +128,10 @@ function claimedSharedMonth(monthKey: string, claims: ClaimsMap) {
       views.push({ name: p.name, category: p.category, qty: p.qty, rev: aw, weighted: aw, gross: aw, grossQty: p.qty, mine: p.qty, shared: true, auto: true });
       addAgg(hosp, p.category, p.name, aw, p.rev, p.qty);
     }
-    // 整院認領池 → 依認領支數比例
+    // 整院認領池 → 依認領支數比例。
+    // 已定案月份完全跳過：SHARED_AUTO 與整院池是同一批貨（重疊），再列一次會重複計算，
+    // 且同一產品會出現兩列（本人／整院）造成 key 衝突與畫面混淆。
+    if (isSettledMonth(monthKey)) { hospitalProducts[hosp] = views; continue; }
     for (const p of (pool[hosp] ?? [])) {
       const grossW = p.weighted ?? p.rev;
       const mine = Math.min(getClaim(claims, monthKey, hosp, p.name), p.qty);
@@ -342,6 +345,8 @@ export default function PerformancePage() {
   const activeMonthKey = singleMonth
     ? (data.find(d => d.label === singleMonth)?.month ?? latest.month)
     : latest.month;
+  // 共跑部分已由主管確認定案 → 認領框唯讀，數字一律以 SHARED_AUTO 為準
+  const settledActive = isSettledMonth(activeMonthKey);
 
   // 季度快捷（只顯示有資料的季）
   const monthNum = (label: string) => parseInt(label, 10);
@@ -777,8 +782,14 @@ export default function PerformancePage() {
             {isSharedHosp && (
               <p className="text-xs text-gray-400 mb-4">
                 本人業績 <span className="text-gray-600 font-medium">{fmtMoney(autoTotal)}</span>
-                {' ＋ 認領 '}<span className="text-emerald-600 font-medium">{fmtMoney(claimTotal)}</span>
-                <span className="text-gray-300"> · 整院可認領池 {fmtMoney(poolGrossTotal)}</span>
+                {settledActive ? (
+                  <span className="ml-1 text-emerald-600 font-medium">· 主管已確認定案</span>
+                ) : (
+                  <>
+                    {' ＋ 認領 '}<span className="text-emerald-600 font-medium">{fmtMoney(claimTotal)}</span>
+                    <span className="text-gray-300"> · 整院可認領池 {fmtMoney(poolGrossTotal)}</span>
+                  </>
+                )}
               </p>
             )}
             {!isSharedHosp && <div className="mb-4" />}
@@ -860,7 +871,9 @@ export default function PerformancePage() {
                         )}
                       </div>
                       {isPoolRow && (
-                        singleMonth ? (
+                        settledActive ? (
+                          <span className="text-xs text-gray-400">主管已確認・不需認領</span>
+                        ) : singleMonth ? (
                           <div className="flex items-center gap-1.5">
                             <span className="text-xs text-gray-500">我的</span>
                             <input
