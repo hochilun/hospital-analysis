@@ -228,6 +228,7 @@ export const SALES_BY_YEAR: Record<string, YearSalesData> = {
       { month: '5月', rev: 504_452 },
       { month: '6月', rev: 475_349 },  // 6/1–6/30（台北慈濟改列共跑，見 SHARED_PERFORMANCE）
       { month: '7月', rev: 770_650 },  // 7/1–7/31 整月（含共跑認領由前端動態加上）
+      { month: '8月', rev: 551_940 },  // 8/1–8/13（partial；含共跑認領由前端動態加上）
     ],
     MONTHLY_BY_HOSPITAL: [
       { month: '1月', 中心診所: 28_190,  台北醫學: 48_952,   宏恩醫療: 0,       恩主公: 134_571, 沙爾德聖: 349_352 },
@@ -237,6 +238,7 @@ export const SALES_BY_YEAR: Record<string, YearSalesData> = {
       { month: '5月', 中心診所: 18_095,  台北醫學: 160_571,  宏恩醫療: 0,       恩主公: 33_962,  沙爾德聖: 291_824 },
       { month: '6月', 中心診所: 27_048,   台北醫學: 60_000,   宏恩醫療: 10_240,  恩主公: 105_486, 沙爾德聖: 272_575 },
       { month: '7月', 中心診所: 63_048,   台北醫學: 193_288,  宏恩醫療: 73_143,  恩主公: 93_158,  沙爾德聖: 348_014 },
+      { month: '8月', 中心診所: 49_543,   台北醫學: 181_143,  宏恩醫療: 0,       恩主公: 110_676, 沙爾德聖: 210_578 },
     ],
     MONTHLY_BY_CATEGORY: [
       { month: '1月', Hemostasis: 42_990,  'Adhesion Prevention': 455_810, Hernia: 41_314,  'Urinary Incontinence': 20_952 },
@@ -246,6 +248,7 @@ export const SALES_BY_YEAR: Record<string, YearSalesData> = {
       { month: '5月', Hemostasis: 8_914,   'Adhesion Prevention': 332_571, Hernia: 76_109,  'Urinary Incontinence': 86_858 },
       { month: '6月', Hemostasis: 28_019,  'Adhesion Prevention': 358_286, Hernia: 89_044,  'Urinary Incontinence': 0 },
       { month: '7月', Hemostasis: 116_571, 'Adhesion Prevention': 446_095, Hernia: 143_243, 'Urinary Incontinence': 64_741 },
+      { month: '8月', Hemostasis: 106_229, 'Adhesion Prevention': 274_858, Hernia: 149_901, 'Urinary Incontinence': 20_952 },
     ],
   },
 };
