@@ -8,7 +8,7 @@ import {
 } from 'recharts';
 import {
   MY_PERFORMANCE, CAT_ZH, CAT_COLOR, HOSP_COLOR, DEPT_LABEL,
-  SHARED_HOSPITALS, SHARED_PERFORMANCE, SHARED_AUTO, isSettledMonth,
+  SHARED_HOSPITALS, SHARED_PERFORMANCE, SHARED_AUTO, isSettledMonth, HOSP_ORDER,
   type DoctorEntry, type HospProdEntry, type MonthPerf,
 } from '@/data/myPerformance';
 import { SALES_BY_YEAR } from '@/data/salesHistory';
@@ -306,6 +306,7 @@ export default function PerformancePage() {
     ? data[0].label
     : `${data[0].label}–${data[data.length - 1].label}`;
 
+  const [trendHosp, setTrendHosp] = useState<string>(ALL);   // 頂部趨勢圖的醫院切換
   const [viewMode, setViewMode] = useState<'month' | 'hospital'>('month');
   const [selectedHosp, setSelectedHosp] = useState<string>(ALL);
   const [selectedProd, setSelectedProd] = useState<string | null>(null);
@@ -410,6 +411,30 @@ export default function PerformancePage() {
       return { label: r.month, '2026': v26, '2025': v25, yoy };
     });
   }, [data, claims]);
+
+  // 各醫院逐月（2026 有效業績 vs 2025 同期）——供頂部醫院切換與小倍數圖使用。
+  // 有個人明細的月份用有效業績（含共跑認領）；其餘月份回退 salesHistory。
+  const hospMonthly = useMemo(() => {
+    const eff: Record<string, Record<string, number>> = {};
+    for (const m of data) eff[m.label] = effectiveMonth(m, claims).byHospital;
+    const h26 = SALES_BY_YEAR['2026'].MONTHLY_BY_HOSPITAL;
+    const h25 = SALES_BY_YEAR['2025'].MONTHLY_BY_HOSPITAL;
+    const out: Record<string, TrendRow[]> = {};
+    for (const h of HOSP_ORDER) {
+      out[h] = SALES_BY_YEAR['2026'].MONTHLY_REV.map(r => {
+        const v26 = eff[r.month]
+          ? Math.round(eff[r.month][h] ?? 0)
+          : Number(h26.find(x => x.month === r.month)?.[h] ?? 0);
+        const v25 = Number(h25.find(x => x.month === r.month)?.[h] ?? 0);
+        return { label: r.month, '2026': v26, '2025': v25, yoy: v25 > 0 ? Math.round(((v26 - v25) / v25) * 100) : null };
+      });
+    }
+    return out;
+  }, [data, claims]);
+
+  // 頂部趨勢圖顯示的序列：全部或單一醫院
+  const activeTrend = trendHosp === ALL ? trendData : (hospMonthly[trendHosp] ?? []);
+  const trendColor = trendHosp === ALL ? '#3b82f6' : (HOSP_COLOR[trendHosp] ?? '#3b82f6');
 
   // 年度累積醫院排名：未納入個人明細的月份用 salesHistory，5–6月用有效業績（含共跑認領）
   const ytdHospData = useMemo(() => {
@@ -676,30 +701,66 @@ export default function PerformancePage() {
           />
         </div>
 
-        {/* 月份趨勢折線圖 */}
+        {/* 各院一覽（小倍數）：一眼看出每家的走勢形狀，點選即切換下方主圖 */}
         <div className="bg-white rounded-2xl border border-gray-100 p-6">
           <div className="flex items-baseline gap-3 mb-4">
+            <h2 className="text-base font-semibold text-gray-800">各院走勢一覽</h2>
+            <span className="text-xs text-gray-400">各卡縱軸獨立，看的是「這家自己的變化」；點選帶入下方主圖</span>
+          </div>
+          <div className="grid grid-cols-4 gap-3">
+            <HospSpark name="全部" rows={trendData} color="#3b82f6"
+              active={trendHosp === ALL} onClick={() => setTrendHosp(ALL)} />
+            {HOSP_ORDER.filter(h => (hospMonthly[h] ?? []).some(r => r['2026'] > 0)).map(h => (
+              <HospSpark key={h} name={h} rows={hospMonthly[h]} color={HOSP_COLOR[h] ?? '#3b82f6'}
+                active={trendHosp === h} onClick={() => setTrendHosp(trendHosp === h ? ALL : h)} />
+            ))}
+          </div>
+        </div>
+
+        {/* 月份趨勢折線圖 */}
+        <div className="bg-white rounded-2xl border border-gray-100 p-6">
+          <div className="flex items-baseline gap-3 mb-3">
             <h2 className="text-base font-semibold text-gray-800">月份業績趨勢（加權業績）</h2>
             <span className="text-xs text-gray-400">— 2026 實線　- - 2025 同期</span>
           </div>
+
+          {/* 醫院切換 */}
+          <div className="flex items-center gap-2 flex-wrap mb-4">
+            <button onClick={() => setTrendHosp(ALL)} className={pillCls(trendHosp === ALL)}>全部</button>
+            {HOSP_ORDER.filter(h => (hospMonthly[h] ?? []).some(r => r['2026'] > 0 || r['2025'] > 0)).map(h => {
+              const on = trendHosp === h;
+              return (
+                <button key={h} onClick={() => setTrendHosp(h)}
+                  className={`px-3 py-1 rounded-full text-xs font-medium transition-colors inline-flex items-center gap-1.5 ${
+                    on ? 'text-white' : 'bg-white border border-gray-200 text-gray-600 hover:border-gray-400'}`}
+                  style={on ? { background: HOSP_COLOR[h] } : undefined}>
+                  <span className="w-2 h-2 rounded-full"
+                    style={{ background: on ? 'rgba(255,255,255,.85)' : HOSP_COLOR[h] }} />
+                  {h}
+                </button>
+              );
+            })}
+          </div>
+
           <ResponsiveContainer width="100%" height={220}>
-            <LineChart data={trendData} margin={{ top: 8, right: 16, left: 0, bottom: 0 }}>
+            <LineChart data={activeTrend} margin={{ top: 8, right: 16, left: 0, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" vertical={false} />
               <XAxis dataKey="label" tick={{ fontSize: 12, fill: '#9ca3af' }} axisLine={false} tickLine={false} />
               <YAxis tickFormatter={fmt} tick={{ fontSize: 11, fill: '#9ca3af' }} axisLine={false} tickLine={false} width={48} />
               <Tooltip content={<TrendTip />} />
               <Legend
-                formatter={(v) => v === '2026' ? '2026 加權業績' : '2025 同期'}
+                formatter={(v) => v === '2026' ? `2026 ${trendHosp === ALL ? '加權業績' : trendHosp}` : '2025 同期'}
                 wrapperStyle={{ fontSize: 12, color: '#6b7280', paddingTop: 8 }}
               />
-              <Line type="monotone" dataKey="2026" stroke="#3b82f6" strokeWidth={2.5}
-                dot={{ r: 4, fill: '#3b82f6', strokeWidth: 0 }} activeDot={{ r: 6 }} />
-              <Line type="monotone" dataKey="2025" stroke="#d1d5db" strokeWidth={1.5}
+              <Line type="monotone" dataKey="2026" stroke={trendColor} strokeWidth={2.5} isAnimationActive={false}
+                dot={{ r: 4, fill: trendColor, strokeWidth: 0 }} activeDot={{ r: 6 }} />
+              <Line type="monotone" dataKey="2025" stroke="#d1d5db" strokeWidth={1.5} isAnimationActive={false}
                 strokeDasharray="5 3" dot={{ r: 3, fill: '#d1d5db', strokeWidth: 0 }} activeDot={{ r: 5 }} />
             </LineChart>
           </ResponsiveContainer>
 
-          <MonthlyYoyTable rows={trendData} partialLabel={partialMonth?.label} partialAsOf={partialMonth?.asOf} />
+          <MonthlyYoyTable rows={activeTrend} partialLabel={partialMonth?.label} partialAsOf={partialMonth?.asOf}
+            barColor={trendColor} scopeLabel={trendHosp === ALL ? undefined : trendHosp} />
         </div>
 
         {/* 醫院業績排名：年度累積 + 最新月份（排行榜列，顯示確切金額與佔比）*/}
@@ -1143,8 +1204,43 @@ function HospRankBoard({ title, rows }: { title: string; rows: { name: string; r
 // ── 逐月業績數字表（2026 vs 2025 同期 YoY）─────────────────────────────
 type TrendRow = { label: string; '2026': number; '2025': number; yoy: number | null };
 
-function MonthlyYoyTable({ rows, partialLabel, partialAsOf }: {
-  rows: TrendRow[]; partialLabel?: string; partialAsOf?: string;
+// 小倍數：單一醫院的迷你走勢。縱軸各卡獨立（看「這家自己的變化」），
+// 各院金額高低由卡片上的數字與下方排行榜負責，不靠線高比較。
+function HospSpark({ name, rows, color, active, onClick }: {
+  name: string; rows: TrendRow[]; color: string; active: boolean; onClick: () => void;
+}) {
+  const last = [...rows].reverse().find(r => r['2026'] > 0);
+  const yoy = last?.yoy ?? null;
+  const peak = Math.max(...rows.map(r => r['2026']), 1);
+  return (
+    <button onClick={onClick}
+      className={`text-left rounded-xl border p-3 transition-all ${
+        active ? 'border-gray-400 bg-gray-50 shadow-sm' : 'border-gray-100 hover:border-gray-300'}`}>
+      <div className="flex items-center gap-1.5 mb-1">
+        <span className="w-2 h-2 rounded-full shrink-0" style={{ background: color }} />
+        <span className="text-xs font-semibold text-gray-700 truncate">{name}</span>
+      </div>
+      <div className="flex items-baseline gap-1.5 mb-1">
+        <span className="text-sm font-bold text-gray-900 tabular-nums">{fmt(last?.['2026'] ?? 0)}</span>
+        {yoy !== null && (
+          <span className={`text-[10px] font-bold ${yoy > 0 ? 'text-emerald-600' : yoy < 0 ? 'text-rose-500' : 'text-gray-400'}`}>
+            {yoy > 0 ? '▲' : yoy < 0 ? '▼' : '－'}{Math.abs(yoy)}%
+          </span>
+        )}
+      </div>
+      <ResponsiveContainer width="100%" height={44}>
+        <LineChart data={rows} margin={{ top: 3, right: 2, left: 2, bottom: 0 }}>
+          <YAxis domain={[0, peak * 1.15]} hide />
+          <Line type="monotone" dataKey="2026" stroke={color} strokeWidth={2} dot={false} isAnimationActive={false} />
+        </LineChart>
+      </ResponsiveContainer>
+      <p className="text-[10px] text-gray-300 mt-0.5">峰值 {fmt(peak)}</p>
+    </button>
+  );
+}
+
+function MonthlyYoyTable({ rows, partialLabel, partialAsOf, barColor, scopeLabel }: {
+  rows: TrendRow[]; partialLabel?: string; partialAsOf?: string; barColor?: string; scopeLabel?: string;
 }) {
   if (!rows.length) return null;
 
@@ -1171,7 +1267,7 @@ function MonthlyYoyTable({ rows, partialLabel, partialAsOf }: {
   return (
     <div className="mt-5 pt-5 border-t border-gray-100">
       <div className="flex items-baseline justify-between mb-2">
-        <h3 className="text-sm font-semibold text-gray-700">逐月數字・2026 vs 2025 同期</h3>
+        <h3 className="text-sm font-semibold text-gray-700">逐月數字・2026 vs 2025 同期{scopeLabel ? `（${scopeLabel}）` : ''}</h3>
         {partialLabel && (
           <span className="text-xs text-amber-600">
             ※ {partialLabel}僅計至 {partialAsOf}，與 2025 整月相比會偏低
@@ -1202,8 +1298,9 @@ function MonthlyYoyTable({ rows, partialLabel, partialAsOf }: {
                   </td>
                   <td className="py-2 px-3 text-right relative">
                     {/* 背景長條：一眼看出月份高低 */}
-                    <span className="absolute inset-y-1 right-3 rounded bg-blue-50"
-                      style={{ width: `${(r['2026'] / max) * 100}%`, maxWidth: '100%' }} />
+                    <span className="absolute inset-y-1 right-3 rounded"
+                      style={{ width: `${(r['2026'] / max) * 100}%`, maxWidth: '100%',
+                               background: (barColor ?? '#3b82f6') + '1f' }} />
                     <span className="relative font-semibold text-gray-900">
                       {r['2026'].toLocaleString('zh-TW')}
                     </span>
@@ -1222,7 +1319,7 @@ function MonthlyYoyTable({ rows, partialLabel, partialAsOf }: {
               <td className="py-2.5 pr-3 font-bold text-gray-700 whitespace-nowrap">
                 累計 {rows[0].label}–{rows[rows.length - 1].label}
               </td>
-              <td className="py-2.5 px-3 text-right font-black text-blue-600">{sum26.toLocaleString('zh-TW')}</td>
+              <td className="py-2.5 px-3 text-right font-black" style={{ color: barColor ?? '#2563eb' }}>{sum26.toLocaleString('zh-TW')}</td>
               <td className="py-2.5 px-3 text-right font-medium text-gray-500">{sum25.toLocaleString('zh-TW')}</td>
               <td className={`py-2.5 px-3 text-right font-bold ${diffCls(sum26 - sum25)}`}>{signed(sum26 - sum25)}</td>
               <td className="py-2.5 pl-3 text-right"><YoyBadge v={sumYoy} /></td>
