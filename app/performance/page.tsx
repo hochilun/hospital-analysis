@@ -11,6 +11,7 @@ import {
   SHARED_HOSPITALS, SHARED_PERFORMANCE, SHARED_AUTO, isSettledMonth, HOSP_ORDER,
   type DoctorEntry, type HospProdEntry, type MonthPerf,
 } from '@/data/myPerformance';
+import { sponsorAmount } from '@/data/sponsorship';
 import { SALES_BY_YEAR } from '@/data/salesHistory';
 import { pushToCloud, pullFromCloud } from '@/lib/supabase';
 
@@ -553,23 +554,61 @@ export default function PerformancePage() {
   })();
 
   // 醫師業績排行榜：反推每位醫師的業績貢獻（產品業績 × 該醫師佔該產品數量比例）
-  type DocLB = { name: string; dept: string; qty: number; rev: number; products: { name: string; qty: number; rev: number; hosp: string }[] };
+  // 另計學術贊助、活躍月數、逐月走勢，供指標列使用。
+  type DocLB = {
+    name: string; dept: string; qty: number; rev: number;
+    sponsor: number;                                   // 學術贊助金額
+    activeMonths: number;                              // 有使用紀錄的月份數
+    monthly: { label: string; rev: number }[];         // 逐月業績貢獻
+    products: { name: string; qty: number; rev: number; sponsor: number; hosp: string }[];
+  };
   const doctorLeaderboard: DocLB[] = (() => {
     const targetHosps = isAll ? hospList : [selectedHosp];
+    const monthObjs = selectedMonths.length ? selMonthObjs : data;
     const agg: Record<string, DocLB> = {};
+    const seenMonth: Record<string, Set<string>> = {};
+
     for (const h of targetHosps) {
       for (const p of (monthData.hospitalProducts[h] ?? [])) {
         for (const d of loadDoctorsForPeriod(h, p.name)) {
           const revShare = p.qty > 0 ? Math.round(p.rev * d.qty / p.qty) : 0;
+          const spon = sponsorAmount(p.name, h, d.qty);
           const key = `${d.dept}|${d.name}`;
-          if (!agg[key]) agg[key] = { name: d.name, dept: d.dept, qty: 0, rev: 0, products: [] };
+          if (!agg[key]) {
+            agg[key] = { name: d.name, dept: d.dept, qty: 0, rev: 0, sponsor: 0, activeMonths: 0,
+                         monthly: monthObjs.map(m => ({ label: m.label, rev: 0 })), products: [] };
+            seenMonth[key] = new Set();
+          }
           agg[key].qty += d.qty;
           agg[key].rev += revShare;
-          agg[key].products.push({ name: p.name, qty: d.qty, rev: revShare, hosp: h });
+          agg[key].sponsor += spon;
+          agg[key].products.push({ name: p.name, qty: d.qty, rev: revShare, sponsor: spon, hosp: h });
         }
+        // 逐月拆解：該產品在各月的醫師用量 × 當月單價
+        monthObjs.forEach((m, mi) => {
+          const mp = (effectiveMonth(m, claims).hospitalProducts[h] ?? []).find(x => x.name === p.name);
+          if (!mp || mp.qty <= 0) return;
+          for (const d of loadDoctors(m.month, h, p.name)) {
+            const key = `${d.dept}|${d.name}`;
+            if (!agg[key]) continue;
+            agg[key].monthly[mi].rev += Math.round(mp.rev * d.qty / mp.qty);
+            seenMonth[key].add(m.label);
+          }
+        });
       }
     }
+    for (const k of Object.keys(agg)) agg[k].activeMonths = seenMonth[k].size;
     return Object.values(agg).sort((a, b) => b.rev - a.rev);
+  })();
+  const docTotalRev = doctorLeaderboard.reduce((s, d) => s + d.rev, 0) || 1;
+  const periodMonths = (selectedMonths.length ? selMonthObjs : data).length || 1;
+  // 醫師登記涵蓋率：已歸屬到醫師的業績 ÷ 期間該範圍總業績。
+  // 未登記的月份會讓「活躍月數／月均」偏低，這裡明示以免誤讀。
+  const docCoverage = (() => {
+    const targetHosps = isAll ? hospList : [selectedHosp];
+    const scope = targetHosps.reduce((s, h) =>
+      s + (monthData.hospitalProducts[h] ?? []).reduce((t, p) => t + p.rev, 0), 0);
+    return scope > 0 ? Math.round((docTotalRev / scope) * 100) : 100;
   })();
 
   // 醫師名冊：所有輸入過的醫師去重（{科別,姓名}），新增時自動比對，避免選字錯誤造成重複醫師
@@ -1054,7 +1093,14 @@ export default function PerformancePage() {
         <div className="bg-white rounded-2xl border border-gray-100 p-6">
           <div className="flex items-baseline justify-between mb-4">
             <h2 className="text-base font-semibold text-gray-800">醫師使用分析</h2>
-            <span className="text-xs text-gray-400">{isAll ? '全部醫院' : selectedHosp} · {periodLabel} · 依業績排行</span>
+            <span className="text-xs text-gray-400">
+              {isAll ? '全部醫院' : selectedHosp} · {periodLabel} · 依業績排行
+              {mounted && doctorLeaderboard.length > 0 && (
+                <span className={docCoverage < 95 ? 'text-amber-600 font-medium' : 'text-gray-400'}>
+                  {' · '}醫師已登記 {docCoverage}% 業績{docCoverage < 95 && '（未登記者不列入，月均／活躍月數會偏低）'}
+                </span>
+              )}
+            </span>
           </div>
           {!mounted ? (
             <p className="text-sm text-gray-300 py-6 text-center">載入中…</p>
@@ -1063,48 +1109,90 @@ export default function PerformancePage() {
           ) : (
             <div className="space-y-2">
               {doctorLeaderboard.map((d, i) => {
-                const maxRev = doctorLeaderboard[0].rev || 1;
-                const pct = Math.round((d.rev / maxRev) * 100);
                 const key = `${d.dept}|${d.name}`;
                 const isExp = expandedDoc === key;
+                const share = Math.round((d.rev / docTotalRev) * 100);          // 佔全部醫師業績
+                const avg = Math.round(d.rev / periodMonths);                    // 期間月均
+                const sponPct = d.rev > 0 ? Math.round((d.sponsor / d.rev) * 100) : 0;
+                // 主力產品：同名跨院合併後金額最大者
+                const byProd: Record<string, number> = {};
+                for (const p of d.products) byProd[p.name] = (byProd[p.name] ?? 0) + p.rev;
+                const [topProd, topRev] = Object.entries(byProd).sort((a, b) => b[1] - a[1])[0] ?? ['—', 0];
+                const topPct = d.rev > 0 ? Math.round((topRev / d.rev) * 100) : 0;
+                const steady = d.activeMonths >= periodMonths;                   // 每月都有用
                 return (
                   <div key={key} className="border border-gray-100 rounded-xl overflow-hidden">
                     <button onClick={() => setExpandedDoc(isExp ? null : key)}
-                      className="w-full flex items-center gap-3 p-3 text-left hover:bg-gray-50/60 transition-colors">
-                      <span className={`text-sm font-bold w-6 text-center ${i === 0 ? 'text-amber-500' : i === 1 ? 'text-gray-400' : i === 2 ? 'text-orange-400' : 'text-gray-300'}`}>
-                        {i < 3 ? ['🥇', '🥈', '🥉'][i] : i + 1}
-                      </span>
-                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium min-w-[52px] text-center ${DEPT_COLOR_MAP[d.dept] ?? 'bg-gray-100 text-gray-600'}`}>
-                        {DEPT_LABEL[d.dept] ?? d.dept}
-                      </span>
-                      <span className="text-sm font-semibold text-gray-800 w-20 shrink-0">{d.name}</span>
-                      <div className="flex-1 flex items-center gap-3 min-w-0">
-                        <div className="flex-1 h-2.5 bg-gray-100 rounded-full overflow-hidden">
-                          <div className="h-full rounded-full bg-blue-500 transition-all" style={{ width: `${pct}%` }} />
-                        </div>
-                        <span className="text-sm font-bold text-gray-900 w-20 text-right">{fmtMoney(d.rev)}</span>
+                      className="w-full text-left p-3 hover:bg-gray-50/60 transition-colors">
+                      <div className="flex items-center gap-3">
+                        <span className={`text-sm font-bold w-6 text-center ${i === 0 ? 'text-amber-500' : i === 1 ? 'text-gray-400' : i === 2 ? 'text-orange-400' : 'text-gray-300'}`}>
+                          {i < 3 ? ['🥇', '🥈', '🥉'][i] : i + 1}
+                        </span>
+                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium min-w-[52px] text-center ${DEPT_COLOR_MAP[d.dept] ?? 'bg-gray-100 text-gray-600'}`}>
+                          {DEPT_LABEL[d.dept] ?? d.dept}
+                        </span>
+                        <span className="text-sm font-semibold text-gray-800 w-20 shrink-0">{d.name}</span>
+                        <span className="text-xs text-gray-300 shrink-0">佔 {share}%</span>
+                        <span className="flex-1" />
+                        <span className="text-base font-bold text-gray-900 tabular-nums">{fmtMoney(d.rev)}</span>
+                        <span className="text-xs text-gray-400 w-10 text-right shrink-0">{d.qty} 件</span>
+                        <span className="text-gray-300 text-xs w-3">{isExp ? '▾' : '▸'}</span>
                       </div>
-                      <span className="text-xs text-gray-400 w-10 text-right shrink-0">{d.qty} 件</span>
-                      <span className="text-gray-300 text-xs w-3">{isExp ? '▾' : '▸'}</span>
+
+                      {/* 指標列 */}
+                      <div className="flex items-stretch gap-0 mt-2.5 ml-12 rounded-lg bg-gray-50/70 divide-x divide-gray-200/70">
+                        <Metric label="月均業績" value={fmtMoney(avg)} />
+                        <Metric label="活躍月數"
+                          value={`${d.activeMonths} / ${periodMonths} 月`}
+                          tone={steady ? 'good' : d.activeMonths === 1 ? 'weak' : undefined} />
+                        <Metric label="主力產品" value={topProd} sub={`${topPct}%`} />
+                        <Metric label="學術贊助"
+                          value={d.sponsor > 0 ? fmtMoney(d.sponsor) : '—'}
+                          sub={d.sponsor > 0 ? `佔業績 ${sponPct}%` : undefined}
+                          tone={sponPct >= 45 ? 'warn' : undefined} />
+                      </div>
                     </button>
                     <div className="px-3 pb-3 pl-12">
                       {!isExp ? (
-                        <p className="text-xs text-gray-400 -mt-1">
+                        <p className="text-xs text-gray-400 mt-2">
                           {d.products.map(p => `${p.name} ${p.qty}件`).join(' · ')}
                         </p>
                       ) : (
-                        <div className="space-y-1 pt-1">
+                        <div className="pt-2">
+                          <div className="flex items-center justify-between text-[11px] text-gray-400 pb-1 border-b border-gray-100">
+                            <span>產品</span>
+                            <div className="flex gap-3 items-center">
+                              <span className="w-10 text-right">件數</span>
+                              <span className="w-20 text-right">業績</span>
+                              <span className="w-20 text-right">學術贊助</span>
+                            </div>
+                          </div>
                           {d.products.map((p, idx) => (
-                            <div key={idx} className="flex items-center justify-between text-sm">
+                            <div key={idx} className="flex items-center justify-between text-sm py-1">
                               <span className="text-gray-600">
                                 {p.name}{isAll && <span className="text-gray-400 text-xs ml-1">@{p.hosp}</span>}
                               </span>
-                              <div className="flex gap-3 items-center">
-                                <span className="text-gray-400 text-xs">{p.qty} 件</span>
+                              <div className="flex gap-3 items-center tabular-nums">
+                                <span className="text-gray-400 text-xs w-10 text-right">{p.qty} 件</span>
                                 <span className="font-semibold text-gray-800 w-20 text-right">{fmtMoney(p.rev)}</span>
+                                <span className={`w-20 text-right text-xs ${p.sponsor > 0 ? 'text-gray-500' : 'text-gray-300'}`}>
+                                  {p.sponsor > 0 ? fmtMoney(p.sponsor) : '無贊助'}
+                                </span>
                               </div>
                             </div>
                           ))}
+                          {d.monthly.some(m => m.rev > 0) && (
+                            <div className="flex gap-2 mt-3 pt-2 border-t border-gray-100">
+                              {d.monthly.map(m => (
+                                <div key={m.label} className="flex-1 text-center">
+                                  <p className="text-[10px] text-gray-400">{m.label}</p>
+                                  <p className={`text-xs font-semibold tabular-nums ${m.rev > 0 ? 'text-gray-700' : 'text-gray-300'}`}>
+                                    {m.rev > 0 ? fmt(m.rev) : '—'}
+                                  </p>
+                                </div>
+                              ))}
+                            </div>
+                          )}
                         </div>
                       )}
                     </div>
@@ -1327,6 +1415,23 @@ function MonthlyYoyTable({ rows, partialLabel, partialAsOf, barColor, scopeLabel
           </tbody>
         </table>
       </div>
+    </div>
+  );
+}
+
+// 醫師卡片上的單一指標格
+function Metric({ label, value, sub, tone }: {
+  label: string; value: string; sub?: string; tone?: 'good' | 'warn' | 'weak';
+}) {
+  const vc = tone === 'good' ? 'text-emerald-600'
+           : tone === 'warn' ? 'text-amber-600'
+           : tone === 'weak' ? 'text-gray-400'
+           : 'text-gray-800';
+  return (
+    <div className="flex-1 px-3 py-1.5 min-w-0">
+      <p className="text-[10px] text-gray-400 leading-tight">{label}</p>
+      <p className={`text-xs font-bold truncate tabular-nums ${vc}`} title={value}>{value}</p>
+      {sub && <p className="text-[10px] text-gray-400 leading-tight">{sub}</p>}
     </div>
   );
 }
