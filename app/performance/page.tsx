@@ -4,7 +4,7 @@ import { useState, useCallback, useMemo, useEffect } from 'react';
 import Link from 'next/link';
 import {
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  PieChart, Pie, Cell, LineChart, Line, Legend,
+  PieChart, Pie, Cell, LineChart, Line, Legend, BarChart, Bar,
 } from 'recharts';
 import {
   MY_PERFORMANCE, CAT_ZH, CAT_COLOR, HOSP_COLOR, DEPT_LABEL,
@@ -308,6 +308,7 @@ export default function PerformancePage() {
     : `${data[0].label}–${data[data.length - 1].label}`;
 
   const [trendHosp, setTrendHosp] = useState<string>(ALL);   // 頂部趨勢圖的醫院切換
+  const [drillHosp, setDrillHosp] = useState<string | null>(null);   // 各醫院表格點選展開的細部
   const [viewMode, setViewMode] = useState<'month' | 'hospital'>('month');
   const [selectedHosp, setSelectedHosp] = useState<string>(ALL);
   const [selectedProd, setSelectedProd] = useState<string | null>(null);
@@ -412,6 +413,76 @@ export default function PerformancePage() {
       return { label: r.month, '2026': v26, '2025': v25, yoy };
     });
   }, [data, claims]);
+
+  // ── 期間彙總（本月／本季／年度）──────────────────────────────────────
+  // 年度自五月到職起算。季別以月份歸屬（Q1 1-3、Q2 4-6、Q3 7-9、Q4 10-12），
+  // 只計入實際有資料的月份，所以「上季」在五月到職的情況下只有 5、6 月。
+  const effByLabel = useMemo(() => {
+    const o: Record<string, ReturnType<typeof effectiveMonth>> = {};
+    for (const m of data) o[m.label] = effectiveMonth(m, claims);
+    return o;
+  }, [data, claims]);
+
+  const quarterOf = (label: string) => Math.floor((parseInt(label, 10) - 1) / 3) + 1;
+  const sumOf = (labels: string[], hosp?: string) =>
+    labels.reduce((s, l) => {
+      const e = effByLabel[l];
+      if (!e) return s;
+      return s + (hosp ? (e.byHospital[hosp] ?? 0) : e.weighted);
+    }, 0);
+
+  const periods = useMemo(() => {
+    const labels = data.map(m => m.label);
+    const curM = labels[labels.length - 1];
+    const prevM = labels[labels.length - 2];
+    const cq = quarterOf(curM);
+    const curQ = labels.filter(l => quarterOf(l) === cq);
+    const prevQ = labels.filter(l => quarterOf(l) === cq - 1);
+    return { labels, curM, prevM, cq, curQ, prevQ };
+  }, [data]);
+
+  const pct = (cur: number, prev: number) => (prev > 0 ? Math.round(((cur - prev) / prev) * 100) : null);
+
+  // 各醫院：本月／上月、本季／上季
+  const hospPeriodRows = useMemo(() => {
+    const hs = HOSP_ORDER.filter(h => periods.labels.some(l => (effByLabel[l]?.byHospital[h] ?? 0) > 0));
+    return hs.map(h => {
+      const m = sumOf([periods.curM], h), mPrev = periods.prevM ? sumOf([periods.prevM], h) : 0;
+      const q = sumOf(periods.curQ, h), qPrev = sumOf(periods.prevQ, h);
+      return { hosp: h, m, mPrev, mPct: pct(m, mPrev), q, qPrev, qPct: pct(q, qPrev), ytd: sumOf(periods.labels, h) };
+    }).sort((a, b) => b.m - a.m || b.q - a.q);
+  }, [periods, effByLabel]);
+
+  // 點選醫院後的細部：逐月業績、逐月品類、產品明細
+  const drill = useMemo(() => {
+    if (!drillHosp) return null;
+    const monthly = periods.labels.map(l => ({
+      label: l,
+      業績: Math.round(effByLabel[l]?.byHospital[drillHosp] ?? 0),
+    }));
+    const cats = new Set<string>();
+    const catMonthly = periods.labels.map(l => {
+      const row: Record<string, number | string> = { label: l };
+      for (const p of (effByLabel[l]?.hospitalProducts[drillHosp] ?? [])) {
+        cats.add(p.category);
+        row[p.category] = ((row[p.category] as number) ?? 0) + p.rev;
+      }
+      return row;
+    });
+    const prodMap: Record<string, { cat: string; byMonth: Record<string, number>; qty: number; total: number }> = {};
+    for (const l of periods.labels) {
+      for (const p of (effByLabel[l]?.hospitalProducts[drillHosp] ?? [])) {
+        if (!prodMap[p.name]) prodMap[p.name] = { cat: p.category, byMonth: {}, qty: 0, total: 0 };
+        prodMap[p.name].byMonth[l] = (prodMap[p.name].byMonth[l] ?? 0) + p.rev;
+        prodMap[p.name].qty += p.qty;
+        prodMap[p.name].total += p.rev;
+      }
+    }
+    const products = Object.entries(prodMap)
+      .map(([name, v]) => ({ name, ...v }))
+      .sort((a, b) => b.total - a.total);
+    return { monthly, catMonthly, cats: [...cats], products };
+  }, [drillHosp, periods, effByLabel]);
 
   // 各醫院逐月（2026 有效業績 vs 2025 同期）——供頂部醫院切換與小倍數圖使用。
   // 有個人明細的月份用有效業績（含共跑認領）；其餘月份回退 salesHistory。
@@ -729,32 +800,153 @@ export default function PerformancePage() {
 
       <div className="max-w-6xl mx-auto px-6 py-6 space-y-6">
 
-        {/* KPI */}
-        <div className="grid grid-cols-2 gap-4">
-          <KpiCard label="累積應收金額" value={fmtMoney(totalRevenue)} sub={ytdLabel} color="blue" />
-          <KpiCard
-            label="累積加權業績"
-            value={fmtMoney(ytd.weighted)}
-            sub={`加權率 ${Math.round((ytd.weighted / totalRevenue) * 100)}%`}
-            color="green"
-          />
+        {/* 本月／本季／年度 */}
+        <div className="grid grid-cols-3 gap-4">
+          <PeriodCard label={`本月・${periods.curM}`} value={sumOf([periods.curM])}
+            cmpLabel={periods.prevM ? `上月 ${periods.prevM}` : undefined}
+            cmpValue={periods.prevM ? sumOf([periods.prevM]) : undefined}
+            note={partialMonth?.label === periods.curM ? `僅計至 ${partialMonth.asOf}` : undefined} />
+          <PeriodCard label={`本季・第${['一','二','三','四'][periods.cq - 1]}季`} value={sumOf(periods.curQ)}
+            cmpLabel={periods.prevQ.length ? `上季（${periods.prevQ.join('＋')}）` : undefined}
+            cmpValue={periods.prevQ.length ? sumOf(periods.prevQ) : undefined}
+            note={`本季含 ${periods.curQ.join('＋')}`} />
+          <PeriodCard label="年度累計" value={sumOf(periods.labels)} accent
+            note={`${ytdLabel}（五月到職起算）· 月均 ${fmtMoney(Math.round(sumOf(periods.labels) / periods.labels.length))}`} />
         </div>
 
-        {/* 各院一覽（小倍數）：一眼看出每家的走勢形狀，點選即切換下方主圖 */}
+        {/* 各醫院：本月／本季，各自對比上一期 */}
         <div className="bg-white rounded-2xl border border-gray-100 p-6">
           <div className="flex items-baseline gap-3 mb-4">
-            <h2 className="text-base font-semibold text-gray-800">各院走勢一覽</h2>
-            <span className="text-xs text-gray-400">各卡縱軸獨立，看的是「這家自己的變化」；點選帶入下方主圖</span>
+            <h2 className="text-base font-semibold text-gray-800">各醫院表現</h2>
+            <span className="text-xs text-gray-400">本月比上月、本季比上季；點醫院看細部</span>
+            {partialMonth?.label === periods.curM && (
+              <span className="text-xs text-amber-600 ml-auto">※ {periods.curM}僅計至 {partialMonth.asOf}，與整月相比會偏低</span>
+            )}
           </div>
-          <div className="grid grid-cols-4 gap-3">
-            <HospSpark name="全部" rows={trendData} color="#3b82f6"
-              active={trendHosp === ALL} onClick={() => setTrendHosp(ALL)} />
-            {HOSP_ORDER.filter(h => (hospMonthly[h] ?? []).some(r => r['2026'] > 0)).map(h => (
-              <HospSpark key={h} name={h} rows={hospMonthly[h]} color={HOSP_COLOR[h] ?? '#3b82f6'}
-                active={trendHosp === h} onClick={() => setTrendHosp(trendHosp === h ? ALL : h)} />
-            ))}
-          </div>
+          <table className="w-full text-sm tabular-nums">
+            <thead>
+              <tr className="text-xs text-gray-400 border-b border-gray-100">
+                <th className="text-left font-medium py-2 pr-3">醫院</th>
+                <th className="text-right font-medium py-2 px-3">本月 {periods.curM}</th>
+                <th className="text-right font-medium py-2 px-3 w-28">vs 上月</th>
+                <th className="text-right font-medium py-2 px-3">本季</th>
+                <th className="text-right font-medium py-2 px-3 w-28">vs 上季</th>
+                <th className="text-right font-medium py-2 pl-3">年度累計</th>
+                <th className="w-6" />
+              </tr>
+            </thead>
+            <tbody>
+              {hospPeriodRows.map(r => {
+                const on = drillHosp === r.hosp;
+                return (
+                  <tr key={r.hosp}
+                    onClick={() => { const n = on ? null : r.hosp; setDrillHosp(n); setTrendHosp(n ?? ALL); }}
+                    className={`border-b border-gray-50 cursor-pointer transition-colors ${on ? 'bg-gray-50' : 'hover:bg-gray-50/60'}`}>
+                    <td className="py-2.5 pr-3">
+                      <span className="inline-flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full" style={{ background: HOSP_COLOR[r.hosp] }} />
+                        <span className="font-medium text-gray-800">{r.hosp}</span>
+                      </span>
+                    </td>
+                    <td className="py-2.5 px-3 text-right font-semibold text-gray-900">{r.m.toLocaleString('zh-TW')}</td>
+                    <td className="py-2.5 px-3 text-right"><DeltaBadge v={r.mPct} base={r.mPrev} /></td>
+                    <td className="py-2.5 px-3 text-right font-semibold text-gray-900">{r.q.toLocaleString('zh-TW')}</td>
+                    <td className="py-2.5 px-3 text-right"><DeltaBadge v={r.qPct} base={r.qPrev} /></td>
+                    <td className="py-2.5 pl-3 text-right text-gray-500">{r.ytd.toLocaleString('zh-TW')}</td>
+                    <td className="text-gray-300 text-xs text-center">{on ? '▾' : '▸'}</td>
+                  </tr>
+                );
+              })}
+              <tr className="bg-gray-50/80 font-bold">
+                <td className="py-2.5 pr-3 text-gray-700">合計</td>
+                <td className="py-2.5 px-3 text-right text-gray-900">{sumOf([periods.curM]).toLocaleString('zh-TW')}</td>
+                <td className="py-2.5 px-3 text-right"><DeltaBadge v={pct(sumOf([periods.curM]), periods.prevM ? sumOf([periods.prevM]) : 0)} /></td>
+                <td className="py-2.5 px-3 text-right text-gray-900">{sumOf(periods.curQ).toLocaleString('zh-TW')}</td>
+                <td className="py-2.5 px-3 text-right"><DeltaBadge v={pct(sumOf(periods.curQ), sumOf(periods.prevQ))} /></td>
+                <td className="py-2.5 pl-3 text-right text-gray-700">{sumOf(periods.labels).toLocaleString('zh-TW')}</td>
+                <td />
+              </tr>
+            </tbody>
+          </table>
         </div>
+
+        {/* 點選醫院後的細部 */}
+        {drillHosp && drill && (
+          <div className="bg-white rounded-2xl border border-gray-100 p-6">
+            <div className="flex items-baseline gap-3 mb-4">
+              <span className="w-2.5 h-2.5 rounded-full" style={{ background: HOSP_COLOR[drillHosp] }} />
+              <h2 className="text-base font-semibold text-gray-800">{drillHosp}</h2>
+              <span className="text-xs text-gray-400">逐月業績與產品線變化</span>
+              <button onClick={() => { setDrillHosp(null); setTrendHosp(ALL); }}
+                className="ml-auto text-xs text-gray-400 hover:text-gray-600">收起</button>
+            </div>
+
+            <div className="grid grid-cols-2 gap-6">
+              <div>
+                <p className="text-xs text-gray-400 font-medium mb-2">逐月業績（加權）</p>
+                <ResponsiveContainer width="100%" height={200}>
+                  <BarChart data={drill.monthly} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" vertical={false} />
+                    <XAxis dataKey="label" tick={{ fontSize: 12, fill: '#9ca3af' }} axisLine={false} tickLine={false} />
+                    <YAxis tickFormatter={fmt} tick={{ fontSize: 11, fill: '#9ca3af' }} axisLine={false} tickLine={false} width={48} />
+                    <Tooltip content={<TrendTip />} cursor={{ fill: '#f9fafb' }} />
+                    <Bar dataKey="業績" fill={HOSP_COLOR[drillHosp]} radius={[4, 4, 0, 0]} isAnimationActive={false} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+              <div>
+                <p className="text-xs text-gray-400 font-medium mb-2">產品線組成（加權）</p>
+                <ResponsiveContainer width="100%" height={200}>
+                  <BarChart data={drill.catMonthly} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" vertical={false} />
+                    <XAxis dataKey="label" tick={{ fontSize: 12, fill: '#9ca3af' }} axisLine={false} tickLine={false} />
+                    <YAxis tickFormatter={fmt} tick={{ fontSize: 11, fill: '#9ca3af' }} axisLine={false} tickLine={false} width={48} />
+                    <Tooltip content={<CatTip />} cursor={{ fill: '#f9fafb' }} />
+                    <Legend formatter={(v) => CAT_ZH[v] ?? v} wrapperStyle={{ fontSize: 11, color: '#6b7280', paddingTop: 6 }} />
+                    {drill.cats.map((c, i) => (
+                      <Bar key={c} dataKey={c} stackId="a" fill={CAT_COLOR[c] ?? '#94a3b8'}
+                        isAnimationActive={false} stroke="#fff" strokeWidth={2}
+                        radius={i === drill.cats.length - 1 ? [4, 4, 0, 0] : undefined} />
+                    ))}
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+
+            {/* 產品明細：逐月 */}
+            <div className="mt-5 pt-4 border-t border-gray-100 overflow-x-auto">
+              <table className="w-full text-sm tabular-nums">
+                <thead>
+                  <tr className="text-xs text-gray-400 border-b border-gray-100">
+                    <th className="text-left font-medium py-2 pr-3">產品</th>
+                    {periods.labels.map(l => <th key={l} className="text-right font-medium py-2 px-3">{l}</th>)}
+                    <th className="text-right font-medium py-2 pl-3">合計</th>
+                    <th className="text-right font-medium py-2 pl-3 w-14">件數</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {drill.products.map(p => (
+                    <tr key={p.name} className="border-b border-gray-50">
+                      <td className="py-2 pr-3">
+                        <span className="inline-flex items-center gap-2">
+                          <span className="w-1.5 h-1.5 rounded-full" style={{ background: CAT_COLOR[p.cat] ?? '#94a3b8' }} />
+                          <span className="text-gray-700">{p.name}</span>
+                        </span>
+                      </td>
+                      {periods.labels.map(l => (
+                        <td key={l} className={`py-2 px-3 text-right ${p.byMonth[l] ? 'text-gray-700' : 'text-gray-300'}`}>
+                          {p.byMonth[l] ? fmt(p.byMonth[l]) : '—'}
+                        </td>
+                      ))}
+                      <td className="py-2 pl-3 text-right font-semibold text-gray-900">{p.total.toLocaleString('zh-TW')}</td>
+                      <td className="py-2 pl-3 text-right text-gray-400 text-xs">{p.qty}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
 
         {/* 月份趨勢折線圖 */}
         <div className="bg-white rounded-2xl border border-gray-100 p-6">
@@ -1292,41 +1484,6 @@ function HospRankBoard({ title, rows }: { title: string; rows: { name: string; r
 // ── 逐月業績數字表（2026 vs 2025 同期 YoY）─────────────────────────────
 type TrendRow = { label: string; '2026': number; '2025': number; yoy: number | null };
 
-// 小倍數：單一醫院的迷你走勢。縱軸各卡獨立（看「這家自己的變化」），
-// 各院金額高低由卡片上的數字與下方排行榜負責，不靠線高比較。
-function HospSpark({ name, rows, color, active, onClick }: {
-  name: string; rows: TrendRow[]; color: string; active: boolean; onClick: () => void;
-}) {
-  const last = [...rows].reverse().find(r => r['2026'] > 0);
-  const yoy = last?.yoy ?? null;
-  const peak = Math.max(...rows.map(r => r['2026']), 1);
-  return (
-    <button onClick={onClick}
-      className={`text-left rounded-xl border p-3 transition-all ${
-        active ? 'border-gray-400 bg-gray-50 shadow-sm' : 'border-gray-100 hover:border-gray-300'}`}>
-      <div className="flex items-center gap-1.5 mb-1">
-        <span className="w-2 h-2 rounded-full shrink-0" style={{ background: color }} />
-        <span className="text-xs font-semibold text-gray-700 truncate">{name}</span>
-      </div>
-      <div className="flex items-baseline gap-1.5 mb-1">
-        <span className="text-sm font-bold text-gray-900 tabular-nums">{fmt(last?.['2026'] ?? 0)}</span>
-        {yoy !== null && (
-          <span className={`text-[10px] font-bold ${yoy > 0 ? 'text-emerald-600' : yoy < 0 ? 'text-rose-500' : 'text-gray-400'}`}>
-            {yoy > 0 ? '▲' : yoy < 0 ? '▼' : '－'}{Math.abs(yoy)}%
-          </span>
-        )}
-      </div>
-      <ResponsiveContainer width="100%" height={44}>
-        <LineChart data={rows} margin={{ top: 3, right: 2, left: 2, bottom: 0 }}>
-          <YAxis domain={[0, peak * 1.15]} hide />
-          <Line type="monotone" dataKey="2026" stroke={color} strokeWidth={2} dot={false} isAnimationActive={false} />
-        </LineChart>
-      </ResponsiveContainer>
-      <p className="text-[10px] text-gray-300 mt-0.5">峰值 {fmt(peak)}</p>
-    </button>
-  );
-}
-
 function MonthlyYoyTable({ rows, partialLabel, partialAsOf, barColor, scopeLabel }: {
   rows: TrendRow[]; partialLabel?: string; partialAsOf?: string; barColor?: string; scopeLabel?: string;
 }) {
@@ -1415,6 +1572,72 @@ function MonthlyYoyTable({ rows, partialLabel, partialAsOf, barColor, scopeLabel
           </tbody>
         </table>
       </div>
+    </div>
+  );
+}
+
+// 期間 KPI 卡（本月／本季／年度），附與上一期的比較
+function PeriodCard({ label, value, cmpLabel, cmpValue, note, accent }: {
+  label: string; value: number; cmpLabel?: string; cmpValue?: number; note?: string; accent?: boolean;
+}) {
+  const d = cmpValue !== undefined && cmpValue > 0 ? Math.round(((value - cmpValue) / cmpValue) * 100) : null;
+  const diff = cmpValue !== undefined ? value - cmpValue : 0;
+  return (
+    <div className="rounded-2xl border border-gray-100 p-5 bg-white">
+      <p className="text-xs text-gray-400 font-medium mb-1">{label}</p>
+      <p className={`text-2xl font-black ${accent ? 'text-emerald-600' : 'text-gray-900'}`}>{fmtMoney(value)}</p>
+      {d !== null ? (
+        <p className="text-xs mt-1.5 flex items-center gap-1.5">
+          <span className={`px-1.5 py-0.5 rounded font-bold ${
+            d > 0 ? 'bg-emerald-50 text-emerald-600' : d < 0 ? 'bg-rose-50 text-rose-500' : 'bg-gray-100 text-gray-400'}`}>
+            {d > 0 ? '▲' : d < 0 ? '▼' : '－'} {Math.abs(d)}%
+          </span>
+          <span className="text-gray-400">
+            {cmpLabel} {fmtMoney(cmpValue!)}（{diff >= 0 ? '+' : '−'}{fmtMoney(Math.abs(diff)).slice(1)}）
+          </span>
+        </p>
+      ) : cmpLabel ? (
+        <p className="text-xs text-gray-300 mt-1.5">無{cmpLabel}可比</p>
+      ) : null}
+      {note && <p className="text-[11px] text-gray-400 mt-1">{note}</p>}
+    </div>
+  );
+}
+
+// 環比徽章（本月 vs 上月、本季 vs 上季）
+function DeltaBadge({ v, base }: { v: number | null; base?: number }) {
+  if (v === null) return <span className="text-gray-300 text-xs">新增</span>;
+  const cls = v > 0 ? 'bg-emerald-50 text-emerald-600'
+            : v < 0 ? 'bg-rose-50 text-rose-500' : 'bg-gray-100 text-gray-400';
+  return (
+    <span className="inline-flex flex-col items-end">
+      <span className={`inline-block min-w-[56px] text-center px-2 py-0.5 rounded-md text-xs font-bold ${cls}`}>
+        {v > 0 ? '▲' : v < 0 ? '▼' : '－'} {Math.abs(v)}%
+      </span>
+      {base !== undefined && base > 0 && (
+        <span className="text-[10px] text-gray-300 mt-0.5">前期 {fmt(base)}</span>
+      )}
+    </span>
+  );
+}
+
+// 堆疊品類圖的 tooltip
+function CatTip({ active, payload, label }: { active?: boolean; payload?: { name: string; value: number; color: string }[]; label?: string }) {
+  if (!active || !payload?.length) return null;
+  const total = payload.reduce((s, p) => s + (p.value ?? 0), 0);
+  return (
+    <div className="bg-white border border-gray-200 rounded-lg shadow-sm px-3 py-2 text-xs">
+      <p className="font-semibold text-gray-700 mb-1">{label}</p>
+      {payload.filter(p => p.value > 0).map(p => (
+        <p key={p.name} className="flex items-center gap-2 text-gray-600">
+          <span className="w-2 h-2 rounded-full" style={{ background: p.color }} />
+          {CAT_ZH[p.name] ?? p.name}
+          <span className="ml-auto font-medium tabular-nums">{fmtMoney(p.value)}</span>
+        </p>
+      ))}
+      <p className="mt-1 pt-1 border-t border-gray-100 flex gap-2 text-gray-700 font-semibold">
+        合計<span className="ml-auto tabular-nums">{fmtMoney(total)}</span>
+      </p>
     </div>
   );
 }
