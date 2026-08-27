@@ -138,6 +138,31 @@ export default function Home() {
     ? hospitals
     : hospitals.filter(h => selectedHospitals.has(h.shortName));
 
+  // 客戶名單中查無門診時段的醫師：門診表沒收錄該科（如恩主公沒有 TS）或科別未設定時，
+  // 這些人不會出現在週曆上，容易被漏掉，因此另列一區。
+  const unscheduledDoctors = (() => {
+    if (typeof window === 'undefined') return [];
+    const scheduled = new Set<string>();
+    for (const h of hospitals) for (const c of h.clinics) scheduled.add(`${h.id}|${c.doctor}`);
+    const rows: { name: string; dept: string; hospId: string; hospName: string }[] = [];
+    for (const d of getDoctors()) {
+      const ids: string[] = d.hospitalIds?.length ? d.hospitalIds : [d.hospitalId];
+      const hasExtra = (d.extraClinicSlots ?? []).some(s => s.location);
+      for (const hid of ids) {
+        if (!hid) continue;
+        if (scheduled.has(`${hid}|${d.name}`) || hasExtra) continue;
+        const h = hospitals.find(x => x.id === hid);
+        if (!h) continue;
+        rows.push({ name: d.name, dept: d.department, hospId: hid, hospName: h.shortName });
+      }
+    }
+    // 套用畫面上的科別／醫院篩選；科別未設定者一律顯示（正是需要被看見的）
+    return rows.filter(r =>
+      (!VALID_DEPTS.has(r.dept) || selectedDepts.has(r.dept as Department)) &&
+      (selectedHospitals.size === 0 || selectedHospitals.has(r.hospName))
+    );
+  })();
+
   const doctorSuggestions = (() => {
     const q = doctorSearch.trim();
     if (!q) return [];
@@ -376,6 +401,29 @@ export default function Home() {
         {view === 'weekly' ? (
           <div className="space-y-6">
             <WeeklyView hospitals={filteredHospitals} selectedDepts={selectedDepts} />
+
+            {unscheduledDoctors.length > 0 && (
+              <div className="bg-white rounded-xl border border-amber-200 p-4">
+                <div className="flex items-baseline gap-2 mb-3">
+                  <h3 className="text-sm font-semibold text-amber-700">有客戶但查無門診時段</h3>
+                  <span className="text-xs text-gray-400">
+                    共 {unscheduledDoctors.length} 位・門診表未收錄該科別或科別未設定，不會出現在上方週曆
+                  </span>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {unscheduledDoctors.map((d, i) => (
+                    <span key={`${d.hospId}|${d.name}|${i}`}
+                      className={`inline-flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-lg border ${
+                        DEPT_COLOR[d.dept] ?? 'bg-gray-50 text-gray-500 border-gray-200'}`}>
+                      <span className="text-gray-400">{d.hospName}</span>
+                      <span className="font-semibold">{d.name}</span>
+                      <span className="opacity-70">{VALID_DEPTS.has(d.dept) ? (DEPT_LABEL[d.dept as Department] ?? d.dept) : '未設定科別'}</span>
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <PersonalCalendar />
           </div>
         ) : (
