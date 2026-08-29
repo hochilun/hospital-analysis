@@ -142,6 +142,10 @@ export default function Home() {
   // 這些人不會出現在週曆上，容易被漏掉，因此另列一區。
   const unscheduledDoctors = (() => {
     if (typeof window === 'undefined') return [];
+    // 門診表尚未載入（首次進站、雲端同步完成前）時，全部客戶都會被誤判為「無門診」，
+    // 因此先確認確實有門診資料再計算。
+    const totalClinics = hospitals.reduce((s, h) => s + (h.clinics?.length ?? 0), 0);
+    if (totalClinics === 0) return [];
     const scheduled = new Set<string>();
     for (const h of hospitals) for (const c of h.clinics) scheduled.add(`${h.id}|${c.doctor}`);
     const rows: { name: string; dept: string; hospId: string; hospName: string }[] = [];
