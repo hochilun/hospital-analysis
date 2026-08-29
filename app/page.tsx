@@ -13,6 +13,10 @@ import GlobalTodosPanel from '@/components/GlobalTodosPanel';
 
 const VALID_DEPTS = new Set(['GYN', 'GU', 'GS', 'ENT', 'TS', 'BS']);
 
+// 非看診人員（秘書、開刀房、護理、外助等）本來就不會有門診時段，
+// 不應列入「漏排門診」的提醒，另行分開顯示。
+const NON_CLINICAL_TITLE = /秘書|護理|助理|外助|管醫材|開刀房|行政|個管/;
+
 const DEPT_COLOR: Record<string, string> = {
   GYN: 'bg-pink-50 text-pink-700 border-pink-200',
   GU:  'bg-blue-50 text-blue-700 border-blue-200',
@@ -148,7 +152,7 @@ export default function Home() {
     if (totalClinics === 0) return [];
     const scheduled = new Set<string>();
     for (const h of hospitals) for (const c of h.clinics) scheduled.add(`${h.id}|${c.doctor}`);
-    const rows: { name: string; dept: string; hospId: string; hospName: string }[] = [];
+    const rows: { name: string; dept: string; hospId: string; hospName: string; title: string; clinical: boolean }[] = [];
     for (const d of getDoctors()) {
       const ids: string[] = d.hospitalIds?.length ? d.hospitalIds : [d.hospitalId];
       const hasExtra = (d.extraClinicSlots ?? []).some(s => s.location);
@@ -157,7 +161,10 @@ export default function Home() {
         if (scheduled.has(`${hid}|${d.name}`) || hasExtra) continue;
         const h = hospitals.find(x => x.id === hid);
         if (!h) continue;
-        rows.push({ name: d.name, dept: d.department, hospId: hid, hospName: h.shortName });
+        rows.push({
+          name: d.name, dept: d.department, hospId: hid, hospName: h.shortName,
+          title: d.title ?? '', clinical: !NON_CLINICAL_TITLE.test(d.title ?? ''),
+        });
       }
     }
     // 套用畫面上的科別／醫院篩選；科別未設定者一律顯示（正是需要被看見的）
@@ -406,27 +413,52 @@ export default function Home() {
           <div className="space-y-6">
             <WeeklyView hospitals={filteredHospitals} selectedDepts={selectedDepts} />
 
-            {unscheduledDoctors.length > 0 && (
-              <div className="bg-white rounded-xl border border-amber-200 p-4">
-                <div className="flex items-baseline gap-2 mb-3">
-                  <h3 className="text-sm font-semibold text-amber-700">有客戶但查無門診時段</h3>
-                  <span className="text-xs text-gray-400">
-                    共 {unscheduledDoctors.length} 位・門診表未收錄該科別或科別未設定，不會出現在上方週曆
-                  </span>
+            {unscheduledDoctors.length > 0 && (() => {
+              const docs = unscheduledDoctors.filter(d => d.clinical);
+              const staff = unscheduledDoctors.filter(d => !d.clinical);
+              return (
+                <div className={`bg-white rounded-xl border p-4 ${docs.length ? 'border-amber-200' : 'border-gray-100'}`}>
+                  {docs.length > 0 && (
+                    <>
+                      <div className="flex items-baseline gap-2 mb-3">
+                        <h3 className="text-sm font-semibold text-amber-700">有客戶但查無門診時段</h3>
+                        <span className="text-xs text-gray-400">
+                          共 {docs.length} 位・門診表未收錄該科別或科別未設定，不會出現在上方週曆
+                        </span>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {docs.map((d, i) => (
+                          <span key={`${d.hospId}|${d.name}|${i}`}
+                            className={`inline-flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-lg border ${
+                              DEPT_COLOR[d.dept] ?? 'bg-gray-50 text-gray-500 border-gray-200'}`}>
+                            <span className="text-gray-400">{d.hospName}</span>
+                            <span className="font-semibold">{d.name}</span>
+                            <span className="opacity-70">{VALID_DEPTS.has(d.dept) ? (DEPT_LABEL[d.dept as Department] ?? d.dept) : '未設定科別'}</span>
+                          </span>
+                        ))}
+                      </div>
+                    </>
+                  )}
+                  {staff.length > 0 && (
+                    <div className={docs.length ? 'mt-3 pt-3 border-t border-gray-100' : ''}>
+                      <p className="text-xs text-gray-400 mb-2">
+                        非看診聯絡人 {staff.length} 位・本來就無門診時段
+                      </p>
+                      <div className="flex flex-wrap gap-2">
+                        {staff.map((d, i) => (
+                          <span key={`${d.hospId}|${d.name}|${i}`}
+                            className="inline-flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-lg border border-gray-200 bg-gray-50 text-gray-500">
+                            <span className="text-gray-400">{d.hospName}</span>
+                            <span className="font-medium text-gray-700">{d.name}</span>
+                            <span className="opacity-80">{d.title || '—'}</span>
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
-                <div className="flex flex-wrap gap-2">
-                  {unscheduledDoctors.map((d, i) => (
-                    <span key={`${d.hospId}|${d.name}|${i}`}
-                      className={`inline-flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-lg border ${
-                        DEPT_COLOR[d.dept] ?? 'bg-gray-50 text-gray-500 border-gray-200'}`}>
-                      <span className="text-gray-400">{d.hospName}</span>
-                      <span className="font-semibold">{d.name}</span>
-                      <span className="opacity-70">{VALID_DEPTS.has(d.dept) ? (DEPT_LABEL[d.dept as Department] ?? d.dept) : '未設定科別'}</span>
-                    </span>
-                  ))}
-                </div>
-              </div>
-            )}
+              );
+            })()}
 
             <PersonalCalendar />
           </div>
