@@ -632,6 +632,8 @@ export default function PerformancePage() {
     activeMonths: number;                              // 有使用紀錄的月份數
     monthly: { label: string; rev: number }[];         // 逐月業績貢獻
     products: { name: string; qty: number; rev: number; sponsor: number; hosp: string }[];
+    // 同名產品跨院合併後的組成（供卡片色帶與主力產品使用；products 保留分院明細）
+    merged: { name: string; cat: string; qty: number; rev: number; sponsor: number }[];
   };
   const doctorLeaderboard: DocLB[] = (() => {
     const targetHosps = isAll ? hospList : [selectedHosp];
@@ -647,7 +649,7 @@ export default function PerformancePage() {
           const key = `${d.dept}|${d.name}`;
           if (!agg[key]) {
             agg[key] = { name: d.name, dept: d.dept, qty: 0, rev: 0, sponsor: 0, activeMonths: 0,
-                         monthly: monthObjs.map(m => ({ label: m.label, rev: 0 })), products: [] };
+                         monthly: monthObjs.map(m => ({ label: m.label, rev: 0 })), products: [], merged: [] };
             seenMonth[key] = new Set();
           }
           agg[key].qty += d.qty;
@@ -668,10 +670,44 @@ export default function PerformancePage() {
         });
       }
     }
-    for (const k of Object.keys(agg)) agg[k].activeMonths = seenMonth[k].size;
+    for (const k of Object.keys(agg)) {
+      agg[k].activeMonths = seenMonth[k].size;
+      // 同名產品跨院合併：同一位醫師在兩間醫院用同一支產品，先前會重複列出
+      const m: Record<string, { name: string; cat: string; qty: number; rev: number; sponsor: number }> = {};
+      for (const p of agg[k].products) {
+        if (!m[p.name]) m[p.name] = { name: p.name, cat: '', qty: 0, rev: 0, sponsor: 0 };
+        m[p.name].qty += p.qty; m[p.name].rev += p.rev; m[p.name].sponsor += p.sponsor;
+      }
+      for (const h of Object.keys(monthData.hospitalProducts)) {
+        for (const p of monthData.hospitalProducts[h]) if (m[p.name] && !m[p.name].cat) m[p.name].cat = p.category;
+      }
+      agg[k].merged = Object.values(m).sort((x, y) => y.rev - x.rev);
+    }
     return Object.values(agg).sort((a, b) => b.rev - a.rev);
   })();
   const docTotalRev = doctorLeaderboard.reduce((s, d) => s + d.rev, 0) || 1;
+
+  // 卡片牆：面積正比於業績。以「列打包」取代嚴格 treemap——
+  // 每列卡片寬度正比業績、列高正比該列平均業績，前面列少而大、後面列多而扁，
+  // 這樣尾端醫師仍保有可讀的字級（嚴格 treemap 會壓成讀不到字的細條）。
+  const doctorTiles = useMemo(() => {
+    const list = doctorLeaderboard.filter(d => d.rev > 0);
+    if (!list.length) return [];
+    const rows: DocLB[][] = [];
+    let i = 0, n = 1;
+    while (i < list.length) {
+      rows.push(list.slice(i, i + n));
+      i += n;
+      n = Math.min(n + 1, 6);
+    }
+    const avgs = rows.map(r => r.reduce((s, d) => s + d.rev, 0) / r.length);
+    const maxAvg = Math.max(...avgs, 1);
+    return rows.map((r, ri) => ({
+      docs: r,
+      // 高度用平方根壓縮，避免第一列過高、尾列過扁
+      height: Math.round(72 + 96 * Math.sqrt(avgs[ri] / maxAvg)),
+    }));
+  }, [doctorLeaderboard]);
   const periodMonths = (selectedMonths.length ? selMonthObjs : data).length || 1;
   // 醫師登記涵蓋率：已歸屬到醫師的業績 ÷ 期間該範圍總業績。
   // 未登記的月份會讓「活躍月數／月均」偏低，這裡明示以免誤讀。
@@ -1299,99 +1335,80 @@ export default function PerformancePage() {
           ) : doctorLeaderboard.length === 0 ? (
             <p className="text-sm text-gray-400 py-6 text-center">尚未輸入使用醫師資料，可至上方各產品「+ 新增醫師」</p>
           ) : (
-            <div className="space-y-2">
-              {doctorLeaderboard.map((d, i) => {
-                const key = `${d.dept}|${d.name}`;
-                const isExp = expandedDoc === key;
-                const share = Math.round((d.rev / docTotalRev) * 100);          // 佔全部醫師業績
-                const avg = Math.round(d.rev / periodMonths);                    // 期間月均
-                const sponPct = d.rev > 0 ? Math.round((d.sponsor / d.rev) * 100) : 0;
-                // 主力產品：同名跨院合併後金額最大者
-                const byProd: Record<string, number> = {};
-                for (const p of d.products) byProd[p.name] = (byProd[p.name] ?? 0) + p.rev;
-                const [topProd, topRev] = Object.entries(byProd).sort((a, b) => b[1] - a[1])[0] ?? ['—', 0];
-                const topPct = d.rev > 0 ? Math.round((topRev / d.rev) * 100) : 0;
-                const steady = d.activeMonths >= periodMonths;                   // 每月都有用
-                return (
-                  <div key={key} className="border border-gray-100 rounded-xl overflow-hidden">
-                    <button onClick={() => setExpandedDoc(isExp ? null : key)}
-                      className="w-full text-left p-3 hover:bg-gray-50/60 transition-colors">
-                      <div className="flex items-center gap-3">
-                        <span className={`text-sm font-bold w-6 text-center ${i === 0 ? 'text-amber-500' : i === 1 ? 'text-gray-400' : i === 2 ? 'text-orange-400' : 'text-gray-300'}`}>
-                          {i < 3 ? ['🥇', '🥈', '🥉'][i] : i + 1}
-                        </span>
-                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium min-w-[52px] text-center ${DEPT_COLOR_MAP[d.dept] ?? 'bg-gray-100 text-gray-600'}`}>
-                          {DEPT_LABEL[d.dept] ?? d.dept}
-                        </span>
-                        <span className="text-sm font-semibold text-gray-800 w-20 shrink-0">{d.name}</span>
-                        <span className="text-xs text-gray-300 shrink-0">佔 {share}%</span>
-                        <span className="flex-1" />
-                        <span className="text-base font-bold text-gray-900 tabular-nums">{fmtMoney(d.rev)}</span>
-                        <span className="text-xs text-gray-400 w-10 text-right shrink-0">{d.qty} 件</span>
-                        <span className="text-gray-300 text-xs w-3">{isExp ? '▾' : '▸'}</span>
-                      </div>
+            <>
+              {/* 卡片牆：面積正比業績；頂端色條＝主力產品品類，卡內色帶＝完整產品組成 */}
+              <div className="space-y-2">
+                {doctorTiles.map((row, ri) => (
+                  <div key={ri} className="flex gap-2" style={{ height: row.height }}>
+                    {row.docs.map((d, di) => {
+                      const rank = doctorTiles.slice(0, ri).reduce((s2, r) => s2 + r.docs.length, 0) + di;
+                      return (
+                        <DoctorTile key={`${d.dept}|${d.name}`} d={d} rank={rank}
+                          share={(d.rev / docTotalRev) * 100} height={row.height}
+                          periodMonths={periodMonths}
+                          active={expandedDoc === `${d.dept}|${d.name}`}
+                          onClick={() => setExpandedDoc(expandedDoc === `${d.dept}|${d.name}` ? null : `${d.dept}|${d.name}`)} />
+                      );
+                    })}
+                  </div>
+                ))}
+              </div>
 
-                      {/* 指標列 */}
-                      <div className="flex items-stretch gap-0 mt-2.5 ml-12 rounded-lg bg-gray-50/70 divide-x divide-gray-200/70">
-                        <Metric label="月均業績" value={fmtMoney(avg)} />
-                        <Metric label="活躍月數"
-                          value={`${d.activeMonths} / ${periodMonths} 月`}
-                          tone={steady ? 'good' : d.activeMonths === 1 ? 'weak' : undefined} />
-                        <Metric label="主力產品" value={topProd} sub={`${topPct}%`} />
-                        <Metric label="學術贊助"
-                          value={d.sponsor > 0 ? fmtMoney(d.sponsor) : '—'}
-                          sub={d.sponsor > 0 ? `佔業績 ${sponPct}%` : undefined}
-                          tone={sponPct >= 45 ? 'warn' : undefined} />
-                      </div>
-                    </button>
-                    <div className="px-3 pb-3 pl-12">
-                      {!isExp ? (
-                        <p className="text-xs text-gray-400 mt-2">
-                          {d.products.map(p => `${p.name} ${p.qty}件`).join(' · ')}
-                        </p>
-                      ) : (
-                        <div className="pt-2">
-                          <div className="flex items-center justify-between text-[11px] text-gray-400 pb-1 border-b border-gray-100">
-                            <span>產品</span>
-                            <div className="flex gap-3 items-center">
-                              <span className="w-10 text-right">件數</span>
-                              <span className="w-20 text-right">業績</span>
-                              <span className="w-20 text-right">學術贊助</span>
-                            </div>
-                          </div>
-                          {d.products.map((p, idx) => (
-                            <div key={idx} className="flex items-center justify-between text-sm py-1">
-                              <span className="text-gray-600">
-                                {p.name}{isAll && <span className="text-gray-400 text-xs ml-1">@{p.hosp}</span>}
-                              </span>
-                              <div className="flex gap-3 items-center tabular-nums">
-                                <span className="text-gray-400 text-xs w-10 text-right">{p.qty} 件</span>
-                                <span className="font-semibold text-gray-800 w-20 text-right">{fmtMoney(p.rev)}</span>
-                                <span className={`w-20 text-right text-xs ${p.sponsor > 0 ? 'text-gray-500' : 'text-gray-300'}`}>
-                                  {p.sponsor > 0 ? fmtMoney(p.sponsor) : '無贊助'}
-                                </span>
-                              </div>
-                            </div>
-                          ))}
-                          {d.monthly.some(m => m.rev > 0) && (
-                            <div className="flex gap-2 mt-3 pt-2 border-t border-gray-100">
-                              {d.monthly.map(m => (
-                                <div key={m.label} className="flex-1 text-center">
-                                  <p className="text-[10px] text-gray-400">{m.label}</p>
-                                  <p className={`text-xs font-semibold tabular-nums ${m.rev > 0 ? 'text-gray-700' : 'text-gray-300'}`}>
-                                    {m.rev > 0 ? fmt(m.rev) : '—'}
-                                  </p>
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      )}
+              {/* 展開的醫師細部 */}
+              {(() => {
+                const d = doctorLeaderboard.find(x => `${x.dept}|${x.name}` === expandedDoc);
+                if (!d) return null;
+                const sponPct = d.rev > 0 ? Math.round((d.sponsor / d.rev) * 100) : 0;
+                return (
+                  <div className="mt-4 border border-gray-200 rounded-xl p-4">
+                    <div className="flex items-baseline gap-2 mb-3">
+                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${DEPT_COLOR_MAP[d.dept] ?? 'bg-gray-100 text-gray-600'}`}>
+                        {DEPT_LABEL[d.dept] ?? d.dept}
+                      </span>
+                      <h3 className="text-sm font-semibold text-gray-800">{d.name}</h3>
+                      <span className="text-sm font-bold text-gray-900 tabular-nums">{fmtMoney(d.rev)}</span>
+                      <span className="text-xs text-gray-400">{d.qty} 件 · 月均 {fmtMoney(Math.round(d.rev / periodMonths))} · 活躍 {d.activeMonths}/{periodMonths} 月
+                        {d.sponsor > 0 && ` · 學贊 ${fmtMoney(d.sponsor)}（佔業績 ${sponPct}%）`}</span>
+                      <button onClick={() => setExpandedDoc(null)} className="ml-auto text-xs text-gray-400 hover:text-gray-600">收起</button>
                     </div>
+                    <div className="flex items-center justify-between text-[11px] text-gray-400 pb-1 border-b border-gray-100">
+                      <span>產品</span>
+                      <div className="flex gap-3 items-center">
+                        <span className="w-10 text-right">件數</span>
+                        <span className="w-20 text-right">業績</span>
+                        <span className="w-20 text-right">學術贊助</span>
+                      </div>
+                    </div>
+                    {d.products.map((p, idx) => (
+                      <div key={idx} className="flex items-center justify-between text-sm py-1">
+                        <span className="text-gray-600">
+                          {p.name}{isAll && <span className="text-gray-400 text-xs ml-1">@{p.hosp}</span>}
+                        </span>
+                        <div className="flex gap-3 items-center tabular-nums">
+                          <span className="text-gray-400 text-xs w-10 text-right">{p.qty} 件</span>
+                          <span className="font-semibold text-gray-800 w-20 text-right">{fmtMoney(p.rev)}</span>
+                          <span className={`w-20 text-right text-xs ${p.sponsor > 0 ? 'text-gray-500' : 'text-gray-300'}`}>
+                            {p.sponsor > 0 ? fmtMoney(p.sponsor) : '無贊助'}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                    {d.monthly.some(m => m.rev > 0) && (
+                      <div className="flex gap-2 mt-3 pt-2 border-t border-gray-100">
+                        {d.monthly.map(m => (
+                          <div key={m.label} className="flex-1 text-center">
+                            <p className="text-[10px] text-gray-400">{m.label}</p>
+                            <p className={`text-xs font-semibold tabular-nums ${m.rev > 0 ? 'text-gray-700' : 'text-gray-300'}`}>
+                              {m.rev > 0 ? fmt(m.rev) : '—'}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 );
-              })}
-            </div>
+              })()}
+            </>
           )}
         </div>
 
@@ -1639,6 +1656,83 @@ function CatTip({ active, payload, label }: { active?: boolean; payload?: { name
         合計<span className="ml-auto tabular-nums">{fmtMoney(total)}</span>
       </p>
     </div>
+  );
+}
+
+// 醫師卡片牆的單張卡：寬度由 flex-grow 依業績分配，內容依卡片高度分層顯示
+function DoctorTile({ d, rank, share, height, periodMonths, active, onClick }: {
+  d: { name: string; dept: string; qty: number; rev: number; sponsor: number; activeMonths: number;
+       monthly: { label: string; rev: number }[];
+       merged: { name: string; cat: string; qty: number; rev: number }[] };
+  rank: number; share: number; height: number; periodMonths: number; active: boolean; onClick: () => void;
+}) {
+  const top = d.merged[0];
+  const topPct = d.rev > 0 && top ? Math.round((top.rev / d.rev) * 100) : 0;
+  const accent = CAT_COLOR[top?.cat ?? ''] ?? '#94a3b8';
+  const sponPct = d.rev > 0 ? Math.round((d.sponsor / d.rev) * 100) : 0;
+  const big = height >= 160, mid = height >= 108;
+  return (
+    <button onClick={onClick}
+      style={{ flexGrow: Math.max(d.rev, 1), flexBasis: 0, minWidth: 88 }}
+      className={`relative overflow-hidden text-left rounded-xl border transition-all ${
+        active ? 'border-gray-400 shadow-sm bg-gray-50' : 'border-gray-100 bg-white hover:border-gray-300'}`}>
+      {/* 頂端色條＝主力產品品類 */}
+      <span className="absolute inset-x-0 top-0 h-1" style={{ background: accent }} />
+      <div className="h-full flex flex-col px-3 pt-3 pb-2 min-w-0">
+        <div className="flex items-center gap-1.5 min-w-0">
+          {rank < 3 && <span className="text-xs shrink-0">{['🥇', '🥈', '🥉'][rank]}</span>}
+          <span className={`font-bold text-gray-900 truncate ${big ? 'text-base' : 'text-sm'}`}>{d.name}</span>
+          {mid && (
+            <span className={`shrink-0 text-[10px] px-1.5 py-0.5 rounded-full font-medium ${DEPT_COLOR_MAP[d.dept] ?? 'bg-gray-100 text-gray-600'}`}>
+              {DEPT_LABEL[d.dept] ?? d.dept}
+            </span>
+          )}
+        </div>
+
+        <div className="flex items-baseline gap-1.5 mt-0.5 min-w-0">
+          <span className={`font-black text-gray-900 tabular-nums ${big ? 'text-xl' : mid ? 'text-base' : 'text-sm'}`}>
+            {big ? fmtMoney(d.rev) : fmt(d.rev)}
+          </span>
+          <span className="text-[10px] text-gray-400 shrink-0">佔 {share < 1 ? '<1' : Math.round(share)}%</span>
+        </div>
+
+        {big && d.monthly.length > 1 && (() => {
+          const peak = Math.max(...d.monthly.map(m => m.rev), 1);
+          return (
+            <div className="flex items-end gap-1.5 mt-3 mb-0.5" style={{ height: 34 }}>
+              {d.monthly.map(m => (
+                <div key={m.label} className="flex-1 flex flex-col justify-end items-center gap-0.5">
+                  <span className="text-[9px] text-gray-400 tabular-nums">{m.rev > 0 ? fmt(m.rev) : ''}</span>
+                  <div className="w-full rounded-sm" style={{ height: `${Math.max(2, (m.rev / peak) * 18)}px`, background: m.rev > 0 ? accent : '#e5e7eb', opacity: m.rev > 0 ? 0.5 : 1 }} />
+                  <span className="text-[9px] text-gray-400">{m.label}</span>
+                </div>
+              ))}
+            </div>
+          );
+        })()}
+
+        {/* 產品組成色帶：一眼看出這位醫師靠什麼撐起來 */}
+        <div className="flex gap-[2px] h-2 mt-auto rounded-sm overflow-hidden">
+          {d.merged.map(p => (
+            <span key={p.name} title={`${p.name} ${fmtMoney(p.rev)}`}
+              style={{ flexGrow: Math.max(p.rev, 1), flexBasis: 0, background: CAT_COLOR[p.cat] ?? '#cbd5e1' }} />
+          ))}
+        </div>
+
+        {mid && top && (
+          <p className="text-[10px] text-gray-500 truncate mt-1">
+            <span className="font-semibold">{top.name}</span> {topPct}%
+            {d.merged.length > 1 && <span className="text-gray-300"> ＋{d.merged.length - 1} 項</span>}
+          </p>
+        )}
+        {big && (
+          <p className="text-[10px] text-gray-400 truncate">
+            月均 {fmt(Math.round(d.rev / periodMonths))} · 活躍 {d.activeMonths}/{periodMonths}
+            {d.sponsor > 0 && <span className={sponPct >= 45 ? 'text-amber-600' : ''}> · 學贊 {fmt(d.sponsor)}（{sponPct}%）</span>}
+          </p>
+        )}
+      </div>
+    </button>
   );
 }
 
