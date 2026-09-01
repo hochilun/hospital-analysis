@@ -7,7 +7,7 @@ import { visitStatus, freqLabel, VISIT_FREQ_OPTIONS } from '@/lib/visitFrequency
 import { getDoctors, deleteDoctor, getHospitalStrategies, saveHospitalStrategy, getProducts, getVisits, getHospitalsData, saveDoctor } from '@/lib/storage';
 import { DEPT_LABEL } from '@/data/hospitals';
 import { MY_PERFORMANCE, CAT_COLOR } from '@/data/myPerformance';
-import { loadClaims } from '@/lib/perfCore';
+import { loadClaims, loadDoctors, effectiveMonth } from '@/lib/perfCore';
 import { buildDoctorPerf, linkDoctors, type DocPerf } from '@/lib/doctorPerf';
 import CustomerInsights from '@/components/CustomerInsights';
 import { HOSPITALS } from '@/data/hospitals';
@@ -154,6 +154,33 @@ export default function CustomersPage() {
     }
     return vc;
   }, [allVisits, selMonths]);
+
+  // 醫師歸屬涵蓋率：期間內有多少業績已經指到具體醫師身上。
+  // 沒填的部分不會出現在圖表上，涵蓋率低時圖會嚴重失真，所以一定要顯示出來。
+  const coverage = useMemo(() => {
+    if (!mounted || !periodMonths.length) return null;
+    const claims = loadClaims();
+    let scope = 0, attributed = 0;
+    const gaps: Record<string, number> = {};
+    for (const m of periodMonths) {
+      const e = effectiveMonth(m, claims);
+      for (const [h, prods] of Object.entries(e.hospitalProducts)) {
+        for (const prod of prods) {
+          scope += prod.rev;
+          const q = loadDoctors(m.month, h, prod.name).reduce((t, d) => t + d.qty, 0);
+          const attr = prod.qty > 0 ? Math.round(prod.rev * Math.min(q, prod.qty) / prod.qty) : 0;
+          attributed += attr;
+          const gap = prod.rev - attr;
+          if (gap > 0) gaps[`${m.label} ${h}`] = (gaps[`${m.label} ${h}`] ?? 0) + gap;
+        }
+      }
+    }
+    return {
+      pct: scope > 0 ? Math.round((attributed / scope) * 100) : 100,
+      missing: scope - attributed,
+      topGaps: Object.entries(gaps).sort((a, b) => b[1] - a[1]).slice(0, 3),
+    };
+  }, [mounted, periodMonths]);
 
   // 接上業績報表：用姓名把 perf-doctors 的真實業績掛到客戶身上
   const { perfById, unlinkedPerf } = useMemo(() => {
@@ -596,6 +623,7 @@ export default function CustomersPage() {
             doctors={filtered}
             perfById={perfById}
             visitCountById={visitCountById}
+            coverage={coverage}
             periodLabel={periodMonths.length === 1
               ? (periodMonths[0]?.label ?? '')
               : `${periodMonths[0]?.label ?? ''}–${periodMonths[periodMonths.length - 1]?.label ?? ''}`}

@@ -37,11 +37,12 @@ type Row = {
   x?: number;   // 繪圖用的抖動後座標；判讀一律用 visits
 };
 
-export default function CustomerInsights({ doctors, perfById, visitCountById, periodLabel }: {
+export default function CustomerInsights({ doctors, perfById, visitCountById, periodLabel, coverage }: {
   doctors: Doctor[];
   perfById: Record<string, DocPerf>;
   visitCountById: Record<string, number>;
   periodLabel: string;
+  coverage: { pct: number; missing: number; topGaps: [string, number][] } | null;
 }) {
   const [tableView, setTableView] = useState(false);
 
@@ -152,11 +153,37 @@ export default function CustomerInsights({ doctors, perfById, visitCountById, pe
 
   return (
     <div className="space-y-6">
+      {/* ── 醫師歸屬涵蓋率：沒填醫師的業績不會出現在圖上，低於 95% 一定要講 ── */}
+      {coverage && coverage.pct < 95 && (
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
+          <h2 className="text-sm font-semibold text-amber-900 flex items-center gap-2">
+            ⚠️ 這段期間只有 {coverage.pct}% 的業績登記了使用醫師
+          </h2>
+          <p className="text-xs text-amber-700 mt-1">
+            還有 <b>${coverage.missing.toLocaleString()}</b> 沒指到具體醫師，
+            <b>這些業績不會出現在下面兩張圖裡</b>，醫師的業績與象限位置都會被低估。
+          </p>
+          <div className="flex flex-wrap gap-2 mt-2">
+            {coverage.topGaps.map(([k, v]) => (
+              <span key={k} className="text-[11px] bg-white border border-amber-200 rounded-lg px-2 py-1 text-amber-800">
+                {k} 缺 ${v.toLocaleString()}
+              </span>
+            ))}
+          </div>
+          <p className="text-[11px] text-amber-600 mt-2">
+            到 <Link href="/performance" className="underline font-medium">業績報表</Link> 選該月份與醫院，在產品列按「＋ 醫師」補登即可。
+          </p>
+        </div>
+      )}
+
       {/* ── 四象限 ─────────────────────────────────────────── */}
       <div className="bg-white rounded-xl border border-gray-200 p-5">
         <div className="flex items-baseline justify-between mb-1">
           <h2 className="text-sm font-semibold text-gray-700">投入 vs 產出</h2>
-          <span className="text-xs text-gray-400">{periodLabel} · {scored.length} 位</span>
+          <span className="text-xs text-gray-400">
+            {periodLabel} · {scored.length} 位
+            {coverage && <span className={coverage.pct < 95 ? ' text-amber-600 font-medium' : ''}> · 醫師已登記 {coverage.pct}% 業績</span>}
+          </span>
         </div>
         <p className="text-xs text-gray-400 mb-3">
           橫軸＝這段期間拜訪次數（投入），縱軸＝歸屬到該醫師的業績（產出，平方根刻度）。
