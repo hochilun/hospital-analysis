@@ -6,6 +6,9 @@ import { Doctor, DoctorGrade, VisitRecord, ClinicSlot } from '@/types';
 import { visitStatus, freqLabel, VISIT_FREQ_OPTIONS } from '@/lib/visitFrequency';
 import { getDoctors, deleteDoctor, getHospitalStrategies, saveHospitalStrategy, getProducts, getVisits, getHospitalsData, saveDoctor } from '@/lib/storage';
 import { DEPT_LABEL } from '@/data/hospitals';
+import { MY_PERFORMANCE, CAT_COLOR } from '@/data/myPerformance';
+import { loadClaims } from '@/lib/perfCore';
+import { buildDoctorPerf, linkDoctors, type DocPerf } from '@/lib/doctorPerf';
 import { HOSPITALS } from '@/data/hospitals';
 
 // ── 常數 ─────────────────────────────────────────────────
@@ -81,6 +84,9 @@ export default function CustomersPage() {
   const [priceMap, setPriceMap] = useState<Record<string, { base: number; byHosp: Record<string, number> }>>({});
   const [lastVisitMap, setLastVisitMap] = useState<Record<string, VisitRecord>>({});
   const [clinicMap, setClinicMap] = useState<Record<string, string>>({});  // doctorName -> 門診摘要
+  // 業績報表（perf-doctors）算出的真實業績，以醫師 id 對應；unlinkedPerf = 業績報表有但這裡找不到的姓名
+  const [perfById, setPerfById] = useState<Record<string, DocPerf>>({});
+  const [unlinkedPerf, setUnlinkedPerf] = useState<string[]>([]);
 
   // 篩選狀態
   const [filterGrades, setFilterGrades] = useState<Set<DoctorGrade>>(new Set());
@@ -89,7 +95,7 @@ export default function CustomersPage() {
   const [filterProducts, setFilterProducts] = useState<Set<string>>(new Set());
   const [filterTags, setFilterTags] = useState<Set<string>>(new Set());
   const [search, setSearch] = useState('');
-  const [sortBy, setSortBy] = useState<'hospital' | 'revenue' | 'visit_desc' | 'visit_asc'>('hospital');
+  const [sortBy, setSortBy] = useState<'hospital' | 'revenue' | 'real' | 'visit_desc' | 'visit_asc'>('hospital');
   const [perDay, setPerDay] = useState(6);  // 每天可拜訪客戶數（產能規劃用，存 localStorage）
 
   useEffect(() => {
@@ -123,6 +129,26 @@ export default function CustomersPage() {
       }
     }
     setClinicMap(Object.fromEntries(Object.entries(cm).map(([name, slots]) => [name, slots.join(' ')])));
+
+    // 接上業績報表：用姓名把 perf-doctors 的真實業績掛到客戶身上
+    const crm = getDoctors();
+    const perf = buildDoctorPerf(MY_PERFORMANCE, loadClaims());
+    const { byName, unmatched } = linkDoctors(perf, crm);
+    const byId: Record<string, DocPerf> = {};
+    for (const p of perf) {
+      const doc = byName[p.name];
+      if (!doc) continue;
+      // 同一位醫師可能在多個科別各有一筆（例：跨科使用），合併成一筆
+      const cur = byId[doc.id];
+      byId[doc.id] = cur
+        ? { ...cur, qty: cur.qty + p.qty, rev: cur.rev + p.rev, sponsor: cur.sponsor + p.sponsor,
+            activeMonths: Math.max(cur.activeMonths, p.activeMonths),
+            monthly: cur.monthly.map((m, i) => ({ ...m, rev: m.rev + (p.monthly[i]?.rev ?? 0) })),
+            merged: [...cur.merged, ...p.merged].sort((a, b) => b.rev - a.rev) }
+        : p;
+    }
+    setPerfById(byId);
+    setUnlinkedPerf(unmatched);
   }, []);
 
   const reload = () => setDoctors(getDoctors());
@@ -178,6 +204,9 @@ export default function CustomersPage() {
     if (search.trim() && !d.name.includes(search) && !d.hospitalName.includes(search) && !d.department.includes(search)) return false;
     return true;
   }).sort((a, b) => {
+    if (sortBy === 'real') {
+      return (perfById[b.id]?.rev ?? 0) - (perfById[a.id]?.rev ?? 0);
+    }
     if (sortBy === 'revenue') {
       return calcMonthlyRev(b) - calcMonthlyRev(a);
     }
@@ -326,6 +355,24 @@ export default function CustomersPage() {
           );
         })()}
 
+        {/* ── 業績報表對不上客戶資料庫的醫師（多半是打錯字，會漏算業績）── */}
+        {unlinkedPerf.length > 0 && (
+          <div className="bg-red-50 border border-red-200 rounded-xl p-4">
+            <h2 className="text-sm font-semibold text-red-800 mb-2 flex items-center gap-2">
+              ⚠️ 業績報表有 {unlinkedPerf.length} 位醫師對不到客戶資料庫
+              <span className="text-xs font-normal text-red-500">他們的業績不會顯示在下面的卡片上</span>
+            </h2>
+            <div className="flex flex-wrap gap-2">
+              {unlinkedPerf.map(n => (
+                <span key={n} className="text-xs bg-white border border-red-200 rounded-lg px-2 py-1 text-red-700">{n}</span>
+              ))}
+            </div>
+            <p className="text-[11px] text-red-500 mt-2">
+              通常是業績頁輸入醫師時選錯字。到 <Link href="/performance" className="underline">業績報表</Link> 把名字改成與這裡一致即可。
+            </p>
+          </div>
+        )}
+
         {/* ── 醫院策略 (可折疊) ── */}
         <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
           <button onClick={() => setShowStrategies(v => !v)}
@@ -452,9 +499,13 @@ export default function CustomersPage() {
               className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${sortBy === 'hospital' ? 'bg-gray-900 text-white border-transparent' : 'bg-white border-gray-200 text-gray-500 hover:border-gray-400'}`}>
               醫院
             </button>
+            <button onClick={() => setSortBy('real')}
+              className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${sortBy === 'real' ? 'bg-emerald-600 text-white border-transparent' : 'bg-white border-gray-200 text-gray-500 hover:border-emerald-400'}`}>
+              實際業績 ↓
+            </button>
             <button onClick={() => setSortBy('revenue')}
               className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${sortBy === 'revenue' ? 'bg-blue-600 text-white border-transparent' : 'bg-white border-gray-200 text-gray-500 hover:border-blue-400'}`}>
-              月業績 ↓
+              估算月業績 ↓
             </button>
             <button
               onClick={() => setSortBy(prev => prev === 'visit_desc' ? 'visit_asc' : 'visit_desc')}
@@ -476,7 +527,7 @@ export default function CustomersPage() {
           {filtered.length === 0 ? (
             <p className="text-center text-gray-400 py-10">找不到符合的醫師</p>
           ) : (
-            filtered.map(doc => <DoctorCard key={doc.id} doc={doc} lastVisit={lastVisitMap[doc.id]} clinicSummary={clinicMap[doc.name]} priceMap={priceMap} onDelete={handleDelete} onChanged={reload} />)
+            filtered.map(doc => <DoctorCard key={doc.id} doc={doc} lastVisit={lastVisitMap[doc.id]} clinicSummary={clinicMap[doc.name]} priceMap={priceMap} perf={perfById[doc.id]} periodMonths={MY_PERFORMANCE.length} onDelete={handleDelete} onChanged={reload} />)
           )}
         </div>
       </div>
@@ -486,8 +537,9 @@ export default function CustomersPage() {
 
 // ── DoctorCard ────────────────────────────────────────────
 
-function DoctorCard({ doc, lastVisit, clinicSummary, priceMap, onDelete, onChanged }: {
+function DoctorCard({ doc, lastVisit, clinicSummary, priceMap, perf, periodMonths, onDelete, onChanged }: {
   doc: Doctor; lastVisit?: VisitRecord; clinicSummary?: string;
+  perf?: DocPerf; periodMonths: number;
   priceMap: Record<string, { base: number; byHosp: Record<string, number> }>;
   onDelete: (id: string, name: string) => void;
   onChanged: () => void;
@@ -524,6 +576,7 @@ function DoctorCard({ doc, lastVisit, clinicSummary, priceMap, onDelete, onChang
   })();
   const staleness = daysSince === null ? 'none' : daysSince > 30 ? 'red' : daysSince > 14 ? 'yellow' : 'green';
   const fStatus = visitStatus(doc.visitFrequencyDays, lastVisit?.date);
+  const realMonthly = perf ? Math.round(perf.rev / Math.max(periodMonths, 1)) : 0;
 
   return (
     <div className={`${cardBg} rounded-lg border border-gray-100 pl-0 overflow-hidden flex ${borderClass}`}>
@@ -553,6 +606,26 @@ function DoctorCard({ doc, lastVisit, clinicSummary, priceMap, onDelete, onChang
             <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-yellow-100 text-yellow-700">🟡 快到期</span>
           )}
         </div>
+        {/* 真實產品組成：寬度＝金額佔比，一眼看主力產品是哪支 */}
+        {perf && perf.merged.length > 0 && (
+          <div className="mt-1.5">
+            <div className="flex h-1.5 rounded-full overflow-hidden bg-gray-100">
+              {perf.merged.map(m => (
+                <div key={m.name} style={{ width: `${(m.rev / perf.rev) * 100}%`, background: CAT_COLOR[m.cat] ?? '#cbd5e1' }} />
+              ))}
+            </div>
+            <div className="flex flex-wrap gap-x-2 gap-y-0.5 mt-1">
+              {perf.merged.slice(0, 3).map(m => (
+                <span key={m.name} className="text-[10px] text-gray-500">
+                  <span className="inline-block w-1.5 h-1.5 rounded-full mr-1 align-middle"
+                    style={{ background: CAT_COLOR[m.cat] ?? '#cbd5e1' }} />
+                  {m.name} <span className="text-gray-400">{m.qty}件</span>
+                </span>
+              ))}
+              {perf.merged.length > 3 && <span className="text-[10px] text-gray-300">+{perf.merged.length - 3}</span>}
+            </div>
+          </div>
+        )}
         {doc.productTargets.length > 0 && (
           <div className="flex gap-2 mt-1 flex-wrap">
             {doc.productTargets.map(t => {
@@ -616,14 +689,23 @@ function DoctorCard({ doc, lastVisit, clinicSummary, priceMap, onDelete, onChang
           </select>
           <div className="text-[10px] text-gray-400 mt-0.5">拜訪頻率</div>
         </div>
-        {monthlyRev > 0 && (
+        {perf ? (
+          // 業績報表歸屬到這位醫師的真實金額（加權），與 /performance 同一套算法
           <div className="text-center">
-            <div className="text-sm font-bold text-blue-600">
+            <div className="text-sm font-bold text-emerald-600">
+              {realMonthly >= 10000 ? `${Math.round(realMonthly / 1000)}K` : realMonthly.toLocaleString()}
+            </div>
+            <div className="text-[10px] text-emerald-600 font-medium">月均業績</div>
+            <div className="text-[10px] text-gray-400">活躍 {perf.activeMonths}/{periodMonths} 月</div>
+          </div>
+        ) : monthlyRev > 0 ? (
+          <div className="text-center">
+            <div className="text-sm font-bold text-blue-400">
               {monthlyRev >= 10000 ? `${Math.round(monthlyRev / 1000)}K` : monthlyRev.toLocaleString()}
             </div>
-            <div className="text-xs text-gray-400">月業績</div>
+            <div className="text-[10px] text-gray-400">月業績<span className="text-gray-300">（估算）</span></div>
           </div>
-        )}
+        ) : null}
         {rate !== null && rate > 0 && (
           <div className="text-center">
             <div className={`text-sm font-bold ${rate >= 100 ? 'text-green-600' : rate >= 60 ? 'text-blue-600' : 'text-orange-500'}`}>
