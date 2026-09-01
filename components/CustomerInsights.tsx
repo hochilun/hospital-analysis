@@ -4,7 +4,7 @@ import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import {
   ScatterChart, Scatter, XAxis, YAxis, ZAxis, CartesianGrid,
-  Tooltip, ReferenceLine, ResponsiveContainer, Cell, LabelList,
+  Tooltip, ReferenceLine, ReferenceArea, ResponsiveContainer, Cell, LabelList,
 } from 'recharts';
 import type { Doctor } from '@/types';
 import type { DocPerf } from '@/lib/doctorPerf';
@@ -12,8 +12,18 @@ import { DEPT_LABEL } from '@/data/hospitals';
 
 // 單一色相 sequential ramp（磁量用），來自驗證過的藍色階
 const SEQ = ['#cde2fb', '#b7d3f6', '#9ec5f4', '#86b6ef', '#6da7ec', '#5598e7', '#3987e5', '#2a78d6', '#256abf', '#1c5cab', '#184f95'];
-const BLUE = '#3987e5';     // 一般點
-const AMBER = '#b45309';    // 待檢討（狀態色，必附文字標籤）
+// 四象限配色。象限本來就由中位線的「位置」決定，顏色只是把位置再講一次（冗餘編碼），
+// 所以散布圖用到 4 個分類不會讓資訊只靠顏色傳達。
+// 三個實色經 validate_palette 全數通過（最差 protan ΔE 9.2 / 一般視覺 25.6）；
+// 開發池刻意留低彩度灰 —— 它是「背景群」，讓另外三群跳出來（emphasis 模式）。
+const QUAD = {
+  明星:   { dot: '#047857', tile: 'text-emerald-800 bg-emerald-50 border-emerald-200', desc: '拜訪多、業績高' },
+  金雞母: { dot: '#1d4ed8', tile: 'text-blue-800 bg-blue-50 border-blue-200',        desc: '拜訪少、業績高' },
+  待檢討: { dot: '#c2410c', tile: 'text-orange-800 bg-orange-50 border-orange-200',  desc: '拜訪多、業績低' },
+  開發池: { dot: '#9ca3af', tile: 'text-gray-600 bg-gray-50 border-gray-200',        desc: '拜訪少、業績低' },
+} as const;
+type Quad = keyof typeof QUAD;
+const QUAD_ORDER: Quad[] = ['明星', '金雞母', '待檢討', '開發池'];
 const INK = '#374151';
 const MUTED = '#9ca3af';
 const GRID = '#eef0f2';
@@ -66,17 +76,22 @@ export default function CustomerInsights({ doctors, perfById, visitCountById, pe
     for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) | 0;
     return ((Math.abs(h) % 1000) / 1000 - 0.5) * 0.6;   // ±0.3 次
   };
+  const quadrant = (r: { visits: number; rev: number }): Quad =>
+    r.rev >= revThreshold ? (r.visits > visitThreshold ? '明星' : '金雞母')
+                          : (r.visits > visitThreshold ? '待檢討' : '開發池');
   const scored = rows.map(r => ({
     ...r,
+    quad: quadrant(r),
     flagged: r.visits > visitThreshold && r.rev < revThreshold,
     x: Math.max(0, r.visits + jitter(r.id)),
   }));
-  const quadrant = (r: Row) =>
-    r.rev >= revThreshold ? (r.visits > visitThreshold ? '明星' : '金雞母')
-                          : (r.visits > visitThreshold ? '待檢討' : '開發池');
   const counts = scored.reduce<Record<string, number>>((acc, r) => {
-    const q = quadrant(r); acc[q] = (acc[q] ?? 0) + 1; return acc;
+    acc[r.quad] = (acc[r.quad] ?? 0) + 1; return acc;
   }, {});
+  // 分界畫在整數中間，拜訪次數是整數、抖動僅 ±0.3，點永遠不會跨到錯的一側
+  const xSplit = visitThreshold + 0.5;
+  const maxX = Math.max(...scored.map(r => r.x), 1);
+  const maxY = Math.max(...scored.map(r => r.rev), 1);
 
   // 只在極端值直接標名字：業績前 5、以及待檢討中拜訪最多的 5 位
   const labelIds = useMemo(() => {
@@ -130,7 +145,7 @@ export default function CustomerInsights({ doctors, perfById, visitCountById, pe
         <p className="font-semibold text-gray-800">{r.name} <span className="font-normal text-gray-400">{r.dept}</span></p>
         <p className="text-gray-500">{r.hosp}</p>
         <p className="text-gray-700 mt-1">拜訪 <b>{r.visits}</b> 次 · 業績 <b>${r.rev.toLocaleString()}</b></p>
-        <p className="text-gray-400">用 {r.kinds} 支產品 · {quadrant(r)}</p>
+        <p className="text-gray-400">用 {r.kinds} 支產品 · <span style={{ color: QUAD[quadrant(r)].dot }} className="font-medium">{quadrant(r)}</span></p>
       </div>
     );
   };
@@ -149,27 +164,24 @@ export default function CustomerInsights({ doctors, perfById, visitCountById, pe
         </p>
 
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-4">
-          {[
-            { q: '明星', d: '拜訪多、業績高', c: 'text-emerald-700 bg-emerald-50 border-emerald-100' },
-            { q: '金雞母', d: '拜訪少、業績高', c: 'text-blue-700 bg-blue-50 border-blue-100' },
-            { q: '待檢討', d: '拜訪多、業績低', c: 'text-amber-800 bg-amber-50 border-amber-200' },
-            { q: '開發池', d: '拜訪少、業績低', c: 'text-gray-600 bg-gray-50 border-gray-200' },
-          ].map(x => (
-            <div key={x.q} className={`rounded-lg border px-3 py-2 ${x.c}`}>
-              <div className="text-xs font-semibold">{x.q}</div>
-              <div className="text-xl font-bold">{counts[x.q] ?? 0}</div>
-              <div className="text-[10px] opacity-70">{x.d}</div>
+          {QUAD_ORDER.map(q => (
+            <div key={q} className={`rounded-lg border px-3 py-2 ${QUAD[q].tile}`}>
+              <div className="text-xs font-semibold flex items-center gap-1.5">
+                <span className="inline-block w-2 h-2 rounded-full" style={{ background: QUAD[q].dot }} />{q}
+              </div>
+              <div className="text-xl font-bold">{counts[q] ?? 0}</div>
+              <div className="text-[10px] opacity-70">{QUAD[q].desc}</div>
             </div>
           ))}
         </div>
 
-        <div className="flex items-center gap-4 mb-2 text-xs">
-          <span className="flex items-center gap-1.5 text-gray-600">
-            <span className="inline-block w-2.5 h-2.5 rounded-full" style={{ background: BLUE }} />一般
-          </span>
-          <span className="flex items-center gap-1.5" style={{ color: AMBER }}>
-            <span className="inline-block w-2.5 h-2.5 rounded-full" style={{ background: AMBER }} />⚠ 待檢討（拜訪多但業績低）
-          </span>
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mb-2 text-xs">
+          {QUAD_ORDER.map(q => (
+            <span key={q} className="flex items-center gap-1.5 text-gray-600">
+              <span className="inline-block w-2.5 h-2.5 rounded-full" style={{ background: QUAD[q].dot }} />
+              {q} <span className="text-gray-400">{counts[q] ?? 0}</span>
+            </span>
+          ))}
           <button onClick={() => setTableView(v => !v)}
             className="ml-auto text-xs text-gray-400 hover:text-gray-700 underline">
             {tableView ? '看圖表' : '看表格'}
@@ -195,7 +207,12 @@ export default function CustomerInsights({ doctors, perfById, visitCountById, pe
                     <td className="px-3 py-1.5 tabular-nums text-right">{r.visits}</td>
                     <td className="px-3 py-1.5 tabular-nums text-right">{r.rev ? r.rev.toLocaleString() : '—'}</td>
                     <td className="px-3 py-1.5 tabular-nums text-right">{r.kinds || '—'}</td>
-                    <td className="px-3 py-1.5" style={r.flagged ? { color: AMBER } : undefined}>{quadrant(r)}</td>
+                    <td className="px-3 py-1.5 whitespace-nowrap">
+                      <span className="inline-flex items-center gap-1.5" style={{ color: QUAD[r.quad].dot }}>
+                        <span className="inline-block w-2 h-2 rounded-full" style={{ background: QUAD[r.quad].dot }} />
+                        {r.quad}
+                      </span>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -216,14 +233,19 @@ export default function CustomerInsights({ doctors, perfById, visitCountById, pe
                   width={52}
                   label={{ value: '業績（產出）', angle: -90, position: 'insideLeft', fontSize: 11, fill: MUTED }} />
                 <ZAxis type="number" dataKey="kinds" range={[64, 420]} />
-                <ReferenceLine x={visitThreshold} stroke="#d1d5db"
+                {/* 象限底色：把位置這件事再講一次，顏色就不是唯一的識別管道 */}
+                <ReferenceArea x1={0} x2={xSplit} y1={revThreshold} y2={maxY} fill={QUAD['金雞母'].dot} fillOpacity={0.05} />
+                <ReferenceArea x1={xSplit} x2={maxX} y1={revThreshold} y2={maxY} fill={QUAD['明星'].dot} fillOpacity={0.05} />
+                <ReferenceArea x1={0} x2={xSplit} y1={0} y2={revThreshold} fill={QUAD['開發池'].dot} fillOpacity={0.06} />
+                <ReferenceArea x1={xSplit} x2={maxX} y1={0} y2={revThreshold} fill={QUAD['待檢討'].dot} fillOpacity={0.05} />
+                <ReferenceLine x={xSplit} stroke="#d1d5db"
                   label={{ value: `中位 ${visitThreshold} 次`, position: 'top', fontSize: 10, fill: MUTED }} />
                 <ReferenceLine y={revThreshold} stroke="#d1d5db"
                   label={{ value: `中位 ${money(revThreshold)}`, position: 'right', fontSize: 10, fill: MUTED }} />
                 <Tooltip content={<Tip />} cursor={{ strokeDasharray: '0', stroke: '#e5e7eb' }} />
                 <Scatter data={scored} fillOpacity={0.75}>
                   {scored.map(r => (
-                    <Cell key={r.id} fill={r.flagged ? AMBER : BLUE} stroke="#fff" strokeWidth={2} />
+                    <Cell key={r.id} fill={QUAD[r.quad].dot} stroke="#fff" strokeWidth={2} />
                   ))}
                   {/* 只直接標極端值（業績前 5、待檢討中拜訪最多 5 位），其餘交給 tooltip */}
                   <LabelList dataKey="name" content={(props: unknown) => {
@@ -232,7 +254,7 @@ export default function CustomerInsights({ doctors, perfById, visitCountById, pe
                     if (!r || !labelIds.has(r.id) || x === undefined || y === undefined) return null;
                     return (
                       <text x={x} y={y + (labelOffset[r.id] ?? -10)} textAnchor="middle" fontSize={10}
-                        fill={r.flagged ? AMBER : INK} fontWeight={600}>{r.name}</text>
+                        fill={QUAD[r.quad].dot} fontWeight={600}>{r.name}</text>
                     );
                   }} />
                 </Scatter>
