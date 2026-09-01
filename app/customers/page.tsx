@@ -9,6 +9,7 @@ import { DEPT_LABEL } from '@/data/hospitals';
 import { MY_PERFORMANCE, CAT_COLOR } from '@/data/myPerformance';
 import { loadClaims } from '@/lib/perfCore';
 import { buildDoctorPerf, linkDoctors, type DocPerf } from '@/lib/doctorPerf';
+import CustomerInsights from '@/components/CustomerInsights';
 import { HOSPITALS } from '@/data/hospitals';
 
 // ── 常數 ─────────────────────────────────────────────────
@@ -87,6 +88,8 @@ export default function CustomersPage() {
   // 業績報表（perf-doctors）算出的真實業績，以醫師 id 對應；unlinkedPerf = 業績報表有但這裡找不到的姓名
   const [perfById, setPerfById] = useState<Record<string, DocPerf>>({});
   const [unlinkedPerf, setUnlinkedPerf] = useState<string[]>([]);
+  const [visitCountById, setVisitCountById] = useState<Record<string, number>>({});
+  const [tab, setTab] = useState<'dashboard' | 'list'>('list');
 
   // 篩選狀態
   const [filterGrades, setFilterGrades] = useState<Set<DoctorGrade>>(new Set());
@@ -118,6 +121,14 @@ export default function CustomersPage() {
       if (!map[v.doctorId]) map[v.doctorId] = v;
     }
     setLastVisitMap(map);
+    // 期間拜訪次數：與業績同一段時間，兩軸才是同期的投入與產出
+    const perfMonths = new Set(MY_PERFORMANCE.map(m => m.month));
+    const vc: Record<string, number> = {};
+    for (const v of visits) {
+      if (!perfMonths.has(v.date.slice(0, 7))) continue;
+      vc[v.doctorId] = (vc[v.doctorId] ?? 0) + 1;
+    }
+    setVisitCountById(vc);
     // 建立門診摘要 map (醫師姓名 -> 摘要文字)
     const DAY = ['日','一','二','三','四','五','六'];
     const hospData = getHospitalsData();
@@ -251,8 +262,20 @@ export default function CustomersPage() {
 
       <div className="max-w-5xl mx-auto px-6 py-6 space-y-6">
 
+        {/* ── 儀表板 / 清單 切換 ── */}
+        <div className="flex gap-1 bg-gray-100 p-1 rounded-xl w-fit">
+          {([['dashboard', '儀表板'], ['list', '清單']] as const).map(([k, label]) => (
+            <button key={k} onClick={() => setTab(k)}
+              className={`px-5 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                tab === k ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+              }`}>
+              {label}
+            </button>
+          ))}
+        </div>
+
         {/* ── 拜訪頻率規劃儀表板（產能評估）── */}
-        {(() => {
+        {tab === 'list' && (() => {
           const FREQS: { days: number; label: string; color: string }[] = [
             { days: 7,  label: '每週',   color: 'text-red-600' },
             { days: 14, label: '每兩週', color: 'text-orange-600' },
@@ -322,7 +345,7 @@ export default function CustomersPage() {
         })()}
 
         {/* ── 需跟進客戶（超過拜訪頻率目標）── */}
-        {(() => {
+        {tab === 'list' && (() => {
           const today = new Date();
           const list = doctors
             .map(d => ({ d, st: visitStatus(d.visitFrequencyDays, lastVisitMap[d.id]?.date, today) }))
@@ -374,6 +397,7 @@ export default function CustomersPage() {
         )}
 
         {/* ── 醫院策略 (可折疊) ── */}
+        {tab === 'list' && (
         <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
           <button onClick={() => setShowStrategies(v => !v)}
             className="w-full flex items-center justify-between px-5 py-3 text-sm font-semibold text-gray-700 hover:bg-gray-50">
@@ -395,8 +419,9 @@ export default function CustomersPage() {
             </div>
           )}
         </div>
+        )}
 
-        {/* ── 篩選器 ── */}
+        {/* ── 篩選器（兩個分頁共用，圖表與清單吃同一組條件）── */}
         <div className="bg-white rounded-xl border border-gray-200 p-4 space-y-3">
           {/* 等級 */}
           <div className="flex flex-wrap items-center gap-2">
@@ -522,7 +547,17 @@ export default function CustomersPage() {
             className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-300 bg-white" />
         </div>
 
+        {tab === 'dashboard' && (
+          <CustomerInsights
+            doctors={filtered}
+            perfById={perfById}
+            visitCountById={visitCountById}
+            periodLabel={`${MY_PERFORMANCE[0]?.label ?? ''}–${MY_PERFORMANCE[MY_PERFORMANCE.length - 1]?.label ?? ''}`}
+          />
+        )}
+
         {/* ── 醫師清單（永遠平鋪）── */}
+        {tab === 'list' && (
         <div className="space-y-2">
           {filtered.length === 0 ? (
             <p className="text-center text-gray-400 py-10">找不到符合的醫師</p>
@@ -530,6 +565,7 @@ export default function CustomersPage() {
             filtered.map(doc => <DoctorCard key={doc.id} doc={doc} lastVisit={lastVisitMap[doc.id]} clinicSummary={clinicMap[doc.name]} priceMap={priceMap} perf={perfById[doc.id]} periodMonths={MY_PERFORMANCE.length} onDelete={handleDelete} onChanged={reload} />)
           )}
         </div>
+        )}
       </div>
     </div>
   );
