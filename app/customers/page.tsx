@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { Doctor, DoctorGrade, VisitRecord, ClinicSlot } from '@/types';
 import { visitStatus, freqLabel, VISIT_FREQ_OPTIONS } from '@/lib/visitFrequency';
@@ -86,9 +86,11 @@ export default function CustomersPage() {
   const [lastVisitMap, setLastVisitMap] = useState<Record<string, VisitRecord>>({});
   const [clinicMap, setClinicMap] = useState<Record<string, string>>({});  // doctorName -> 門診摘要
   // 業績報表（perf-doctors）算出的真實業績，以醫師 id 對應；unlinkedPerf = 業績報表有但這裡找不到的姓名
-  const [perfById, setPerfById] = useState<Record<string, DocPerf>>({});
-  const [unlinkedPerf, setUnlinkedPerf] = useState<string[]>([]);
-  const [visitCountById, setVisitCountById] = useState<Record<string, number>>({});
+  const [allVisits, setAllVisits] = useState<VisitRecord[]>([]);
+  const [mounted, setMounted] = useState(false);
+  // 分析期間：預設近三個月（業績資料涵蓋到哪就從哪往回抓）
+  const ALL_PERF_MONTHS = MY_PERFORMANCE.map(m => m.month);
+  const [selMonths, setSelMonths] = useState<string[]>(ALL_PERF_MONTHS.slice(-3));
   const [tab, setTab] = useState<'dashboard' | 'list'>('list');
 
   // 篩選狀態
@@ -121,14 +123,7 @@ export default function CustomersPage() {
       if (!map[v.doctorId]) map[v.doctorId] = v;
     }
     setLastVisitMap(map);
-    // 期間拜訪次數：與業績同一段時間，兩軸才是同期的投入與產出
-    const perfMonths = new Set(MY_PERFORMANCE.map(m => m.month));
-    const vc: Record<string, number> = {};
-    for (const v of visits) {
-      if (!perfMonths.has(v.date.slice(0, 7))) continue;
-      vc[v.doctorId] = (vc[v.doctorId] ?? 0) + 1;
-    }
-    setVisitCountById(vc);
+    setAllVisits(visits);
     // 建立門診摘要 map (醫師姓名 -> 摘要文字)
     const DAY = ['日','一','二','三','四','五','六'];
     const hospData = getHospitalsData();
@@ -140,11 +135,31 @@ export default function CustomersPage() {
       }
     }
     setClinicMap(Object.fromEntries(Object.entries(cm).map(([name, slots]) => [name, slots.join(' ')])));
+    setMounted(true);
+  }, []);
 
-    // 接上業績報表：用姓名把 perf-doctors 的真實業績掛到客戶身上
-    const crm = getDoctors();
-    const perf = buildDoctorPerf(MY_PERFORMANCE, loadClaims());
-    const { byName, unmatched } = linkDoctors(perf, crm);
+  // ── 期間相關的計算：期間一改就重算，清單與儀表板吃同一份 ──────────────
+  const periodMonths = useMemo(
+    () => MY_PERFORMANCE.filter(m => selMonths.includes(m.month)),
+    [selMonths],
+  );
+
+  // 期間拜訪次數：與業績同一段時間，兩軸才是同期的投入與產出
+  const visitCountById = useMemo(() => {
+    const set = new Set(selMonths);
+    const vc: Record<string, number> = {};
+    for (const v of allVisits) {
+      if (!set.has(v.date.slice(0, 7))) continue;
+      vc[v.doctorId] = (vc[v.doctorId] ?? 0) + 1;
+    }
+    return vc;
+  }, [allVisits, selMonths]);
+
+  // 接上業績報表：用姓名把 perf-doctors 的真實業績掛到客戶身上
+  const { perfById, unlinkedPerf } = useMemo(() => {
+    if (!mounted || !periodMonths.length) return { perfById: {} as Record<string, DocPerf>, unlinkedPerf: [] as string[] };
+    const perf = buildDoctorPerf(periodMonths, loadClaims());
+    const { byName, unmatched } = linkDoctors(perf, doctors);
     const byId: Record<string, DocPerf> = {};
     for (const p of perf) {
       const doc = byName[p.name];
@@ -158,9 +173,8 @@ export default function CustomersPage() {
             merged: [...cur.merged, ...p.merged].sort((a, b) => b.rev - a.rev) }
         : p;
     }
-    setPerfById(byId);
-    setUnlinkedPerf(unmatched);
-  }, []);
+    return { perfById: byId, unlinkedPerf: unmatched };
+  }, [mounted, periodMonths, doctors]);
 
   const reload = () => setDoctors(getDoctors());
 
@@ -423,6 +437,36 @@ export default function CustomersPage() {
 
         {/* ── 篩選器（兩個分頁共用，圖表與清單吃同一組條件）── */}
         <div className="bg-white rounded-xl border border-gray-200 p-4 space-y-3">
+          {/* 期間：業績與拜訪次數都吃這段，清單頁的月均業績也一樣 */}
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-xs text-gray-400 w-8 shrink-0">期間</span>
+            {([[1, '近1月'], [3, '近3月'], [ALL_PERF_MONTHS.length, '全部']] as const).map(([n, label]) => {
+              const target = ALL_PERF_MONTHS.slice(-n);
+              const on = selMonths.length === target.length && target.every(m => selMonths.includes(m));
+              return (
+                <button key={label} onClick={() => setSelMonths(target)}
+                  className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
+                    on ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                  }`}>
+                  {label}
+                </button>
+              );
+            })}
+            <span className="text-gray-200">|</span>
+            {MY_PERFORMANCE.map(m => (
+              <button key={m.month}
+                onClick={() => setSelMonths(prev =>
+                  prev.includes(m.month)
+                    ? (prev.length > 1 ? prev.filter(x => x !== m.month) : prev)   // 至少留一個月
+                    : [...prev, m.month].sort())}
+                className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
+                  selMonths.includes(m.month) ? 'bg-blue-600 text-white' : 'bg-white border border-gray-200 text-gray-500 hover:border-blue-400'
+                }`}>
+                {m.label}
+              </button>
+            ))}
+          </div>
+
           {/* 等級 */}
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-xs text-gray-400 w-8 shrink-0">等級</span>
@@ -552,7 +596,9 @@ export default function CustomersPage() {
             doctors={filtered}
             perfById={perfById}
             visitCountById={visitCountById}
-            periodLabel={`${MY_PERFORMANCE[0]?.label ?? ''}–${MY_PERFORMANCE[MY_PERFORMANCE.length - 1]?.label ?? ''}`}
+            periodLabel={periodMonths.length === 1
+              ? (periodMonths[0]?.label ?? '')
+              : `${periodMonths[0]?.label ?? ''}–${periodMonths[periodMonths.length - 1]?.label ?? ''}`}
           />
         )}
 
@@ -562,7 +608,7 @@ export default function CustomersPage() {
           {filtered.length === 0 ? (
             <p className="text-center text-gray-400 py-10">找不到符合的醫師</p>
           ) : (
-            filtered.map(doc => <DoctorCard key={doc.id} doc={doc} lastVisit={lastVisitMap[doc.id]} clinicSummary={clinicMap[doc.name]} priceMap={priceMap} perf={perfById[doc.id]} periodMonths={MY_PERFORMANCE.length} onDelete={handleDelete} onChanged={reload} />)
+            filtered.map(doc => <DoctorCard key={doc.id} doc={doc} lastVisit={lastVisitMap[doc.id]} clinicSummary={clinicMap[doc.name]} priceMap={priceMap} perf={perfById[doc.id]} periodMonths={periodMonths.length} onDelete={handleDelete} onChanged={reload} />)
           )}
         </div>
         )}
