@@ -381,6 +381,13 @@ export default function PerformancePage() {
     return loadDoctorsForPeriod(months4Doctors, hosp, prod).sort((a, b) => b.qty - a.qty);
   };
 
+  // ⚠ 必須放在 docsForPeriod 之後（先前放在前面會 TDZ crash）
+  // 每個產品「登記醫師支數」是否超過可分配數量（共跑醫院＝認領支數，其餘＝發票件數）
+  const overAllocated = (isAll ? [] : hospProds).map(prod => {
+    const used = docsForPeriod(selectedHosp, prod.name).reduce((s, d) => s + d.qty, 0);
+    return { name: prod.name, used, qty: prod.qty, pool: isSharedHosp && (prod as SharedProdView).auto === false };
+  }).filter(o => o.used > o.qty);
+
   const rankingDoctors: (DoctorEntry & { hosps?: string[] })[] = (() => {
     if (!selectedProd) return [];
     const targetHosps = isAll ? hospList : [selectedHosp];
@@ -888,6 +895,18 @@ export default function PerformancePage() {
               <h2 className="text-base font-semibold text-gray-800">產品 &amp; 使用醫師</h2>
               {selectedProd && <span className="text-xs text-gray-400">點擊產品查看醫師排行</span>}
             </div>
+            {/* 登記醫師支數 > 可分配數量 → 業績會被少認（共跑）或多分攤，先在最上面講 */}
+            {overAllocated.length > 0 && (
+              <div className="mb-4 bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-xs text-red-700">
+                <p className="font-semibold mb-1">⚠️ 有 {overAllocated.length} 項的登記醫師支數超過可分配數量</p>
+                {overAllocated.map(o => (
+                  <p key={o.name}>
+                    {o.name}：登記 {o.used} 支
+                    {o.pool ? `，但只認領 ${o.qty} 支 —— 認領沒跟著改，業績會少認` : `，超過 ${o.qty} 件`}
+                  </p>
+                ))}
+              </div>
+            )}
 
             {hospProds.map(prod => {
               const doctors = isAll ? [] : docsForPeriod(selectedHosp, prod.name);
@@ -942,7 +961,9 @@ export default function PerformancePage() {
                               value={(prod as SharedProdView).mine || 0}
                               onChange={e => handleClaim(selectedHosp, prod.name, (prod as SharedProdView).grossQty, e.target.value)}
                               style={{ color: '#111827' }}
-                              className="w-16 text-sm text-center border border-gray-300 rounded-lg px-2 py-1 focus:outline-none focus:ring-2 focus:ring-amber-400"
+                              className={`w-16 text-sm text-center border rounded-lg px-2 py-1 focus:outline-none focus:ring-2 focus:ring-amber-400 ${
+                                usedQty > prod.qty ? 'border-red-400 bg-red-50' : 'border-gray-300'
+                              }`}
                             />
                             <span className="text-xs text-gray-400">支</span>
                           </div>
@@ -978,6 +999,13 @@ export default function PerformancePage() {
                       ))}
                       {usedQty < prod.qty && (
                         <span className="text-xs text-amber-500 self-center">未分配 {prod.qty - usedQty} 件</span>
+                      )}
+                      {usedQty > prod.qty && (
+                        <span className="text-xs font-semibold text-red-600 self-center">
+                          {isPoolRow
+                            ? `⚠ 登記醫師 ${usedQty} 支，但只認領 ${prod.qty} 支 → 把「我的」改成 ${usedQty}`
+                            : `⚠ 登記醫師 ${usedQty} 支，超過 ${prod.qty} 件`}
+                        </span>
                       )}
                     </div>
                   )}
