@@ -5,6 +5,7 @@ export type DoctorEntry = {
   dept: string;   // 科別代號: GYN / GU / GS / ENT / TS / BS
   name: string;   // 醫師姓名
   qty: number;    // 使用數量
+  note?: string;  // 備註（如「使用醫師待確認」），會顯示在學贊整理與業績頁
 };
 
 export type HospProdEntry = {

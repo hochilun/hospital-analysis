@@ -24,12 +24,19 @@ export function loadDoctorsForPeriod(
   monthKeys: string[], hosp: string, prod: string,
   source: (month: string, hosp: string, prod: string) => DoctorEntry[] = loadDoctors,
 ) {
-  const map: Record<string, { dept: string; name: string; qty: number }> = {};
+  const map: Record<string, { dept: string; name: string; qty: number; note?: string }> = {};
   for (const mk of monthKeys) {
     for (const d of source(mk, hosp, prod)) {
       const k = `${d.dept}|${d.name}`;
-      if (map[k]) map[k].qty += d.qty;
-      else map[k] = { dept: d.dept, name: d.name, qty: d.qty };
+      if (map[k]) {
+        map[k].qty += d.qty;
+        // 跨月合併時備註串起來（去重），不要讓某個月的備註被吃掉
+        if (d.note && !map[k].note?.includes(d.note)) {
+          map[k].note = map[k].note ? `${map[k].note}；${d.note}` : d.note;
+        }
+      } else {
+        map[k] = { dept: d.dept, name: d.name, qty: d.qty, note: d.note };
+      }
     }
   }
   return Object.values(map);

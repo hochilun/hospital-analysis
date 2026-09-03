@@ -97,7 +97,7 @@ export default function PerformancePage() {
   const [selectedMonths, setSelectedMonths] = useState<string[]>([]);   // 空=整年度；可複選多月加總
   const [claimTick, forceUpdate] = useState(0);
   const [addingTo, setAddingTo] = useState<{ prod: string } | null>(null);
-  const [form, setForm] = useState<{ dept: string; name: string; qty: number | string }>({ dept: 'GYN', name: '', qty: 1 });
+  const [form, setForm] = useState<{ dept: string; name: string; qty: number | string; note: string }>({ dept: 'GYN', name: '', qty: 1, note: '' });
   const [editingIdx, setEditingIdx] = useState<number | null>(null);
   const [expandedDoc, setExpandedDoc] = useState<string | null>(null);
   const [mounted, setMounted] = useState(false);  // 避免 localStorage 造成 SSR/client hydration 不一致
@@ -484,14 +484,14 @@ export default function PerformancePage() {
     if (!form.name.trim() || qty < 1) return;
     const existing = loadDoctors(activeMonthKey, selectedHosp, prod);
     if (editingIdx !== null) {
-      existing[editingIdx] = { dept: form.dept, name: form.name.trim(), qty };
+      existing[editingIdx] = { dept: form.dept, name: form.name.trim(), qty, ...(form.note.trim() ? { note: form.note.trim() } : {}) };
     } else {
-      existing.push({ dept: form.dept, name: form.name.trim(), qty });
+      existing.push({ dept: form.dept, name: form.name.trim(), qty, ...(form.note.trim() ? { note: form.note.trim() } : {}) });
     }
     saveDoctors(activeMonthKey, selectedHosp, prod, existing);
     setAddingTo(null);
     setEditingIdx(null);
-    setForm({ dept: 'GYN', name: '', qty: 1 });
+    setForm({ dept: 'GYN', name: '', qty: 1, note: '' });
     refresh();
   };
 
@@ -505,7 +505,7 @@ export default function PerformancePage() {
   const openEdit = (prod: string, idx: number, entry: DoctorEntry) => {
     setAddingTo({ prod });
     setEditingIdx(idx);
-    setForm({ dept: entry.dept, name: entry.name, qty: entry.qty });
+    setForm({ dept: entry.dept, name: entry.name, qty: entry.qty, note: entry.note ?? '' });
   };
 
   // 醫院選擇 pills（依月份／依醫院兩種模式共用）
@@ -975,7 +975,7 @@ export default function PerformancePage() {
                         <button
                           onClick={() => {
                             if (isAddingThis) { setAddingTo(null); setEditingIdx(null); }
-                            else { setAddingTo({ prod: prod.name }); setEditingIdx(null); setForm({ dept: 'GYN', name: '', qty: prod.qty - usedQty > 0 ? prod.qty - usedQty : 1 }); }
+                            else { setAddingTo({ prod: prod.name }); setEditingIdx(null); setForm({ dept: 'GYN', name: '', qty: prod.qty - usedQty > 0 ? prod.qty - usedQty : 1, note: '' }); }
                           }}
                           className="text-xs px-3 py-1 rounded-lg border border-blue-200 text-blue-600 hover:bg-blue-50 font-medium whitespace-nowrap"
                         >
@@ -993,6 +993,10 @@ export default function PerformancePage() {
                           <span>·</span>
                           <span>{d.name}</span>
                           <span className="opacity-60">×{d.qty}</span>
+                          {d.note && (
+                            <span className="ml-1 max-w-[13rem] truncate text-[11px] text-amber-700 bg-amber-100 rounded px-1.5 py-0.5"
+                              title={d.note}>📝 {d.note}</span>
+                          )}
                           {singleMonth && <button onClick={() => openEdit(prod.name, i, d)} className="ml-1 opacity-50 hover:opacity-100">✎</button>}
                           {singleMonth && <button onClick={() => handleDelete(prod.name, i)} className="opacity-40 hover:opacity-100">×</button>}
                         </div>
@@ -1062,6 +1066,14 @@ export default function PerformancePage() {
                         <label className="text-xs text-gray-600 font-medium">數量</label>
                         <input type="number" min={1} max={prod.qty} value={form.qty}
                           onChange={e => setForm(f => ({ ...f, qty: e.target.value }))}
+                          onKeyDown={e => e.key === 'Enter' && handleAdd(prod.name)}
+                          style={{ color: '#111827' }}
+                          className="text-sm border border-gray-300 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-400" />
+                      </div>
+                      <div className="flex flex-col gap-1 w-56">
+                        <label className="text-xs text-gray-600 font-medium">備註 <span className="text-gray-300 font-normal">選填</span></label>
+                        <input type="text" placeholder="例：使用醫師待確認" value={form.note}
+                          onChange={e => setForm(f => ({ ...f, note: e.target.value }))}
                           onKeyDown={e => e.key === 'Enter' && handleAdd(prod.name)}
                           style={{ color: '#111827' }}
                           className="text-sm border border-gray-300 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-400" />
