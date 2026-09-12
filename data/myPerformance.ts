@@ -305,6 +305,57 @@ export const MY_PERFORMANCE: MonthPerf[] = [
       ],
     },
   },
+  {
+    month: '2026-09',
+    label: '9月',
+    asOf: '2026-09-10',
+    revenue: 336_295,
+    weighted: 319_270,
+    byHospital: {
+      '台北醫學': 159_000,
+      '沙爾德聖': 112_985,
+      '中心診所':  39_000,
+      '恩主公':    21_950,
+      '宏恩醫療':   3_360,
+    },
+    byCategory: {
+      'Adhesion Prevention':  209_200,
+      'Hernia':                90_845,
+      'Urinary Incontinence':  26_500,
+      'Hemostasis':             9_750,
+    },
+    byProduct: [
+      { name: '宮安康',      category: 'Adhesion Prevention',  qty: 15, rev: 170_200 },
+      { name: '3DMAX LIGHT', category: 'Hernia',               qty: 13, rev:  84_500 },
+      { name: '塞納斯',      category: 'Adhesion Prevention',  qty:  3, rev:  39_000 },
+      { name: 'IS-M1',       category: 'Urinary Incontinence', qty:  1, rev:  26_500 },
+      { name: '止血顆粒 1g', category: 'Hemostasis',           qty:  1, rev:   7_800 },
+      { name: '賀邁補',      category: 'Hernia',               qty:  8, rev:   6_345 },
+      { name: '止血塗佈器',  category: 'Hemostasis',           qty:  1, rev:   1_950 },
+    ],
+    hospitalProducts: {
+      '台北醫學': [
+        { name: '3DMAX LIGHT', category: 'Hernia',               qty: 13, rev: 84_500 },
+        { name: '宮安康',      category: 'Adhesion Prevention',  qty:  4, rev: 48_000 },
+        { name: 'IS-M1',       category: 'Urinary Incontinence', qty:  1, rev: 26_500 },
+      ],
+      '沙爾德聖': [
+        { name: '宮安康', category: 'Adhesion Prevention', qty: 10, rev: 110_000 },
+        { name: '賀邁補', category: 'Hernia',              qty:  3, rev:   2_985 },
+      ],
+      '中心診所': [
+        { name: '塞納斯', category: 'Adhesion Prevention', qty: 3, rev: 39_000 },
+      ],
+      '恩主公': [
+        { name: '宮安康',      category: 'Adhesion Prevention', qty: 1, rev: 12_200 },
+        { name: '止血顆粒 1g', category: 'Hemostasis',          qty: 1, rev:  7_800 },
+        { name: '止血塗佈器',  category: 'Hemostasis',          qty: 1, rev:  1_950 },
+      ],
+      '宏恩醫療': [
+        { name: '賀邁補', category: 'Hernia', qty: 5, rev: 3_360 },
+      ],
+    },
+  },
   // 後續月份在此追加 ↓
 ];
 
