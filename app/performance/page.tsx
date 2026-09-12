@@ -22,6 +22,8 @@ import {
 } from '@/lib/perfCore';
 import { buildDoctorPerf, loadDoctorsForPeriod, linkDoctors, type DocPerf } from '@/lib/doctorPerf';
 import { getDoctors } from '@/lib/storage';
+import ProductGroupPanel from '@/components/ProductGroupPanel';
+import DoctorRankBoard from '@/components/DoctorRankBoard';
 
 const fmt = (n: number) =>
   n >= 1_000_000 ? `${(n / 1_000_000).toFixed(1)}M`
@@ -99,7 +101,6 @@ export default function PerformancePage() {
   const [addingTo, setAddingTo] = useState<{ prod: string } | null>(null);
   const [form, setForm] = useState<{ dept: string; name: string; qty: number | string; note: string }>({ dept: 'GYN', name: '', qty: 1, note: '' });
   const [editingIdx, setEditingIdx] = useState<number | null>(null);
-  const [expandedDoc, setExpandedDoc] = useState<string | null>(null);
   const [mounted, setMounted] = useState(false);  // 避免 localStorage 造成 SSR/client hydration 不一致
   const refresh = useCallback(() => forceUpdate(n => n + 1), []);
 
@@ -427,27 +428,6 @@ export default function PerformancePage() {
     [mounted, doctorLeaderboard],
   );
 
-  // 卡片牆：面積正比於業績。以「列打包」取代嚴格 treemap——
-  // 每列卡片寬度正比業績、列高正比該列平均業績，前面列少而大、後面列多而扁，
-  // 這樣尾端醫師仍保有可讀的字級（嚴格 treemap 會壓成讀不到字的細條）。
-  const doctorTiles = useMemo(() => {
-    const list = doctorLeaderboard.filter(d => d.rev > 0);
-    if (!list.length) return [];
-    const rows: DocPerf[][] = [];
-    let i = 0, n = 1;
-    while (i < list.length) {
-      rows.push(list.slice(i, i + n));
-      i += n;
-      n = Math.min(n + 1, 6);
-    }
-    const avgs = rows.map(r => r.reduce((s, d) => s + d.rev, 0) / r.length);
-    const maxAvg = Math.max(...avgs, 1);
-    return rows.map((r, ri) => ({
-      docs: r,
-      // 高度用平方根壓縮，避免第一列過高、尾列過扁
-      height: Math.round(72 + 96 * Math.sqrt(avgs[ri] / maxAvg)),
-    }));
-  }, [doctorLeaderboard]);
   const periodMonths = (selectedMonths.length ? selMonthObjs : data).length || 1;
   // 醫師登記涵蓋率：已歸屬到醫師的業績 ÷ 期間該範圍總業績。
   // 未登記的月份會讓「活躍月數／月均」偏低，這裡明示以免誤讀。
@@ -723,6 +703,10 @@ export default function PerformancePage() {
             </div>
           </div>
         )}
+
+        {/* 各產品群表現：產品群 × 醫院疊加 */}
+        <ProductGroupPanel effByLabel={effByLabel} periods={periods}
+          partialNote={partialMonth?.label === periods.curM ? partialMonth.asOf : undefined} />
 
         {/* 月份趨勢折線圖 */}
         <div className="bg-white rounded-2xl border border-gray-100 p-6">
@@ -1090,113 +1074,22 @@ export default function PerformancePage() {
           </div>
         </div>
 
-        {/* 醫師業績排行榜 */}
-        <div className="bg-white rounded-2xl border border-gray-100 p-6">
-          <div className="flex items-baseline justify-between mb-4">
-            <h2 className="text-base font-semibold text-gray-800">醫師使用分析</h2>
-            <span className="text-xs text-gray-400">
-              {isAll ? '全部醫院' : selectedHosp} · {periodLabel} · 依業績排行
-              {mounted && doctorLeaderboard.length > 0 && (
-                <span className={docCoverage < 95 ? 'text-amber-600 font-medium' : 'text-gray-400'}>
-                  {' · '}醫師已登記 {docCoverage}% 業績{docCoverage < 95 && '（未登記者不列入，月均／活躍月數會偏低）'}
-                </span>
-              )}
-            </span>
-          </div>
-          {!mounted ? (
+        {/* 客戶（醫師）業績排行 */}
+        {!mounted ? (
+          <div className="bg-white rounded-2xl border border-gray-100 p-6">
             <p className="text-sm text-gray-300 py-6 text-center">載入中…</p>
-          ) : doctorLeaderboard.length === 0 ? (
-            <p className="text-sm text-gray-400 py-6 text-center">尚未輸入使用醫師資料，可至上方各產品「+ 新增醫師」</p>
-          ) : (
-            <>
-              {docLink.unmatched.length > 0 && (
-                <div className="mb-3 bg-red-50 border border-red-200 rounded-xl px-4 py-2.5 text-xs text-red-700">
-                  ⚠️ 這 {docLink.unmatched.length} 位在客戶資料庫查無此人，多半是選字錯誤：
-                  <span className="font-semibold"> {docLink.unmatched.join('、')}</span>
-                  <span className="text-red-400">　改成與 <Link href="/customers" className="underline">客戶資料庫</Link> 一致的寫法即可接起來。</span>
-                </div>
-              )}
-              {/* 卡片牆：面積正比業績；頂端色條＝主力產品品類，卡內色帶＝完整產品組成 */}
-              <div className="space-y-2">
-                {doctorTiles.map((row, ri) => (
-                  <div key={ri} className="flex gap-2" style={{ height: row.height }}>
-                    {row.docs.map((d, di) => {
-                      const rank = doctorTiles.slice(0, ri).reduce((s2, r) => s2 + r.docs.length, 0) + di;
-                      return (
-                        <DoctorTile key={`${d.dept}|${d.name}`} d={d} rank={rank}
-                          share={(d.rev / docTotalRev) * 100} height={row.height}
-                          periodMonths={periodMonths}
-                          active={expandedDoc === `${d.dept}|${d.name}`}
-                          onClick={() => setExpandedDoc(expandedDoc === `${d.dept}|${d.name}` ? null : `${d.dept}|${d.name}`)} />
-                      );
-                    })}
-                  </div>
-                ))}
-              </div>
-
-              {/* 展開的醫師細部 */}
-              {(() => {
-                const d = doctorLeaderboard.find(x => `${x.dept}|${x.name}` === expandedDoc);
-                if (!d) return null;
-                const sponPct = d.rev > 0 ? Math.round((d.sponsor / d.rev) * 100) : 0;
-                return (
-                  <div className="mt-4 border border-gray-200 rounded-xl p-4">
-                    <div className="flex items-baseline gap-2 mb-3">
-                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${DEPT_COLOR_MAP[d.dept] ?? 'bg-gray-100 text-gray-600'}`}>
-                        {DEPT_LABEL[d.dept] ?? d.dept}
-                      </span>
-                      <h3 className="text-sm font-semibold text-gray-800">{d.name}</h3>
-                      <span className="text-sm font-bold text-gray-900 tabular-nums">{fmtMoney(d.rev)}</span>
-                      <span className="text-xs text-gray-400">{d.qty} 件 · 月均 {fmtMoney(Math.round(d.rev / periodMonths))} · 活躍 {d.activeMonths}/{periodMonths} 月
-                        {d.sponsor > 0 && ` · 學贊 ${fmtMoney(d.sponsor)}（佔業績 ${sponPct}%）`}</span>
-                      {docLink.byName[d.name] ? (
-                        <Link href={`/customers/${docLink.byName[d.name].id}`}
-                          className="ml-auto text-xs text-blue-600 hover:underline">客戶資料 →</Link>
-                      ) : (
-                        <span className="ml-auto text-xs text-red-500" title="姓名與客戶資料庫對不起來，可能是選字錯誤">⚠️ 客戶資料庫查無此人</span>
-                      )}
-                      <button onClick={() => setExpandedDoc(null)} className="ml-3 text-xs text-gray-400 hover:text-gray-600">收起</button>
-                    </div>
-                    <div className="flex items-center justify-between text-[11px] text-gray-400 pb-1 border-b border-gray-100">
-                      <span>產品</span>
-                      <div className="flex gap-3 items-center">
-                        <span className="w-10 text-right">件數</span>
-                        <span className="w-20 text-right">業績</span>
-                        <span className="w-20 text-right">學術贊助</span>
-                      </div>
-                    </div>
-                    {d.products.map((p, idx) => (
-                      <div key={idx} className="flex items-center justify-between text-sm py-1">
-                        <span className="text-gray-600">
-                          {p.name}{isAll && <span className="text-gray-400 text-xs ml-1">@{p.hosp}</span>}
-                        </span>
-                        <div className="flex gap-3 items-center tabular-nums">
-                          <span className="text-gray-400 text-xs w-10 text-right">{p.qty} 件</span>
-                          <span className="font-semibold text-gray-800 w-20 text-right">{fmtMoney(p.rev)}</span>
-                          <span className={`w-20 text-right text-xs ${p.sponsor > 0 ? 'text-gray-500' : 'text-gray-300'}`}>
-                            {p.sponsor > 0 ? fmtMoney(p.sponsor) : '無贊助'}
-                          </span>
-                        </div>
-                      </div>
-                    ))}
-                    {d.monthly.some(m => m.rev > 0) && (
-                      <div className="flex gap-2 mt-3 pt-2 border-t border-gray-100">
-                        {d.monthly.map(m => (
-                          <div key={m.label} className="flex-1 text-center">
-                            <p className="text-[10px] text-gray-400">{m.label}</p>
-                            <p className={`text-xs font-semibold tabular-nums ${m.rev > 0 ? 'text-gray-700' : 'text-gray-300'}`}>
-                              {m.rev > 0 ? fmt(m.rev) : '—'}
-                            </p>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                );
-              })()}
-            </>
-          )}
-        </div>
+          </div>
+        ) : (
+          <DoctorRankBoard
+            docs={doctorLeaderboard}
+            periodMonths={periodMonths}
+            periodLabel={periodLabel}
+            scopeLabel={isAll ? '全部醫院' : selectedHosp}
+            coverage={docCoverage}
+            linkByName={docLink.byName}
+            unmatched={docLink.unmatched}
+          />
+        )}
 
         {/* 醫師用量排行 */}
         {selectedProd && (
@@ -1441,100 +1334,6 @@ function CatTip({ active, payload, label }: { active?: boolean; payload?: { name
       <p className="mt-1 pt-1 border-t border-gray-100 flex gap-2 text-gray-700 font-semibold">
         合計<span className="ml-auto tabular-nums">{fmtMoney(total)}</span>
       </p>
-    </div>
-  );
-}
-
-// 醫師卡片牆的單張卡：寬度由 flex-grow 依業績分配，內容依卡片高度分層顯示
-function DoctorTile({ d, rank, share, height, periodMonths, active, onClick }: {
-  d: { name: string; dept: string; qty: number; rev: number; sponsor: number; activeMonths: number;
-       monthly: { label: string; rev: number }[];
-       merged: { name: string; cat: string; qty: number; rev: number }[] };
-  rank: number; share: number; height: number; periodMonths: number; active: boolean; onClick: () => void;
-}) {
-  const top = d.merged[0];
-  const topPct = d.rev > 0 && top ? Math.round((top.rev / d.rev) * 100) : 0;
-  const accent = CAT_COLOR[top?.cat ?? ''] ?? '#94a3b8';
-  const sponPct = d.rev > 0 ? Math.round((d.sponsor / d.rev) * 100) : 0;
-  const big = height >= 160, mid = height >= 108;
-  return (
-    <button onClick={onClick}
-      style={{ flexGrow: Math.max(d.rev, 1), flexBasis: 0, minWidth: 88 }}
-      className={`relative overflow-hidden text-left rounded-xl border transition-all ${
-        active ? 'border-gray-400 shadow-sm bg-gray-50' : 'border-gray-100 bg-white hover:border-gray-300'}`}>
-      {/* 頂端色條＝主力產品品類 */}
-      <span className="absolute inset-x-0 top-0 h-1" style={{ background: accent }} />
-      <div className="h-full flex flex-col px-3 pt-3 pb-2 min-w-0">
-        <div className="flex items-center gap-1.5 min-w-0">
-          {rank < 3 && <span className="text-xs shrink-0">{['🥇', '🥈', '🥉'][rank]}</span>}
-          <span className={`font-bold text-gray-900 truncate ${big ? 'text-base' : 'text-sm'}`}>{d.name}</span>
-          {mid && (
-            <span className={`shrink-0 text-[10px] px-1.5 py-0.5 rounded-full font-medium ${DEPT_COLOR_MAP[d.dept] ?? 'bg-gray-100 text-gray-600'}`}>
-              {DEPT_LABEL[d.dept] ?? d.dept}
-            </span>
-          )}
-        </div>
-
-        <div className="flex items-baseline gap-1.5 mt-0.5 min-w-0">
-          <span className={`font-black text-gray-900 tabular-nums ${big ? 'text-xl' : mid ? 'text-base' : 'text-sm'}`}>
-            {big ? fmtMoney(d.rev) : fmt(d.rev)}
-          </span>
-          <span className="text-[10px] text-gray-400 shrink-0">佔 {share < 1 ? '<1' : Math.round(share)}%</span>
-        </div>
-
-        {big && d.monthly.length > 1 && (() => {
-          const peak = Math.max(...d.monthly.map(m => m.rev), 1);
-          return (
-            <div className="flex items-end gap-1.5 mt-3 mb-0.5" style={{ height: 34 }}>
-              {d.monthly.map(m => (
-                <div key={m.label} className="flex-1 flex flex-col justify-end items-center gap-0.5">
-                  <span className="text-[9px] text-gray-400 tabular-nums">{m.rev > 0 ? fmt(m.rev) : ''}</span>
-                  <div className="w-full rounded-sm" style={{ height: `${Math.max(2, (m.rev / peak) * 18)}px`, background: m.rev > 0 ? accent : '#e5e7eb', opacity: m.rev > 0 ? 0.5 : 1 }} />
-                  <span className="text-[9px] text-gray-400">{m.label}</span>
-                </div>
-              ))}
-            </div>
-          );
-        })()}
-
-        {/* 產品組成色帶：一眼看出這位醫師靠什麼撐起來 */}
-        <div className="flex gap-[2px] h-2 mt-auto rounded-sm overflow-hidden">
-          {d.merged.map(p => (
-            <span key={p.name} title={`${p.name} ${fmtMoney(p.rev)}`}
-              style={{ flexGrow: Math.max(p.rev, 1), flexBasis: 0, background: CAT_COLOR[p.cat] ?? '#cbd5e1' }} />
-          ))}
-        </div>
-
-        {mid && top && (
-          <p className="text-[10px] text-gray-500 truncate mt-1">
-            <span className="font-semibold">{top.name}</span> {topPct}%
-            {d.merged.length > 1 && <span className="text-gray-300"> ＋{d.merged.length - 1} 項</span>}
-          </p>
-        )}
-        {big && (
-          <p className="text-[10px] text-gray-400 truncate">
-            月均 {fmt(Math.round(d.rev / periodMonths))} · 活躍 {d.activeMonths}/{periodMonths}
-            {d.sponsor > 0 && <span className={sponPct >= 45 ? 'text-amber-600' : ''}> · 學贊 {fmt(d.sponsor)}（{sponPct}%）</span>}
-          </p>
-        )}
-      </div>
-    </button>
-  );
-}
-
-// 醫師卡片上的單一指標格
-function Metric({ label, value, sub, tone }: {
-  label: string; value: string; sub?: string; tone?: 'good' | 'warn' | 'weak';
-}) {
-  const vc = tone === 'good' ? 'text-emerald-600'
-           : tone === 'warn' ? 'text-amber-600'
-           : tone === 'weak' ? 'text-gray-400'
-           : 'text-gray-800';
-  return (
-    <div className="flex-1 px-3 py-1.5 min-w-0">
-      <p className="text-[10px] text-gray-400 leading-tight">{label}</p>
-      <p className={`text-xs font-bold truncate tabular-nums ${vc}`} title={value}>{value}</p>
-      {sub && <p className="text-[10px] text-gray-400 leading-tight">{sub}</p>}
     </div>
   );
 }

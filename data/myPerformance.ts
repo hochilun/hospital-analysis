@@ -40,12 +40,18 @@ export const CAT_ZH: Record<string, string> = {
   'Hemostasis':           '止血',
 };
 
+// 四個品類色通過 dataviz 全配對檢核（worst CVD ΔE 8.9 / 一般視覺 19.9）。
+// 止血原為 #3b82f6，與泌尿 #8b5cf6 一般視覺 ΔE 只有 12、色盲模擬 1.3（幾乎同色），
+// 改為深藍 #0369a1 後才拉開；順便也和沙爾德聖的藍不再撞色。
 export const CAT_COLOR: Record<string, string> = {
   'Adhesion Prevention':  '#10b981',
   'Hernia':               '#f59e0b',
   'Urinary Incontinence': '#8b5cf6',
-  'Hemostasis':           '#3b82f6',
+  'Hemostasis':           '#0369a1',
 };
+
+// 產品群顯示順序（大類 → 小類），畫面一律照這個順序
+export const CAT_DISPLAY_ORDER = ['Adhesion Prevention', 'Hernia', 'Urinary Incontinence', 'Hemostasis'] as const;
 
 export const HOSP_COLOR: Record<string, string> = {
   '沙爾德聖': '#3b82f6',
