@@ -446,6 +446,24 @@ export const SHARED_PERFORMANCE: Record<string, Record<string, HospProdEntry[]>>
       { name: '止血顆粒 5g', category: 'Hemostasis', qty: 1, rev: 23500, weighted: 22381 },
     ],
   },
+  '2026-09': {  // 9/1–9/10（資料截止 9/10）
+    '台北慈濟': [ // 整院 應收 444,766 / 加權 423,587
+      { name: '宮安康', category: 'Adhesion Prevention', qty: 13, rev: 169000, weighted: 160952 },
+      { name: '宮安康 10ML', category: 'Adhesion Prevention', qty: 6, rev: 135000, weighted: 128571 },
+      { name: '止血顆粒 3g', category: 'Hemostasis', qty: 5, rev: 73500, weighted: 70000 },
+      { name: '止血顆粒 5g', category: 'Hemostasis', qty: 1, rev: 24500, weighted: 23333 },
+      { name: 'IS-M1', category: 'Urinary Incontinence', qty: 1, rev: 23800, weighted: 22667 },
+      { name: 'IS-6', category: 'Urinary Incontinence', qty: 1, rev: 10516, weighted: 10015 },
+      { name: '止血顆粒 1g', category: 'Hemostasis', qty: 1, rev: 8450, weighted: 8048 },
+    ],
+    '長庚土城': [ // 整院 應收 262,908 / 加權 237,979
+      { name: '宮安康', category: 'Adhesion Prevention', qty: 10, rev: 110000, weighted: 104762 },
+      { name: '止血顆粒 3g', category: 'Hemostasis', qty: 7, rev: 99400, weighted: 85200 },
+      { name: '止血顆粒 5g', category: 'Hemostasis', qty: 1, rev: 23500, weighted: 22381 },
+      { name: '速巴定', category: 'Hernia', qty: 2, rev: 15448, weighted: 11770 },
+      { name: '止血顆粒 1g', category: 'Hemostasis', qty: 2, rev: 14560, weighted: 13867 },
+    ],
+  },
 };
 
 // 共跑醫院的「本人業績」：來自檔名含 Mars 的個人報表中，台北慈濟／長庚土城的紀錄。
