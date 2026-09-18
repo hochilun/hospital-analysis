@@ -13,7 +13,7 @@ import {
 } from '@/data/myPerformance';
 import { sponsorAmount } from '@/data/sponsorship';
 import { SALES_BY_YEAR } from '@/data/salesHistory';
-import { monthPace, type MonthPace } from '@/data/workdays';
+import { monthPace, isFixedMonthly, type MonthPace } from '@/data/workdays';
 import { pushToCloud, pullFromCloud } from '@/lib/supabase';
 import {
   loadAllDoctors, loadDoctors, saveDoctors, migrateOldDoctorKeys,
@@ -233,7 +233,27 @@ export default function PerformancePage() {
     const m = data.find(x => x.label === periods.curM);
     return m ? monthPace(m.month, m.asOf) : null;
   }, [data, periods.curM]);
-  const forecast = (v: number) => (pace ? Math.round(v * pace.factor) : null);
+
+  // 單一醫院的整月估值。
+  // 北醫這種「月初一次開帳」的醫院，當月只開一次、開完就不動，數字已經定案 ——
+  // 不能跟著工作天放大。還沒開帳（本月為 0）就先用上月數字頂著，因為它一定會開。
+  const hospForecast = (hosp: string, v: number) => {
+    if (!pace) return v;
+    if (isFixedMonthly(hosp)) {
+      if (v > 0) return Math.round(v);
+      return Math.round(periods.prevM ? sumOf([periods.prevM], hosp) : 0);
+    }
+    return Math.round(v * pace.factor);
+  };
+
+  // 某月的整月估值：已結算的月份就是實際值；還沒跑完的當月才逐院換算
+  const monthForecast = (label: string) => {
+    const e = effByLabel[label];
+    if (!e) return 0;
+    if (!pace || label !== periods.curM) return Math.round(e.weighted);
+    return Object.entries(e.byHospital).reduce((sum, [h, v]) => sum + hospForecast(h, v), 0);
+  };
+  const forecastOf = (labels: string[]) => labels.reduce((s, l) => s + monthForecast(l), 0);
 
   // 各醫院：本月／上月、本季／上季
   const hospPeriodRows = useMemo(() => {
@@ -566,21 +586,29 @@ export default function PerformancePage() {
       <div className="max-w-6xl mx-auto px-6 py-6 space-y-6">
 
         {/* 本月／本季／年度 */}
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-3 gap-4 items-stretch">
           <PeriodCard label={`本月・${periods.curM}`} value={sumOf([periods.curM])}
             cmpLabel={periods.prevM ? `上月 ${periods.prevM}` : undefined}
             cmpValue={periods.prevM ? sumOf([periods.prevM]) : undefined}
             note={partialMonth?.label === periods.curM ? `僅計至 ${partialMonth.asOf}` : undefined}
             forecast={pace ? {
-              value: forecast(sumOf([periods.curM]))!,
-              elapsed: pace.elapsed, total: pace.total,
+              label: '預估整月', value: monthForecast(periods.curM),
+              note: `已過 ${pace.elapsed}／全月 ${pace.total} 工作天`,
             } : undefined} />
           <PeriodCard label={`本季・第${['一','二','三','四'][periods.cq - 1]}季`} value={sumOf(periods.curQ)}
             cmpLabel={periods.prevQ.length ? `上季（${periods.prevQ.join('＋')}）` : undefined}
             cmpValue={periods.prevQ.length ? sumOf(periods.prevQ) : undefined}
-            note={`本季含 ${periods.curQ.join('＋')}`} />
+            note={`本季含 ${periods.curQ.join('＋')}`}
+            forecast={pace ? {
+              label: '預估本季', value: forecastOf(periods.curQ),
+              note: `${periods.curM}補成整月`,
+            } : undefined} />
           <PeriodCard label="年度累計" value={sumOf(periods.labels)} accent
-            note={`${ytdLabel}（五月到職起算）· 月均 ${fmtMoney(Math.round(sumOf(periods.labels) / periods.labels.length))}`} />
+            note={`${ytdLabel}（五月到職起算）· 月均 ${fmtMoney(Math.round(sumOf(periods.labels) / periods.labels.length))}`}
+            forecast={pace ? {
+              label: '預估年度', value: forecastOf(periods.labels),
+              note: `${periods.curM}補成整月・月均 ${fmtMoney(Math.round(forecastOf(periods.labels) / periods.labels.length))}`,
+            } : undefined} />
         </div>
 
         {/* 各醫院：本月／本季，各自對比上一期 */}
@@ -628,11 +656,13 @@ export default function PerformancePage() {
                     </td>
                     <td className="py-2.5 px-3 text-right font-semibold text-gray-900">{r.m.toLocaleString('zh-TW')}</td>
                     {pace && (
-                      <td className="py-2.5 px-3 text-right font-semibold text-blue-600">
-                        {forecast(r.m)!.toLocaleString('zh-TW')}
+                      <td className="py-2.5 px-3 text-right font-semibold text-blue-600"
+                        title={isFixedMonthly(r.hosp) ? '月初一次開帳，當月數字已定案，不做工作天換算' : undefined}>
+                        {hospForecast(r.hosp, r.m).toLocaleString('zh-TW')}
+                        {isFixedMonthly(r.hosp) && <span className="text-[10px] text-gray-400 ml-1">已定案</span>}
                       </td>
                     )}
-                    <td className="py-2.5 px-3 text-right"><DeltaBadge v={pace ? pct(forecast(r.m)!, r.mPrev) : r.mPct} base={r.mPrev} /></td>
+                    <td className="py-2.5 px-3 text-right"><DeltaBadge v={pace ? pct(hospForecast(r.hosp, r.m), r.mPrev) : r.mPct} base={r.mPrev} /></td>
                     <td className="py-2.5 px-3 text-right font-semibold text-gray-900">{r.q.toLocaleString('zh-TW')}</td>
                     <td className="py-2.5 px-3 text-right"><DeltaBadge v={r.qPct} base={r.qPrev} /></td>
                     <td className="py-2.5 pl-3 text-right text-gray-500">{r.ytd.toLocaleString('zh-TW')}</td>
@@ -645,10 +675,10 @@ export default function PerformancePage() {
                 <td className="py-2.5 px-3 text-right text-gray-900">{sumOf([periods.curM]).toLocaleString('zh-TW')}</td>
                 {pace && (
                   <td className="py-2.5 px-3 text-right text-blue-600">
-                    {forecast(sumOf([periods.curM]))!.toLocaleString('zh-TW')}
+                    {monthForecast(periods.curM).toLocaleString('zh-TW')}
                   </td>
                 )}
-                <td className="py-2.5 px-3 text-right"><DeltaBadge v={pct(pace ? forecast(sumOf([periods.curM]))! : sumOf([periods.curM]), periods.prevM ? sumOf([periods.prevM]) : 0)} /></td>
+                <td className="py-2.5 px-3 text-right"><DeltaBadge v={pct(pace ? monthForecast(periods.curM) : sumOf([periods.curM]), periods.prevM ? sumOf([periods.prevM]) : 0)} /></td>
                 <td className="py-2.5 px-3 text-right text-gray-900">{sumOf(periods.curQ).toLocaleString('zh-TW')}</td>
                 <td className="py-2.5 px-3 text-right"><DeltaBadge v={pct(sumOf(periods.curQ), sumOf(periods.prevQ))} /></td>
                 <td className="py-2.5 pl-3 text-right text-gray-700">{sumOf(periods.labels).toLocaleString('zh-TW')}</td>
@@ -1307,7 +1337,7 @@ function MonthlyYoyTable({ rows, partialLabel, partialAsOf, barColor, scopeLabel
 // 期間 KPI 卡（本月／本季／年度），附與上一期的比較
 function PeriodCard({ label, value, cmpLabel, cmpValue, note, accent, forecast }: {
   label: string; value: number; cmpLabel?: string; cmpValue?: number; note?: string; accent?: boolean;
-  forecast?: { value: number; elapsed: number; total: number };
+  forecast?: { label: string; value: number; note: string };
 }) {
   // 月中的實際值拿去跟上個「整月」比，永遠是落後、看不出真實走勢。
   // 有預估整月時，環比一律改用預估值比，並在標籤上講明是用預估比的。
@@ -1315,12 +1345,12 @@ function PeriodCard({ label, value, cmpLabel, cmpValue, note, accent, forecast }
   const d = cmpValue !== undefined && cmpValue > 0 ? Math.round(((cmpFrom - cmpValue) / cmpValue) * 100) : null;
   const diff = cmpValue !== undefined ? cmpFrom - cmpValue : 0;
   return (
-    <div className="rounded-2xl border border-gray-100 p-5 bg-white">
+    <div className="rounded-2xl border border-gray-100 p-5 bg-white flex flex-col h-full">
       <p className="text-xs text-gray-400 font-medium mb-1">{label}</p>
       <p className={`text-2xl font-black ${accent ? 'text-emerald-600' : 'text-gray-900'}`}>{fmtMoney(value)}</p>
       {d !== null ? (
         <p className="text-xs mt-1.5 flex items-center gap-1.5">
-          <span className={`px-1.5 py-0.5 rounded font-bold ${
+          <span className={`px-1.5 py-0.5 rounded font-bold whitespace-nowrap ${
             d > 0 ? 'bg-emerald-50 text-emerald-600' : d < 0 ? 'bg-rose-50 text-rose-500' : 'bg-gray-100 text-gray-400'}`}>
             {d > 0 ? '▲' : d < 0 ? '▼' : '－'} {Math.abs(d)}%
           </span>
@@ -1334,12 +1364,10 @@ function PeriodCard({ label, value, cmpLabel, cmpValue, note, accent, forecast }
       ) : null}
       {note && <p className="text-[11px] text-gray-400 mt-1">{note}</p>}
       {forecast && (
-        <p className="text-xs mt-2 pt-2 border-t border-gray-100">
-          <span className="text-gray-400">預估整月 </span>
+        <p className="text-xs mt-auto pt-2 border-t border-gray-100">
+          <span className="text-gray-400">{forecast.label} </span>
           <span className="font-bold text-blue-600 tabular-nums">{fmtMoney(forecast.value)}</span>
-          <span className="text-gray-300 ml-1.5">
-            已過 {forecast.elapsed}／全月 {forecast.total} 工作天
-          </span>
+          <span className="text-gray-300 ml-1.5">{forecast.note}</span>
         </p>
       )}
     </div>
@@ -1389,7 +1417,7 @@ function KpiCard({ label, value, sub, color }: {
 }) {
   const t = color === 'blue' ? 'text-blue-600' : 'text-emerald-600';
   return (
-    <div className="rounded-2xl border border-gray-100 p-5 bg-white">
+    <div className="rounded-2xl border border-gray-100 p-5 bg-white flex flex-col h-full">
       <p className="text-xs text-gray-400 font-medium mb-1">{label}</p>
       <p className={`text-2xl font-black ${t}`}>{value}</p>
       <p className="text-xs text-gray-400 mt-1">{sub}</p>

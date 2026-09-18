@@ -75,3 +75,12 @@ export function monthPace(monthKey: string, asOf?: string): MonthPace | null {
   if (elapsed <= 0 || elapsed >= total) return null;
   return { monthKey, asOf, elapsed, total, factor: total / elapsed };
 }
+
+/**
+ * 「月初一次開帳」的醫院 —— 每月只開一次發票，把上個月整月的用量一次結清，
+ * 開完當月就不會再動。所以這些醫院**當月數字已經是定案值，不能跟著工作天放大**。
+ * 佐證（台北醫學逐月唯一一筆發票日）：5/11、6/4、7/6、8/7、9/7。
+ */
+export const FIXED_MONTHLY_HOSPITALS: readonly string[] = ['台北醫學'];
+
+export const isFixedMonthly = (hosp: string) => FIXED_MONTHLY_HOSPITALS.includes(hosp);
