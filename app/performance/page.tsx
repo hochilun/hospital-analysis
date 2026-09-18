@@ -13,6 +13,7 @@ import {
 } from '@/data/myPerformance';
 import { sponsorAmount } from '@/data/sponsorship';
 import { SALES_BY_YEAR } from '@/data/salesHistory';
+import { monthPace, type MonthPace } from '@/data/workdays';
 import { pushToCloud, pullFromCloud } from '@/lib/supabase';
 import {
   loadAllDoctors, loadDoctors, saveDoctors, migrateOldDoctorKeys,
@@ -225,6 +226,14 @@ export default function PerformancePage() {
   }, [data]);
 
   const pct = (cur: number, prev: number) => (prev > 0 ? Math.round(((cur - prev) / prev) * 100) : null);
+
+  // 本月進度：月中看到的數字本來就落後整月，用「已過工作天」換算成預估整月。
+  // 預估整月 = 目前業績 ÷ 已過工作天 × 全月工作天。整月跑完的月份不預估（pace 為 null）。
+  const pace: MonthPace | null = useMemo(() => {
+    const m = data.find(x => x.label === periods.curM);
+    return m ? monthPace(m.month, m.asOf) : null;
+  }, [data, periods.curM]);
+  const forecast = (v: number) => (pace ? Math.round(v * pace.factor) : null);
 
   // 各醫院：本月／上月、本季／上季
   const hospPeriodRows = useMemo(() => {
@@ -561,7 +570,11 @@ export default function PerformancePage() {
           <PeriodCard label={`本月・${periods.curM}`} value={sumOf([periods.curM])}
             cmpLabel={periods.prevM ? `上月 ${periods.prevM}` : undefined}
             cmpValue={periods.prevM ? sumOf([periods.prevM]) : undefined}
-            note={partialMonth?.label === periods.curM ? `僅計至 ${partialMonth.asOf}` : undefined} />
+            note={partialMonth?.label === periods.curM ? `僅計至 ${partialMonth.asOf}` : undefined}
+            forecast={pace ? {
+              value: forecast(sumOf([periods.curM]))!,
+              elapsed: pace.elapsed, total: pace.total,
+            } : undefined} />
           <PeriodCard label={`本季・第${['一','二','三','四'][periods.cq - 1]}季`} value={sumOf(periods.curQ)}
             cmpLabel={periods.prevQ.length ? `上季（${periods.prevQ.join('＋')}）` : undefined}
             cmpValue={periods.prevQ.length ? sumOf(periods.prevQ) : undefined}
@@ -576,7 +589,10 @@ export default function PerformancePage() {
             <h2 className="text-base font-semibold text-gray-800">各醫院表現</h2>
             <span className="text-xs text-gray-400">本月比上月、本季比上季；點醫院看細部</span>
             {partialMonth?.label === periods.curM && (
-              <span className="text-xs text-amber-600 ml-auto">※ {periods.curM}僅計至 {partialMonth.asOf}，與整月相比會偏低</span>
+              <span className="text-xs text-amber-600 ml-auto">
+                ※ {periods.curM}僅計至 {partialMonth.asOf}
+                {pace && `，預估整月＝目前 ÷ 已過 ${pace.elapsed} 工作天 × 全月 ${pace.total} 工作天`}
+              </span>
             )}
           </div>
           <table className="w-full text-sm tabular-nums">
@@ -584,7 +600,13 @@ export default function PerformancePage() {
               <tr className="text-xs text-gray-400 border-b border-gray-100">
                 <th className="text-left font-medium py-2 pr-3">醫院</th>
                 <th className="text-right font-medium py-2 px-3">本月 {periods.curM}</th>
-                <th className="text-right font-medium py-2 px-3 w-28">vs 上月</th>
+                {pace && (
+                  <th className="text-right font-medium py-2 px-3 text-blue-500"
+                    title={`目前業績 ÷ 已過 ${pace.elapsed} 個工作天 × 全月 ${pace.total} 個工作天`}>
+                    預估整月
+                  </th>
+                )}
+                <th className="text-right font-medium py-2 px-3 w-28">{pace ? '預估 vs 上月' : 'vs 上月'}</th>
                 <th className="text-right font-medium py-2 px-3">本季</th>
                 <th className="text-right font-medium py-2 px-3 w-28">vs 上季</th>
                 <th className="text-right font-medium py-2 pl-3">年度累計</th>
@@ -605,7 +627,12 @@ export default function PerformancePage() {
                       </span>
                     </td>
                     <td className="py-2.5 px-3 text-right font-semibold text-gray-900">{r.m.toLocaleString('zh-TW')}</td>
-                    <td className="py-2.5 px-3 text-right"><DeltaBadge v={r.mPct} base={r.mPrev} /></td>
+                    {pace && (
+                      <td className="py-2.5 px-3 text-right font-semibold text-blue-600">
+                        {forecast(r.m)!.toLocaleString('zh-TW')}
+                      </td>
+                    )}
+                    <td className="py-2.5 px-3 text-right"><DeltaBadge v={pace ? pct(forecast(r.m)!, r.mPrev) : r.mPct} base={r.mPrev} /></td>
                     <td className="py-2.5 px-3 text-right font-semibold text-gray-900">{r.q.toLocaleString('zh-TW')}</td>
                     <td className="py-2.5 px-3 text-right"><DeltaBadge v={r.qPct} base={r.qPrev} /></td>
                     <td className="py-2.5 pl-3 text-right text-gray-500">{r.ytd.toLocaleString('zh-TW')}</td>
@@ -616,7 +643,12 @@ export default function PerformancePage() {
               <tr className="bg-gray-50/80 font-bold">
                 <td className="py-2.5 pr-3 text-gray-700">合計</td>
                 <td className="py-2.5 px-3 text-right text-gray-900">{sumOf([periods.curM]).toLocaleString('zh-TW')}</td>
-                <td className="py-2.5 px-3 text-right"><DeltaBadge v={pct(sumOf([periods.curM]), periods.prevM ? sumOf([periods.prevM]) : 0)} /></td>
+                {pace && (
+                  <td className="py-2.5 px-3 text-right text-blue-600">
+                    {forecast(sumOf([periods.curM]))!.toLocaleString('zh-TW')}
+                  </td>
+                )}
+                <td className="py-2.5 px-3 text-right"><DeltaBadge v={pct(pace ? forecast(sumOf([periods.curM]))! : sumOf([periods.curM]), periods.prevM ? sumOf([periods.prevM]) : 0)} /></td>
                 <td className="py-2.5 px-3 text-right text-gray-900">{sumOf(periods.curQ).toLocaleString('zh-TW')}</td>
                 <td className="py-2.5 px-3 text-right"><DeltaBadge v={pct(sumOf(periods.curQ), sumOf(periods.prevQ))} /></td>
                 <td className="py-2.5 pl-3 text-right text-gray-700">{sumOf(periods.labels).toLocaleString('zh-TW')}</td>
@@ -1273,11 +1305,15 @@ function MonthlyYoyTable({ rows, partialLabel, partialAsOf, barColor, scopeLabel
 }
 
 // 期間 KPI 卡（本月／本季／年度），附與上一期的比較
-function PeriodCard({ label, value, cmpLabel, cmpValue, note, accent }: {
+function PeriodCard({ label, value, cmpLabel, cmpValue, note, accent, forecast }: {
   label: string; value: number; cmpLabel?: string; cmpValue?: number; note?: string; accent?: boolean;
+  forecast?: { value: number; elapsed: number; total: number };
 }) {
-  const d = cmpValue !== undefined && cmpValue > 0 ? Math.round(((value - cmpValue) / cmpValue) * 100) : null;
-  const diff = cmpValue !== undefined ? value - cmpValue : 0;
+  // 月中的實際值拿去跟上個「整月」比，永遠是落後、看不出真實走勢。
+  // 有預估整月時，環比一律改用預估值比，並在標籤上講明是用預估比的。
+  const cmpFrom = forecast ? forecast.value : value;
+  const d = cmpValue !== undefined && cmpValue > 0 ? Math.round(((cmpFrom - cmpValue) / cmpValue) * 100) : null;
+  const diff = cmpValue !== undefined ? cmpFrom - cmpValue : 0;
   return (
     <div className="rounded-2xl border border-gray-100 p-5 bg-white">
       <p className="text-xs text-gray-400 font-medium mb-1">{label}</p>
@@ -1289,6 +1325,7 @@ function PeriodCard({ label, value, cmpLabel, cmpValue, note, accent }: {
             {d > 0 ? '▲' : d < 0 ? '▼' : '－'} {Math.abs(d)}%
           </span>
           <span className="text-gray-400">
+            {forecast && <span className="text-gray-300">預估 vs </span>}
             {cmpLabel} {fmtMoney(cmpValue!)}（{diff >= 0 ? '+' : '−'}{fmtMoney(Math.abs(diff)).slice(1)}）
           </span>
         </p>
@@ -1296,6 +1333,15 @@ function PeriodCard({ label, value, cmpLabel, cmpValue, note, accent }: {
         <p className="text-xs text-gray-300 mt-1.5">無{cmpLabel}可比</p>
       ) : null}
       {note && <p className="text-[11px] text-gray-400 mt-1">{note}</p>}
+      {forecast && (
+        <p className="text-xs mt-2 pt-2 border-t border-gray-100">
+          <span className="text-gray-400">預估整月 </span>
+          <span className="font-bold text-blue-600 tabular-nums">{fmtMoney(forecast.value)}</span>
+          <span className="text-gray-300 ml-1.5">
+            已過 {forecast.elapsed}／全月 {forecast.total} 工作天
+          </span>
+        </p>
+      )}
     </div>
   );
 }
