@@ -255,6 +255,12 @@ export default function PerformancePage() {
   };
   const forecastOf = (labels: string[]) => labels.reduce((s, l) => s + monthForecast(l), 0);
 
+  // 某院的本季預估：季內已結算的月份用實際值，只有還沒跑完的當月換算
+  const quarterForecast = (hosp: string) =>
+    periods.curQ.reduce((s, l) => s + (pace && l === periods.curM
+      ? hospForecast(hosp, sumOf([l], hosp))
+      : Math.round(sumOf([l], hosp))), 0);
+
   // 推到 12 月：拿最近三個「完整月份」（不含還沒跑完的當月）當基礎。
   // 用日均而不是月均 —— 各月工作天數不一樣（10月 20 天、12月 22 天），
   // 直接套月均會把工作天多的月份低估。
@@ -677,7 +683,13 @@ export default function PerformancePage() {
                 )}
                 <th className="text-right font-medium py-2 px-3 w-28">{pace ? '預估 vs 上月' : 'vs 上月'}</th>
                 <th className="text-right font-medium py-2 px-3">本季</th>
-                <th className="text-right font-medium py-2 px-3 w-28">vs 上季</th>
+                {pace && (
+                  <th className="text-right font-medium py-2 px-3 text-blue-500"
+                    title={`季內已結算的月份用實際值，只有 ${periods.curM} 用工作天換算`}>
+                    預估本季
+                  </th>
+                )}
+                <th className="text-right font-medium py-2 px-3 w-28">{pace ? '預估 vs 上季' : 'vs 上季'}</th>
                 <th className="text-right font-medium py-2 pl-3">年度累計</th>
                 <th className="w-6" />
               </tr>
@@ -705,7 +717,14 @@ export default function PerformancePage() {
                     )}
                     <td className="py-2.5 px-3 text-right"><DeltaBadge v={pace ? pct(hospForecast(r.hosp, r.m), r.mPrev) : r.mPct} base={r.mPrev} /></td>
                     <td className="py-2.5 px-3 text-right font-semibold text-gray-900">{r.q.toLocaleString('zh-TW')}</td>
-                    <td className="py-2.5 px-3 text-right"><DeltaBadge v={r.qPct} base={r.qPrev} /></td>
+                    {pace && (
+                      <td className="py-2.5 px-3 text-right font-semibold text-blue-600">
+                        {quarterForecast(r.hosp).toLocaleString('zh-TW')}
+                      </td>
+                    )}
+                    <td className="py-2.5 px-3 text-right">
+                      <DeltaBadge v={pace ? pct(quarterForecast(r.hosp), r.qPrev) : r.qPct} base={r.qPrev} />
+                    </td>
                     <td className="py-2.5 pl-3 text-right text-gray-500">{r.ytd.toLocaleString('zh-TW')}</td>
                     <td className="text-gray-300 text-xs text-center">{on ? '▾' : '▸'}</td>
                   </tr>
@@ -721,7 +740,14 @@ export default function PerformancePage() {
                 )}
                 <td className="py-2.5 px-3 text-right"><DeltaBadge v={pct(pace ? monthForecast(periods.curM) : sumOf([periods.curM]), periods.prevM ? sumOf([periods.prevM]) : 0)} /></td>
                 <td className="py-2.5 px-3 text-right text-gray-900">{sumOf(periods.curQ).toLocaleString('zh-TW')}</td>
-                <td className="py-2.5 px-3 text-right"><DeltaBadge v={pct(sumOf(periods.curQ), sumOf(periods.prevQ))} /></td>
+                {pace && (
+                  <td className="py-2.5 px-3 text-right text-blue-600">
+                    {forecastOf(periods.curQ).toLocaleString('zh-TW')}
+                  </td>
+                )}
+                <td className="py-2.5 px-3 text-right">
+                  <DeltaBadge v={pct(pace ? forecastOf(periods.curQ) : sumOf(periods.curQ), sumOf(periods.prevQ))} />
+                </td>
                 <td className="py-2.5 pl-3 text-right text-gray-700">{sumOf(periods.labels).toLocaleString('zh-TW')}</td>
                 <td />
               </tr>
