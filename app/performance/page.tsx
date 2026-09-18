@@ -13,7 +13,7 @@ import {
 } from '@/data/myPerformance';
 import { sponsorAmount } from '@/data/sponsorship';
 import { SALES_BY_YEAR } from '@/data/salesHistory';
-import { monthPace, isFixedMonthly, type MonthPace } from '@/data/workdays';
+import { monthPace, monthWorkdays, isFixedMonthly, type MonthPace } from '@/data/workdays';
 import { pushToCloud, pullFromCloud } from '@/lib/supabase';
 import {
   loadAllDoctors, loadDoctors, saveDoctors, migrateOldDoctorKeys,
@@ -254,6 +254,41 @@ export default function PerformancePage() {
     return Object.entries(e.byHospital).reduce((sum, [h, v]) => sum + hospForecast(h, v), 0);
   };
   const forecastOf = (labels: string[]) => labels.reduce((s, l) => s + monthForecast(l), 0);
+
+  // 推到 12 月：拿最近三個「完整月份」（不含還沒跑完的當月）當基礎。
+  // 用日均而不是月均 —— 各月工作天數不一樣（10月 20 天、12月 22 天），
+  // 直接套月均會把工作天多的月份低估。
+  const yearEnd = useMemo(() => {
+    const monthKeyOf = (label: string) => data.find(d => d.label === label)?.month;
+    const complete = periods.labels.filter(l => l !== periods.curM || !pace);
+    const base = complete.slice(-3);
+    const curNum = parseInt(periods.curM, 10);
+    if (!base.length || curNum >= 12) return null;
+
+    let rev = 0, days = 0;
+    for (const l of base) {
+      const mk = monthKeyOf(l);
+      if (!mk) continue;
+      rev += sumOf([l]);
+      days += monthWorkdays(mk);
+    }
+    if (days <= 0) return null;
+    const perDay = rev / days;
+
+    const year = (monthKeyOf(periods.curM) ?? latest.month).split('-')[0];
+    const rest: { label: string; workdays: number; value: number }[] = [];
+    for (let mo = curNum + 1; mo <= 12; mo++) {
+      const wd = monthWorkdays(`${year}-${String(mo).padStart(2, '0')}`);
+      rest.push({ label: `${mo}月`, workdays: wd, value: Math.round(perDay * wd) });
+    }
+    const restTotal = rest.reduce((s, r) => s + r.value, 0);
+    return {
+      base, perDay: Math.round(perDay), baseDays: days, rest, restTotal,
+      total: forecastOf(periods.labels) + restTotal,
+    };
+    // sumOf / forecastOf 由 effByLabel 推導，不另列依賴
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data, periods, pace, effByLabel]);
 
   // 各醫院：本月／上月、本季／上季
   const hospPeriodRows = useMemo(() => {
@@ -591,24 +626,30 @@ export default function PerformancePage() {
             cmpLabel={periods.prevM ? `上月 ${periods.prevM}` : undefined}
             cmpValue={periods.prevM ? sumOf([periods.prevM]) : undefined}
             note={partialMonth?.label === periods.curM ? `僅計至 ${partialMonth.asOf}` : undefined}
-            forecast={pace ? {
+            forecast={pace ? [{
               label: '預估整月', value: monthForecast(periods.curM),
               note: `已過 ${pace.elapsed}／全月 ${pace.total} 工作天`,
-            } : undefined} />
+            }] : undefined} />
           <PeriodCard label={`本季・第${['一','二','三','四'][periods.cq - 1]}季`} value={sumOf(periods.curQ)}
             cmpLabel={periods.prevQ.length ? `上季（${periods.prevQ.join('＋')}）` : undefined}
             cmpValue={periods.prevQ.length ? sumOf(periods.prevQ) : undefined}
             note={`本季含 ${periods.curQ.join('＋')}`}
-            forecast={pace ? {
+            forecast={pace ? [{
               label: '預估本季', value: forecastOf(periods.curQ),
               note: `${periods.curM}補成整月`,
-            } : undefined} />
+            }] : undefined} />
           <PeriodCard label="年度累計" value={sumOf(periods.labels)} accent
             note={`${ytdLabel}（五月到職起算）· 月均 ${fmtMoney(Math.round(sumOf(periods.labels) / periods.labels.length))}`}
-            forecast={pace ? {
-              label: '預估年度', value: forecastOf(periods.labels),
-              note: `${periods.curM}補成整月・月均 ${fmtMoney(Math.round(forecastOf(periods.labels) / periods.labels.length))}`,
-            } : undefined} />
+            forecast={[
+              ...(pace ? [{
+                label: `預估到${periods.curM}底`, value: forecastOf(periods.labels),
+                note: `${periods.curM}補成整月`,
+              }] : []),
+              ...(yearEnd ? [{
+                label: '預估全年', value: yearEnd.total, strong: true,
+                note: `${yearEnd.rest[0].label}–12月用近三完整月日均 ${fmtMoney(yearEnd.perDay)}/工作天`,
+              }] : []),
+            ]} />
         </div>
 
         {/* 各醫院：本月／本季，各自對比上一期 */}
@@ -1337,11 +1378,12 @@ function MonthlyYoyTable({ rows, partialLabel, partialAsOf, barColor, scopeLabel
 // 期間 KPI 卡（本月／本季／年度），附與上一期的比較
 function PeriodCard({ label, value, cmpLabel, cmpValue, note, accent, forecast }: {
   label: string; value: number; cmpLabel?: string; cmpValue?: number; note?: string; accent?: boolean;
-  forecast?: { label: string; value: number; note: string };
+  forecast?: { label: string; value: number; note: string; strong?: boolean }[];
 }) {
   // 月中的實際值拿去跟上個「整月」比，永遠是落後、看不出真實走勢。
   // 有預估整月時，環比一律改用預估值比，並在標籤上講明是用預估比的。
-  const cmpFrom = forecast ? forecast.value : value;
+  const fc = forecast?.length ? forecast : undefined;
+  const cmpFrom = fc ? fc[0].value : value;
   const d = cmpValue !== undefined && cmpValue > 0 ? Math.round(((cmpFrom - cmpValue) / cmpValue) * 100) : null;
   const diff = cmpValue !== undefined ? cmpFrom - cmpValue : 0;
   return (
@@ -1355,7 +1397,7 @@ function PeriodCard({ label, value, cmpLabel, cmpValue, note, accent, forecast }
             {d > 0 ? '▲' : d < 0 ? '▼' : '－'} {Math.abs(d)}%
           </span>
           <span className="text-gray-400">
-            {forecast && <span className="text-gray-300">預估 vs </span>}
+            {fc && <span className="text-gray-300">預估 vs </span>}
             {cmpLabel} {fmtMoney(cmpValue!)}（{diff >= 0 ? '+' : '−'}{fmtMoney(Math.abs(diff)).slice(1)}）
           </span>
         </p>
@@ -1363,12 +1405,18 @@ function PeriodCard({ label, value, cmpLabel, cmpValue, note, accent, forecast }
         <p className="text-xs text-gray-300 mt-1.5">無{cmpLabel}可比</p>
       ) : null}
       {note && <p className="text-[11px] text-gray-400 mt-1">{note}</p>}
-      {forecast && (
-        <p className="text-xs mt-auto pt-2 border-t border-gray-100">
-          <span className="text-gray-400">{forecast.label} </span>
-          <span className="font-bold text-blue-600 tabular-nums">{fmtMoney(forecast.value)}</span>
-          <span className="text-gray-300 ml-1.5">{forecast.note}</span>
-        </p>
+      {fc && (
+        <div className="mt-auto pt-2 border-t border-gray-100 space-y-1">
+          {fc.map(f => (
+            <p key={f.label} className="text-xs">
+              <span className="text-gray-400">{f.label} </span>
+              <span className={`font-bold tabular-nums ${f.strong ? 'text-blue-700' : 'text-blue-600'}`}>
+                {fmtMoney(f.value)}
+              </span>
+              <span className="text-gray-300 ml-1.5">{f.note}</span>
+            </p>
+          ))}
+        </div>
       )}
     </div>
   );
