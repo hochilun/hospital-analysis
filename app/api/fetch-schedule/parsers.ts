@@ -33,15 +33,46 @@ const TMUH_GS: [string, string][] = [
   ['林雨寧','BW/030114'],['陳瑞杰','BW/031023'],['周大鈞','BW/031032'],
   ['黃彥鈞','BA/032044'],['魏柏立','BA/031008'],['郭立人','BA/030032'],['王偉林','BA/030085'],
 ];
-const TMUH_GYN: [string, string][] = [
-  ['金宏諺','052/050018'],['林弘慈','052/050029'],['侯容琇','052/050139'],
-  ['邱德生','052/052094'],['張景文','052/050006'],['王懿德','052/050242'],
-  ['黃佩慎','052/050017'],['邱彥諧','052/052008'],['王培儀','052/052092'],
-  ['林芸卉','052/050026'],['陳子健','052/050027'],['傅皓聲','052/052105'],
-  ['吳彥蓁','052/052106'],['林秉侖','052/052108'],['林貝珊','052/050030'],
-  ['劉偉民','052/052107'],['區慶建','053/050216'],['簡立維','053/050117'],
-  ['陳啟煌','054/050054'],['仇思源','054/052100'],
-];
+// 婦產科橫跨三個掛號科別：052 婦科、053 產科、054 生殖醫學科。
+// 同一位醫師可能同時掛在多科，而且**各科頁面列出的診次不一定相同**
+// （例：傅皓聲的週一晚診只出現在 053 產科頁），所以要三頁都抓、取聯集。
+// 原本寫死醫師名單逐一抓個人頁，會漏掉沒列進名單的科別 → 改為直接掃科別頁。
+const TMUH_GYN_PAGES = ['052', '053', '054'];
+
+/**
+ * 解析北醫「科別掛號頁」。以 <a name="doc_XXXX"> 切出每位醫師的區塊，
+ * 每區塊固定 7 個星期標頭 + 21 格（早/午/晚 × 7 天）。
+ * 有連結（href）或標記停診（data-stop="C"）都算「該時段有固定診」——
+ * 停診只是這一週臨時沒診，不代表班表沒有這一診。
+ */
+function parseTmuhDeptPage(html: string, dept: string, seen: Set<string>): Clinic[] {
+  const clinics: Clinic[] = [];
+  const blocks = html.split(/<a name="doc_\d+"><\/a>/).slice(1);
+  for (const seg of blocks) {
+    const nm = seg.match(/<p class="doctor_name">\s*([\s\S]*?)\s*(?:<a |<!--)/);
+    if (!nm) continue;
+    const raw = nm[1].replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim();
+    const doctor = raw.split(/[(（\-]/)[0].trim().replace(/　| /g, '');
+    if (doctor.length < 2) continue;
+
+    const days = [...seg.slice(0, 4500).matchAll(/星期([一二三四五六日])/g)]
+      .map(m => DAY_CN[m[1]] ?? -1).slice(0, 7);
+    const slots = [...seg.matchAll(/<a class="btn" data-full="([^"]*)" data-stop="([^"]*)" href="([^"]*)">(早|午|晚)/g)];
+    if (days.length !== 7 || slots.length !== 21) continue;
+
+    slots.forEach((m, i) => {
+      const [, , stop, href, session] = m;
+      if (!href && stop !== 'C') return;
+      const dow = days[i % 7];
+      if (dow < 0) return;
+      const key = `${doctor}_${dow}_${session}`;
+      if (seen.has(key)) return;
+      seen.add(key);
+      clinics.push({ doctor, department: dept, dayOfWeek: dow, session: session as '早' | '午' | '晚' });
+    });
+  }
+  return clinics;
+}
 
 function parseTmuhIndividual(html: string, doctorName: string, dept: string, seen: Set<string>): Clinic[] {
   const cells: string[] = [];
@@ -102,11 +133,15 @@ export async function parseTmuh(): Promise<ParseResult> {
     const html = await fetchHtml(`${BASE}/${code}`, REF);
     if (html) all.push(...parseTmuhDept(html, dept, seen));
   }
+  // 婦產科：三個科別頁取聯集（seen 會自動去重）
+  for (const code of TMUH_GYN_PAGES) {
+    const html = await fetchHtml(`${BASE}/${code}`, REF);
+    if (html) all.push(...parseTmuhDeptPage(html, 'GYN', seen));
+  }
   // Individual pages (parallel batches of 5)
   const allDocs: [string, string, string][] = [
     ...TMUH_ENT.map(([n, p]) => [n, p, 'ENT'] as [string, string, string]),
     ...TMUH_GS.map(([n, p]) => [n, p, 'GS'] as [string, string, string]),
-    ...TMUH_GYN.map(([n, p]) => [n, p, 'GYN'] as [string, string, string]),
   ];
   for (let i = 0; i < allDocs.length; i += 5) {
     const batch = allDocs.slice(i, i + 5);
