@@ -7,7 +7,7 @@ const ALL = '*';
 // 產品短名 → { 醫院: 單價 }；'*' 代表所有醫院共用
 const RATES: Record<string, Record<string, number>> = {
   '宮安康':        { [ALL]: 5500 },
-  '宮安康 10ML':   { [ALL]: 5500 },
+  '宮安康 10ML':   { [ALL]: 10000 },   // 2026-10-05 Mars 更正，非 5ml 的 5,500
   '塞納斯':        { [ALL]: 5500 },
   'IS-M1':         { [ALL]: 6000 },
   'P-STOP-8':      { [ALL]: 12000 },
