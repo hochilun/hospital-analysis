@@ -8,7 +8,7 @@ import {
 } from 'recharts';
 import {
   MY_PERFORMANCE, CAT_ZH, CAT_COLOR, HOSP_COLOR, DEPT_LABEL,
-  SHARED_HOSPITALS, SHARED_PERFORMANCE, SHARED_AUTO, isSettledMonth, HOSP_ORDER,
+  SHARED_HOSPITALS, SHARED_PERFORMANCE, SHARED_AUTO, SETTLED_SHARED, isSettledMonth, HOSP_ORDER,
   type DoctorEntry, type HospProdEntry, type MonthPerf,
 } from '@/data/myPerformance';
 import { sponsorAmount } from '@/data/sponsorship';
@@ -134,6 +134,7 @@ export default function PerformancePage() {
     : latest.month;
   // 共跑部分已由主管確認定案 → 認領框唯讀，數字一律以 SHARED_AUTO 為準
   const settledActive = isSettledMonth(activeMonthKey);
+  const settledSource = SETTLED_SHARED[activeMonthKey];
 
   // 季度快捷（只顯示有資料的季）
   const monthNum = (label: string) => parseInt(label, 10);
@@ -428,8 +429,8 @@ export default function PerformancePage() {
   const hospTotal = isAll ? monthData.revenue : (monthData.byHospital[selectedHosp] ?? 0);
   // 共跑醫院拆解（加權）：本人業績(Mars檔) / 認領 / 整院認領池
   const sharedRows = isSharedHosp ? (hospProds as SharedProdView[]) : [];
-  const autoTotal  = sharedRows.filter(p => p.auto).reduce((s, p) => s + p.rev, 0);
-  const claimTotal = sharedRows.filter(p => !p.auto).reduce((s, p) => s + p.rev, 0);
+  const autoTotal  = sharedRows.filter(p => p.auto || p.confirmed).reduce((s, p) => s + p.rev, 0);
+  const claimTotal = sharedRows.filter(p => !p.auto && !p.confirmed).reduce((s, p) => s + p.rev, 0);
   const poolGrossTotal = sharedRows.filter(p => !p.auto).reduce((s, p) => s + (p.gross ?? 0), 0);
 
   const catAgg: Record<string, number> = {};
@@ -456,7 +457,8 @@ export default function PerformancePage() {
   // 每個產品「登記醫師支數」是否超過可分配數量（共跑醫院＝認領支數，其餘＝發票件數）
   const overAllocated = (isAll ? [] : hospProds).map(prod => {
     const used = docsForPeriod(selectedHosp, prod.name).reduce((s, d) => s + d.qty, 0);
-    return { name: prod.name, used, qty: prod.qty, pool: isSharedHosp && (prod as SharedProdView).auto === false };
+    const sv = prod as SharedProdView;
+    return { name: prod.name, used, qty: prod.qty, pool: isSharedHosp && sv.auto === false, confirmed: !!sv.confirmed };
   }).filter(o => o.used > o.qty);
 
   const rankingDoctors: (DoctorEntry & { hosps?: string[] })[] = (() => {
@@ -957,6 +959,10 @@ export default function PerformancePage() {
               {isSharedHosp && (
                 <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 font-semibold">共跑</span>
               )}
+              {isSharedHosp && settledActive && (
+                <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 font-semibold"
+                  title="本人支數以主管更正檔為準；整院數字保留供參考">✓ 已確認{settledSource ? `（${settledSource}）` : ''}</span>
+              )}
               <span className="text-xs text-gray-400">{periodLabel}</span>
             </div>
             <p className="text-2xl font-black text-gray-900 mb-1">{fmtMoney(hospTotal)}</p>
@@ -964,7 +970,10 @@ export default function PerformancePage() {
               <p className="text-xs text-gray-400 mb-4">
                 本人業績 <span className="text-gray-600 font-medium">{fmtMoney(autoTotal)}</span>
                 {settledActive ? (
-                  <span className="ml-1 text-emerald-600 font-medium">· 主管已確認定案</span>
+                  <>
+                    <span className="ml-1 text-emerald-600 font-medium">· 主管已確認</span>
+                    <span className="text-gray-300"> · 整院 {fmtMoney(poolGrossTotal)}</span>
+                  </>
                 ) : (
                   <>
                     {' ＋ 認領 '}<span className="text-emerald-600 font-medium">{fmtMoney(claimTotal)}</span>
@@ -1015,7 +1024,8 @@ export default function PerformancePage() {
                 {overAllocated.map(o => (
                   <p key={o.name}>
                     {o.name}：登記 {o.used} 支
-                    {o.pool ? `，但只認領 ${o.qty} 支 —— 認領沒跟著改，業績會少認` : `，超過 ${o.qty} 件`}
+                    {o.confirmed ? `，但主管確認只有 ${o.qty} 支`
+                      : o.pool ? `，但只認領 ${o.qty} 支 —— 認領沒跟著改，業績會少認` : `，超過 ${o.qty} 件`}
                   </p>
                 ))}
               </div>
@@ -1065,7 +1075,7 @@ export default function PerformancePage() {
                       </div>
                       {isPoolRow && (
                         settledActive ? (
-                          <span className="text-xs text-gray-400">主管已確認・不需認領</span>
+                          <span className="text-xs text-emerald-700 whitespace-nowrap">本人 {sv.mine} 支 · 已確認</span>
                         ) : singleMonth ? (
                           <div className="flex items-center gap-1.5">
                             <span className="text-xs text-gray-500">我的</span>

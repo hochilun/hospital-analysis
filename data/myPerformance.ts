@@ -534,5 +534,12 @@ export const SHARED_AUTO: Record<string, Record<string, HospProdEntry[]>> = {
 // 這些月份 SHARED_AUTO 與 SHARED_PERFORMANCE（整院池）是「重疊」的 —— 主管直接把屬於 Mars 的
 // 支數寫進個人報表，同一批貨兩邊都有。因此整院認領池一律唯讀、計算時忽略手動認領，
 // 全部以 SHARED_AUTO 為準，否則會重複計算。
-export const SETTLED_SHARED_MONTHS: readonly string[] = ['2026-05', '2026-06', '2026-07', '2026-08'];
+// 值＝確認依據（顯示在醫院卡上）。上傳新的更正檔時：數字寫進 SHARED_AUTO、這裡加一筆，整院資料不要動。
+export const SETTLED_SHARED: Record<string, string> = {
+  '2026-05': '0729 更正檔',
+  '2026-06': '0729 更正檔',
+  '2026-07': '0923 更正檔',
+  '2026-08': '0923 更正檔',
+};
+export const SETTLED_SHARED_MONTHS: readonly string[] = Object.keys(SETTLED_SHARED);
 export const isSettledMonth = (monthKey: string) => SETTLED_SHARED_MONTHS.includes(monthKey);

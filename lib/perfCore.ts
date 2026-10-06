@@ -76,7 +76,8 @@ export const saveClaim = (month: string, hosp: string, prod: string, myQty: numb
 };
 
 // 共跑醫院視圖：整院產品逐列。auto=true 表示 Mars 檔本人業績（全計、不需認領）；否則為整院認領池。
-export type SharedProdView = HospProdEntry & { gross: number; grossQty: number; mine: number; shared: true; auto: boolean };
+// confirmed=true：已定案月份的整院列 —— 整院數字照常顯示，「我的支數」取主管確認的 SHARED_AUTO。
+export type SharedProdView = HospProdEntry & { gross: number; grossQty: number; mine: number; shared: true; auto: boolean; confirmed?: boolean };
 
 // 單月的「共跑醫院業績」聚合 = 本人業績(SHARED_AUTO，全計) + 整院認領(SHARED_PERFORMANCE，依認領支數)
 export function claimedSharedMonth(monthKey: string, claims: ClaimsMap) {
@@ -102,16 +103,34 @@ export function claimedSharedMonth(monthKey: string, claims: ClaimsMap) {
   for (const hosp of hosps) {
     byHospital[hosp] = 0; byHospitalRev[hosp] = 0;   // 一律列出，讓使用者能點進去認領
     const views: SharedProdView[] = [];
+    // 已定案月份：SHARED_AUTO 與整院池是同一批貨（重疊）。整院列照樣顯示（看整院用量），
+    // 但「我的」一律取主管確認的支數；只有確認數字計入業績，避免重複計算。
+    // 整院池沒有的品項（例：慈濟 3DMAX）維持獨立的本人列。
+    if (isSettledMonth(monthKey)) {
+      const autoByName = new Map((auto[hosp] ?? []).map(p => [p.name, p]));
+      for (const p of (pool[hosp] ?? [])) {
+        const a = autoByName.get(p.name);
+        autoByName.delete(p.name);
+        const aw = a ? (a.weighted ?? a.rev) : 0;
+        views.push({ name: p.name, category: p.category, qty: a?.qty ?? 0, rev: aw, weighted: aw,
+          gross: p.weighted ?? p.rev, grossQty: p.qty, mine: a?.qty ?? 0, shared: true, auto: false, confirmed: true });
+        if (a) addAgg(hosp, a.category, a.name, aw, a.rev, a.qty);
+      }
+      for (const a of autoByName.values()) {
+        const aw = a.weighted ?? a.rev;
+        views.push({ name: a.name, category: a.category, qty: a.qty, rev: aw, weighted: aw, gross: aw, grossQty: a.qty, mine: a.qty, shared: true, auto: true });
+        addAgg(hosp, a.category, a.name, aw, a.rev, a.qty);
+      }
+      hospitalProducts[hosp] = views;
+      continue;
+    }
     // 本人業績（Mars 檔）→ 全計，不需認領
     for (const p of (auto[hosp] ?? [])) {
       const aw = p.weighted ?? p.rev;
       views.push({ name: p.name, category: p.category, qty: p.qty, rev: aw, weighted: aw, gross: aw, grossQty: p.qty, mine: p.qty, shared: true, auto: true });
       addAgg(hosp, p.category, p.name, aw, p.rev, p.qty);
     }
-    // 整院認領池 → 依認領支數比例。
-    // 已定案月份完全跳過：SHARED_AUTO 與整院池是同一批貨（重疊），再列一次會重複計算，
-    // 且同一產品會出現兩列（本人／整院）造成 key 衝突與畫面混淆。
-    if (isSettledMonth(monthKey)) { hospitalProducts[hosp] = views; continue; }
+    // 整院認領池 → 依認領支數比例
     for (const p of (pool[hosp] ?? [])) {
       const grossW = p.weighted ?? p.rev;
       const mine = Math.min(getClaim(claims, monthKey, hosp, p.name), p.qty);
