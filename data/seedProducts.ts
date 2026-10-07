@@ -51,7 +51,7 @@ export const SEED_PRODUCTS: Product[] = [
           tucheng: { hospitalCode:'84-286-076206', patientPrice:16800, purchasePrice:10999 },
           sph:     { hospitalCode:'84-286-076206', patientPrice:16800, purchasePrice:10999 },
           tzuchi:  { hospitalCode:'6ZWDD01057',    patientPrice:17000, purchasePrice:13000 },
-          eck:     { hospitalCode:'97U0627'/* 宮安康院內碼待確認 */, patientPrice:17000, purchasePrice:undefined },
+          eck:     { hospitalCode:'97Y0225', patientPrice:17000, purchasePrice:undefined },
           tmuh:    { hospitalCode:'2372001061',    patientPrice:17000, purchasePrice:12000 },
           clinic:  { hospitalCode:'A34-14',        patientPrice:17000, purchasePrice:12500 },
         },
