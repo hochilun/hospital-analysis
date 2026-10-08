@@ -502,7 +502,7 @@ export const SHARED_AUTO: Record<string, Record<string, HospProdEntry[]>> = {
       { name: '止血顆粒 1g', category: 'Hemostasis', qty: 2, rev: 14560, weighted: 13867 },
     ],
   },
-  // 2026-07、08：主管 0923 更正檔已確認屬於 Mars 的共跑支數
+  // 2026-07、08：主管 0923 更正檔已確認屬於 Mars 的共跑支數（7 月 1008 更正檔再加土城速巴定 1 支）
   // 來源 `farmlands/sales/YYYYMMDD-31Mars -0923更正.xlsx`
   // 台北慈濟 3DMAX LIGHT 2 支（發票日 7/9，由 8 月報表補登）0923 更正檔未列，
   // 但七、八月整院檔都沒有這個品項 → 不重疊、屬本人業績，故保留在 7 月。
@@ -512,9 +512,10 @@ export const SHARED_AUTO: Record<string, Record<string, HospProdEntry[]>> = {
       { name: '止血顆粒 3g', category: 'Hemostasis', qty: 2, rev: 29400, weighted: 28000 },
       { name: '3DMAX LIGHT', category: 'Hernia', qty: 2, rev: 12952, weighted: 12335 },
     ],
-    '長庚土城': [ // 本人業績 應收 65,160 / 加權 60,705
+    '長庚土城': [ // 本人業績 應收 72,884 / 加權 66,590（1008 更正檔加入速巴定 7/28）
       { name: '止血顆粒 1g', category: 'Hemostasis', qty: 7, rev: 50960, weighted: 48533 },
       { name: '止血顆粒 3g', category: 'Hemostasis', qty: 1, rev: 14200, weighted: 12171 },
+      { name: '速巴定', category: 'Hernia', qty: 1, rev: 7724, weighted: 5885 },
     ],
   },
   '2026-08': {
@@ -528,6 +529,19 @@ export const SHARED_AUTO: Record<string, Record<string, HospProdEntry[]>> = {
       { name: '止血顆粒 3g', category: 'Hemostasis', qty: 1, rev: 14200, weighted: 12171 },
     ],
   },
+  // 2026-09：主管 1008 更正檔 `20260901-30Mars -1008更正.xlsx`
+  '2026-09': {
+    '台北慈濟': [ // 本人業績 應收 114,250 / 加權 108,810
+      { name: '止血顆粒 3g', category: 'Hemostasis', qty: 4, rev: 58800, weighted: 56000 },
+      { name: '止血顆粒 5g', category: 'Hemostasis', qty: 1, rev: 24500, weighted: 23333 },
+      { name: '宮安康 10ML', category: 'Adhesion Prevention', qty: 1, rev: 22500, weighted: 21429 },
+      { name: '止血顆粒 1g', category: 'Hemostasis', qty: 1, rev: 8450, weighted: 8048 },
+    ],
+    '長庚土城': [ // 本人業績 應收 51,848 / 加權 46,437
+      { name: '止血顆粒 1g', category: 'Hemostasis', qty: 5, rev: 36400, weighted: 34667 },
+      { name: '速巴定', category: 'Hernia', qty: 2, rev: 15448, weighted: 11770 },
+    ],
+  },
 };
 
 // 共跑部分已由主管確認定案的月份。
@@ -538,8 +552,9 @@ export const SHARED_AUTO: Record<string, Record<string, HospProdEntry[]>> = {
 export const SETTLED_SHARED: Record<string, string> = {
   '2026-05': '0729 更正檔',
   '2026-06': '0729 更正檔',
-  '2026-07': '0923 更正檔',
+  '2026-07': '1008 更正檔',
   '2026-08': '0923 更正檔',
+  '2026-09': '1008 更正檔',
 };
 export const SETTLED_SHARED_MONTHS: readonly string[] = Object.keys(SETTLED_SHARED);
 export const isSettledMonth = (monthKey: string) => SETTLED_SHARED_MONTHS.includes(monthKey);
