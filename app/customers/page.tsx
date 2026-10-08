@@ -256,6 +256,7 @@ export default function CustomersPage() {
     if (search.trim() && !d.name.includes(search) && !d.hospitalName.includes(search) && !d.department.includes(search)) return false;
     return true;
   }).sort((a, b) => {
+    const hospRank = (d: typeof a) => HOSP_ORDER[(d.hospitalIds?.[0] ?? d.hospitalId) || ''] ?? 999;
     if (sortBy === 'real') {
       return (perfById[b.id]?.rev ?? 0) - (perfById[a.id]?.rev ?? 0);
     }
@@ -268,11 +269,11 @@ export default function CustomersPage() {
       if (!aDate && !bDate) return 0;
       if (!aDate) return sortBy === 'visit_asc' ? -1 : 1;
       if (!bDate) return sortBy === 'visit_asc' ? 1 : -1;
-      return sortBy === 'visit_desc' ? bDate.localeCompare(aDate) : aDate.localeCompare(bDate);
+      const byDate = sortBy === 'visit_desc' ? bDate.localeCompare(aDate) : aDate.localeCompare(bDate);
+      // 同一天拜訪的依醫院排在一起
+      return byDate !== 0 ? byDate : hospRank(a) - hospRank(b);
     }
-    const aId = (a.hospitalIds?.[0] ?? a.hospitalId) || '';
-    const bId = (b.hospitalIds?.[0] ?? b.hospitalId) || '';
-    return (HOSP_ORDER[aId] ?? 999) - (HOSP_ORDER[bId] ?? 999);
+    return hospRank(a) - hospRank(b);
   });
 
   function toggleSet<T>(set: Set<T>, val: T): Set<T> {
