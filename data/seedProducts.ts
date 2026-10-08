@@ -371,6 +371,7 @@ export const SEED_PRODUCTS: Product[] = [
         nhiCode: 'FSP6454450BA', patientPrice: 25163,
         hospitalPrices: { eck:21568 },
         hospitalInfo: {
+          tzuchi:  { hospitalCode:'6ZFSP61109' },
           eck:   { hospitalCode:'9200063' },
           grace: { patientPrice:25163, purchasePrice:22647 },
         },
@@ -380,6 +381,7 @@ export const SEED_PRODUCTS: Product[] = [
         nhiCode: 'FSP6454680BA', patientPrice: 27098,
         hospitalPrices: { tucheng:12857, sph:12857, eck:21568, grace:23227 },
         hospitalInfo: {
+          tzuchi:  { hospitalCode:'6ZFSP61110' },
           tucheng: { hospitalCode:'84-286-954680', patientPrice:27098, purchasePrice:13500 },
           sph:     { hospitalCode:'84-286-954680', patientPrice:27098, purchasePrice:13500 },
           eck:     { hospitalCode:'9200064' },
@@ -391,6 +393,7 @@ export const SEED_PRODUCTS: Product[] = [
         nhiCode: 'FSP6454610BA', patientPrice: 31909,
         hospitalPrices: { eck:27350 },
         hospitalInfo: {
+          tzuchi:  { hospitalCode:'6ZFSP61111' },
           eck:   { hospitalCode:'9200065' },
           grace: { patientPrice:31909, purchasePrice:28718 },
         },
@@ -400,6 +403,7 @@ export const SEED_PRODUCTS: Product[] = [
         nhiCode: 'FSP6454113BA', patientPrice: 40924,
         hospitalPrices: { eck:39000 },
         hospitalInfo: {
+          tzuchi:  { hospitalCode:'6ZFSP61112' },
           eck: { hospitalCode:'9200066' },
         },
         unit: '片',
