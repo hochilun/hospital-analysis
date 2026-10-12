@@ -370,6 +370,55 @@ export const MY_PERFORMANCE: MonthPerf[] = [
       ],
     },
   },
+  {
+    month: '2026-10',
+    label: '10月',
+    asOf: '2026-10-11',
+    revenue: 447_376,
+    weighted: 423_368,
+    byHospital: {
+      '沙爾德聖': 179_676,
+      '台北醫學': 140_500,
+      '中心診所':  65_000,
+      '恩主公':    36_600,
+      '宏恩醫療':  25_600,
+    },
+    byCategory: {
+      'Adhesion Prevention': 378_201,
+      'Hemostasis':           35_680,
+      'Hernia':               33_495,
+    },
+    byProduct: [
+      { name: '宮安康',      category: 'Adhesion Prevention', qty: 24, rev: 275_601 },
+      { name: '塞納斯',      category: 'Adhesion Prevention', qty:  8, rev: 102_600 },
+      { name: '3DMAX LIGHT', category: 'Hernia',              qty:  5, rev:  32_500 },
+      { name: '止血顆粒 3g', category: 'Hemostasis',          qty:  2, rev:  28_400 },
+      { name: '止血顆粒 1g', category: 'Hemostasis',          qty:  1, rev:   7_280 },
+      { name: '賀邁補',      category: 'Hernia',              qty:  1, rev:     995 },
+    ],
+    hospitalProducts: {
+      '沙爾德聖': [
+        { name: '宮安康',      category: 'Adhesion Prevention', qty: 13, rev: 143_001 },
+        { name: '止血顆粒 3g', category: 'Hemostasis',          qty:  2, rev:  28_400 },
+        { name: '止血顆粒 1g', category: 'Hemostasis',          qty:  1, rev:   7_280 },
+        { name: '賀邁補',      category: 'Hernia',              qty:  1, rev:     995 },
+      ],
+      '台北醫學': [
+        { name: '宮安康',      category: 'Adhesion Prevention', qty: 8, rev: 96_000 },
+        { name: '3DMAX LIGHT', category: 'Hernia',              qty: 5, rev: 32_500 },
+        { name: '塞納斯',      category: 'Adhesion Prevention', qty: 1, rev: 12_000 },
+      ],
+      '中心診所': [
+        { name: '塞納斯', category: 'Adhesion Prevention', qty: 5, rev: 65_000 },
+      ],
+      '恩主公': [
+        { name: '宮安康', category: 'Adhesion Prevention', qty: 3, rev: 36_600 },
+      ],
+      '宏恩醫療': [
+        { name: '塞納斯', category: 'Adhesion Prevention', qty: 2, rev: 25_600 },
+      ],
+    },
+  },
   // 後續月份在此追加 ↓
 ];
 
@@ -472,6 +521,20 @@ export const SHARED_PERFORMANCE: Record<string, Record<string, HospProdEntry[]>>
       { name: '止血顆粒 1g', category: 'Hemostasis', qty: 9, rev: 65520, weighted: 62400 },
       { name: 'P-STOP-8', category: 'Urinary Incontinence', qty: 1, rev: 38200, weighted: 36381 },
       { name: '速巴定', category: 'Hernia', qty: 2, rev: 15448, weighted: 11770 },
+    ],
+  },
+  '2026-10': {  // 10/1–10/11（資料截止 10/11）
+    '台北慈濟': [ // 整院 應收 288,400 / 加權 274,667
+      { name: '宮安康', category: 'Adhesion Prevention', qty: 8, rev: 104000, weighted: 99048 },
+      { name: '止血顆粒 3g', category: 'Hemostasis', qty: 7, rev: 102900, weighted: 98000 },
+      { name: '宮安康 10ML', category: 'Adhesion Prevention', qty: 2, rev: 45000, weighted: 42857 },
+      { name: '止血顆粒 5g', category: 'Hemostasis', qty: 1, rev: 24500, weighted: 23333 },
+      { name: '塞納斯', category: 'Adhesion Prevention', qty: 1, rev: 12000, weighted: 11429 },
+    ],
+    '長庚土城': [ // 整院 應收 258,100 / 加權 234,990
+      { name: '宮安康', category: 'Adhesion Prevention', qty: 11, rev: 121000, weighted: 115238 },
+      { name: '止血顆粒 3g', category: 'Hemostasis', qty: 8, rev: 113600, weighted: 97371 },
+      { name: '止血顆粒 5g', category: 'Hemostasis', qty: 1, rev: 23500, weighted: 22381 },
     ],
   },
 };
