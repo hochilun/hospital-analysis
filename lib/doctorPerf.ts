@@ -69,7 +69,7 @@ export function buildDoctorPerf(
     for (const p of (agg1.hospitalProducts[h] ?? [])) {
       for (const d of loadDoctorsForPeriod(monthKeys, h, p.name, source)) {
         const revShare = p.qty > 0 ? Math.round(p.rev * d.qty / p.qty) : 0;
-        const spon = sponsorAmount(p.name, h, d.qty);
+        const spon = sponsorAmount(p.name, h, d.qty, d.name);
         const key = `${d.dept}|${d.name}`;
         if (!agg[key]) {
           agg[key] = { name: d.name, dept: d.dept, qty: 0, rev: 0, sponsor: 0, activeMonths: 0,

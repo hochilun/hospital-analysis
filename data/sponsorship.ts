@@ -26,14 +26,26 @@ const RATES: Record<string, Record<string, number>> = {
 
 // 無贊助：賀邁補、速巴定、IS-1、IS-6、IS-HELICO、IS-TOMS、凡提拉斯特、凡萃歐絲提
 
-/** 單一產品在某醫院的學術贊助單價；無贊助回傳 0 */
-export function sponsorRate(product: string, hospital: string): number {
+// 醫師別例外單價（優先於醫院／通用單價）
+const DOCTOR_RATES: Record<string, Record<string, number>> = {
+  '施淳文': { '止血顆粒 5g': 9500 },   // 2026-09-04 Mars 指示
+};
+
+/** 單一產品在某醫院（某醫師）的學術贊助單價；無贊助回傳 0 */
+export function sponsorRate(product: string, hospital: string, doctor?: string): number {
+  if (doctor) {
+    const d = DOCTOR_RATES[doctor]?.[product];
+    if (d !== undefined) return d;
+  }
   const r = RATES[product];
   if (!r) return 0;
   return r[hospital] ?? r[ALL] ?? 0;
 }
 
+/** 有學術贊助的產品短名（加列表單的選單用） */
+export const SPONSOR_PRODUCTS = Object.keys(RATES);
+
 /** 數量換算學術贊助金額 */
-export function sponsorAmount(product: string, hospital: string, qty: number): number {
-  return sponsorRate(product, hospital) * qty;
+export function sponsorAmount(product: string, hospital: string, qty: number, doctor?: string): number {
+  return sponsorRate(product, hospital, doctor) * qty;
 }

@@ -18,6 +18,7 @@ export const SYNC_KEYS = [
   'perf-doctors',
   'perf-claims',
   'seminars',
+  'sponsorship-state',
 ] as const;
 
 export type SyncKey = typeof SYNC_KEYS[number];
