@@ -74,6 +74,9 @@ export default function Home() {
       let base: Hospital[] = HOSPITALS;
       if (saved) {
         try { base = JSON.parse(saved); } catch {}
+        // 新增的醫院（如 2026-11 的輔大、西園）不在舊的雲端資料裡 → 補上
+        const have = new Set(base.map(h => h.id));
+        base = [...base, ...HOSPITALS.filter(h => !have.has(h.id))];
       }
       setHospitals(buildExtraHospitals(base));
     };
@@ -217,7 +220,8 @@ export default function Home() {
       const data = await res.json();
       if (data.success) {
         // tucheng 用合併模式（長庚掛號頁只顯示未來7天，取代會漏掉請假那週的固定班次）
-        const mergeMode = hospitalId === 'tucheng';
+        // fju 輔大 API 也只回未來 4 週，同樣用合併模式，免得請假整月的醫師被洗掉
+        const mergeMode = hospitalId === 'tucheng' || hospitalId === 'fju';
         const updated = hospitals.map(h => {
           if (h.id !== hospitalId) return h;
           let clinics = data.clinics as ClinicSlot[];

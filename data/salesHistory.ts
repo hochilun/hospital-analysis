@@ -32,6 +32,7 @@ export const HOSPITAL_PRODUCT_IDS: Record<string, string[]> = {
 export const HOSPITAL_ID_MAP: Record<string, string> = {
   '台北慈濟': 'tzuchi', '長庚土城': 'tucheng', '台北醫學': 'tmuh',
   '中心診所': 'clinic', '宏恩醫療': 'grace', '沙爾德聖': 'sph', '恩主公': 'eck',
+  '輔大醫院': 'fju', '西園醫院': 'wgh',   // 2026-11 起；報表上的客戶名稱待第一份報表確認
 };
 
 // ── 2025 全年 ─────────────────────────────────────────────────────────

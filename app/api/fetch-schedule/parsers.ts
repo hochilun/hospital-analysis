@@ -388,6 +388,102 @@ export async function parseEck(): Promise<ParseResult> {
   };
 }
 
+// ── 輔大醫院 ─────────────────────────────────────────────────────────────
+// 門診頁 /OPDSchedule?SelectID=XX 是空殼，班表由 JS POST /OPDSchedule/QuerySectionCond 取 JSON。
+// 該 API 不論 SDate/EDate 為何，都回「今天起約 4 週」的所有診次（含請假關診、額滿），
+// 所以取聯集即可得到固定班表。BS 乳房外科頁會混入 GS 一般外科醫師的診，
+// 以每筆資料自身的 OPDSECTION 判斷科別（GS 先抓，seen 去重）。
+const FJU_DEPTS: [string, string][] = [
+  ['OBGY', 'GYN'], ['GU', 'GU'], ['GS', 'GS'], ['ENT', 'ENT'], ['CS', 'TS'], ['BS', 'BS'],
+];
+const FJU_CODE_MAP: Record<string, string> = Object.fromEntries(FJU_DEPTS);
+const FJU_SESSION: Record<string, '早' | '午' | '晚'> = { A: '早', P: '午', N: '晚' };
+
+type FjuRow = { OPDDRNMC?: string; OPDSECTION?: string; OPDDATE?: string; OPDTIMEFLAG?: string; WEEKDAY?: string };
+
+async function fetchFjuDept(code: string): Promise<FjuRow[]> {
+  try {
+    const res = await fetch('https://www.hospital.fju.edu.tw/OPDSchedule/QuerySectionCond', {
+      method: 'POST',
+      headers: {
+        'User-Agent': UA, 'Accept': 'application/json, text/javascript, */*',
+        'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+        'X-Requested-With': 'XMLHttpRequest',
+        Referer: `https://www.hospital.fju.edu.tw/OPDSchedule?SelectID=${code}`,
+      },
+      body: `OPDSECTION=${encodeURIComponent(code)}`,
+      signal: AbortSignal.timeout(20000),
+    });
+    const data = await res.json();
+    return Array.isArray(data) ? data : [];
+  } catch { return []; }
+}
+
+export async function parseFju(): Promise<ParseResult> {
+  const seen = new Set<string>();
+  const all: Clinic[] = [];
+  const results = await Promise.all(FJU_DEPTS.map(([code]) => fetchFjuDept(code)));
+  FJU_DEPTS.forEach(([, pageDept], i) => {
+    for (const r of results[i]) {
+      const doctor = (r.OPDDRNMC ?? '').trim().replace(/　| /g, '');
+      const session = FJU_SESSION[(r.OPDTIMEFLAG ?? '').trim()];
+      const dow = parseInt(r.WEEKDAY ?? '', 10);
+      if (doctor.length < 2 || !session || !(dow >= 0 && dow <= 6)) continue;
+      const dept = FJU_CODE_MAP[(r.OPDSECTION ?? '').trim()] ?? pageDept;
+      const key = `${doctor}_${dow}_${session}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      all.push({ doctor, department: dept, dayOfWeek: dow, session });
+    }
+  });
+  if (all.length === 0) return { clinics: [], news: [], error: '輔大醫院門診 API 沒有回傳資料（網站可能改版或暫時無法連線）' };
+  return { clinics: all, news: [] };
+}
+
+// ── 西園醫院 ─────────────────────────────────────────────────────────────
+// 網路掛號科別頁 /timetable-dept/?code=XX 是伺服器端渲染的固定週班表（上午/下午/夜診 × 週一~六）。
+// 西園沒有獨立的胸腔外科／乳房外科掛號科別，只抓 GS/GU/GYN/ENT。
+const WGH_DEPTS: Record<string, string> = { '40': 'GYN', '54': 'GU', '50': 'GS', '71': 'ENT' };
+
+function parseWghPage(html: string, dept: string, seen: Set<string>): Clinic[] {
+  const clinics: Clinic[] = [];
+  const tableM = html.match(/<table class="timetable">([\s\S]*?)<\/table>/);
+  if (!tableM) return clinics;
+  const body = tableM[1].replace(/<thead>[\s\S]*?<\/thead>/, '');
+  let dow = -1;
+  for (const r of body.matchAll(/<tr[^>]*>([\s\S]*?)<\/tr>/g)) {
+    const tds = [...r[1].matchAll(/<td[^>]*>([\s\S]*?)<\/td>/g)].map(t => t[1]);
+    // 有 rowspan 的第一格是「星期X」，同一天第二位醫師的列沒有這格
+    const dm = tds[0] ? stripTags(tds[0]).match(/^星期([一二三四五六日])$/) : null;
+    if (dm) { dow = DAY_CN[dm[1]] ?? -1; tds.shift(); }
+    if (dow < 0) continue;
+    for (let col = 0; col < Math.min(3, tds.length); col++) {
+      const session = (['早', '午', '晚'] as const)[col];
+      const names = [...tds[col].matchAll(/<div>\s*([^<]+?)\s*<\/div>/g)].map(m => m[1].trim().replace(/　| /g, ''));
+      for (const doctor of names) {
+        if (doctor.length < 2) continue;
+        const key = `${doctor}_${dow}_${session}`;
+        if (!seen.has(key)) { seen.add(key); clinics.push({ doctor, department: dept, dayOfWeek: dow, session }); }
+      }
+    }
+  }
+  return clinics;
+}
+
+export async function parseWgh(): Promise<ParseResult> {
+  const seen = new Set<string>();
+  const all: Clinic[] = [];
+  const entries = Object.entries(WGH_DEPTS);
+  const htmls = await Promise.all(entries.map(([code]) =>
+    fetchHtml(`https://www.westgarden.com.tw/timetable-dept/?code=${code}`, 'https://www.westgarden.com.tw/timetable/')
+  ));
+  entries.forEach(([, dept], i) => {
+    if (htmls[i]) all.push(...parseWghPage(htmls[i], dept, seen));
+  });
+  if (all.length === 0) return { clinics: [], news: [], error: '西園醫院門診表解析不到資料（網站可能改版或暫時無法連線）' };
+  return { clinics: all, news: [] };
+}
+
 // ── dispatch ──────────────────────────────────────────────────────────────
 export async function parseHospital(hospitalId: string): Promise<ParseResult> {
   switch (hospitalId) {
@@ -398,6 +494,8 @@ export async function parseHospital(hospitalId: string): Promise<ParseResult> {
     case 'grace':   return parseGrace();
     case 'tzuchi':  return parseTzuchi();
     case 'eck':     return parseEck();
+    case 'fju':     return parseFju();
+    case 'wgh':     return parseWgh();
     default:        return { clinics: [], news: [], error: `${hospitalId} 的解析器尚未建立` };
   }
 }

@@ -14,7 +14,7 @@ const DEPT_COLOR: Record<string, string> = {
   ENT: 'bg-orange-100 text-orange-700', TS: 'bg-purple-100 text-purple-700', BS: 'bg-rose-100 text-rose-700',
 };
 const HOSP_DOT: Record<string, string> = {
-  tmuh: '#10b981', eck: '#f59e0b', sph: '#8b5cf6', clinic: '#6366f1', grace: '#06b6d4', tzuchi: '#ef4444', tucheng: '#ec4899',
+  tmuh: '#10b981', eck: '#f59e0b', sph: '#8b5cf6', clinic: '#6366f1', grace: '#06b6d4', tzuchi: '#ef4444', tucheng: '#ec4899', fju: '#65a30d', wgh: '#92400e',
 };
 const ALL = '__all__';
 const todayStr = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };

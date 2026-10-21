@@ -18,7 +18,7 @@ const today = () => {
 const shortDate = (s: string) => /^\d{4}-\d{2}-\d{2}$/.test(s) ? `${Number(s.slice(5, 7))}/${Number(s.slice(8, 10))}` : s;
 
 const DEPTS = ['GYN', 'GU', 'GS', 'ENT', 'TS', 'BS'];
-const HOSP_CHOICES = ['沙爾德聖', '台北醫學', '恩主公', '台北慈濟', '長庚土城', '宏恩醫療', '中心診所', '林口長庚'];
+const HOSP_CHOICES = ['沙爾德聖', '台北醫學', '恩主公', '台北慈濟', '長庚土城', '宏恩醫療', '中心診所', '輔大醫院', '西園醫院', '林口長庚'];
 
 export default function SponsorshipPage() {
   const [mounted, setMounted] = useState(false);

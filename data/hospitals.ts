@@ -71,6 +71,27 @@ export const HOSPITALS: Hospital[] = [
     news: [],
     lastUpdated: null,
   },
+  // 2026-11 起新接
+  {
+    id: 'fju',
+    name: '天主教輔仁大學附設醫院',
+    shortName: '輔大醫院',
+    url: 'https://www.hospital.fju.edu.tw',
+    scheduleUrl: 'https://www.hospital.fju.edu.tw/OPDSchedule',
+    clinics: [],
+    news: [],
+    lastUpdated: null,
+  },
+  {
+    id: 'wgh',
+    name: '西園醫院',
+    shortName: '西園醫院',
+    url: 'https://www.westgarden.com.tw',
+    scheduleUrl: 'https://www.westgarden.com.tw/timetable-2/',
+    clinics: [],
+    news: [],
+    lastUpdated: null,
+  },
 ];
 
 export const TARGET_DEPARTMENTS = ['GYN', 'GU', 'GS', 'ENT', 'TS', 'BS'] as const;

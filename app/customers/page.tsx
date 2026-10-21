@@ -32,6 +32,8 @@ const HOSP_BORDER: Record<string, string> = {
   grace:   'border-l-4 border-pink-400',
   tzuchi:  'border-l-4 border-teal-400',
   tucheng: 'border-l-4 border-yellow-400',
+  fju:     'border-l-4 border-lime-500',
+  wgh:     'border-l-4 border-stone-400',
 };
 const HOSP_BADGE: Record<string, string> = {
   tmuh:    'bg-blue-100 text-blue-700 font-semibold',
@@ -41,6 +43,8 @@ const HOSP_BADGE: Record<string, string> = {
   grace:   'bg-pink-100 text-pink-700 font-semibold',
   tzuchi:  'bg-teal-100 text-teal-700 font-semibold',
   tucheng: 'bg-yellow-100 text-yellow-700 font-semibold',
+  fju:     'bg-lime-100 text-lime-700 font-semibold',
+  wgh:     'bg-stone-200 text-stone-700 font-semibold',
 };
 
 const HOSP_CARD_BG: Record<string, string> = {
@@ -51,6 +55,8 @@ const HOSP_CARD_BG: Record<string, string> = {
   grace:   'bg-pink-50',
   tzuchi:  'bg-teal-50',
   tucheng: 'bg-yellow-50',
+  fju:     'bg-lime-50',
+  wgh:     'bg-stone-50',
 };
 
 // ── 工具函式 ──────────────────────────────────────────────

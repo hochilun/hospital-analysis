@@ -70,6 +70,8 @@ const HOSP_BADGE: Record<string, string> = {
   grace:   'bg-pink-100 text-pink-700',
   tzuchi:  'bg-teal-100 text-teal-700',
   tucheng: 'bg-yellow-100 text-yellow-700',
+  fju:     'bg-lime-100 text-lime-700',
+  wgh:     'bg-stone-200 text-stone-700',
 };
 
 export default function VisitsPage() {

@@ -4,7 +4,7 @@
 export type Seminar = {
   id: string;
   date: string;          // YYYY-MM-DD
-  hospitalId: string;    // tmuh/eck/sph/clinic/grace/tzuchi/tucheng
+  hospitalId: string;    // tmuh/eck/sph/clinic/grace/tzuchi/tucheng/fju/wgh
   department: string;    // GYN/GU/GS/ENT/TS/BS
   products: string[];    // 例：['Arista','SorbaFix']
   topic: string;         // 主題（可空）
@@ -15,9 +15,9 @@ export type Seminar = {
 // 活動用醫院短名（與 CRM hospital id 對應）
 export const SEMINAR_HOSP: Record<string, string> = {
   tmuh: '北醫附醫', eck: '恩主公', sph: '聖保祿',
-  clinic: '中心綜合', grace: '宏恩', tzuchi: '台北慈濟', tucheng: '土城長庚',
+  clinic: '中心綜合', grace: '宏恩', tzuchi: '台北慈濟', tucheng: '土城長庚', fju: '輔大醫院', wgh: '西園醫院',
 };
-export const SEMINAR_HOSP_ORDER = ['tmuh', 'eck', 'sph', 'clinic', 'grace', 'tzuchi', 'tucheng'];
+export const SEMINAR_HOSP_ORDER = ['tmuh', 'eck', 'sph', 'clinic', 'grace', 'tzuchi', 'tucheng', 'fju', 'wgh'];
 
 const s = (id: string, date: string, hospitalId: string, department: string, products: string[], topic: string): Seminar =>
   ({ id, date, hospitalId, department, products, topic, source: 'calendar' });
