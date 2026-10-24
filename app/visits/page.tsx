@@ -180,7 +180,7 @@ export default function VisitsPage() {
             <Link href="/"          className="text-sm text-gray-500 hover:text-blue-600">首頁</Link>
             <Link href="/customers" className="text-sm text-gray-500 hover:text-blue-600">客戶</Link>
             <Link href="/products"  className="text-sm text-gray-500 hover:text-blue-600">產品</Link>
-            <Link href="/sales"     className="text-sm text-gray-500 hover:text-blue-600">業績</Link>
+            <Link href="/performance" className="text-sm text-gray-500 hover:text-blue-600">業績</Link>
           </div>
         </div>
       </div>

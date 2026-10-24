@@ -621,7 +621,7 @@ export default function PerformancePage() {
             <Link href="/" className="text-sm text-gray-600 hover:text-blue-600">主頁</Link>
             <Link href="/customers" className="text-sm text-gray-600 hover:text-blue-600">客戶</Link>
             <Link href="/products" className="text-sm text-gray-600 hover:text-blue-600">產品</Link>
-            <Link href="/sales" className="text-sm text-gray-600 hover:text-blue-600">公司業績</Link>
+            <Link href="/takeover" className="text-sm text-gray-600 hover:text-blue-600">輔大・西園</Link>
             <Link href="/sponsorship" className="text-sm text-gray-600 hover:text-blue-600">學術贊助</Link>
           </div>
         </div>
