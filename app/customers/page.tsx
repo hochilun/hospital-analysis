@@ -10,6 +10,7 @@ import { MY_PERFORMANCE, CAT_COLOR } from '@/data/myPerformance';
 import { loadClaims, loadDoctors, effectiveMonth } from '@/lib/perfCore';
 import { buildDoctorPerf, linkDoctors, type DocPerf } from '@/lib/doctorPerf';
 import CustomerInsights from '@/components/CustomerInsights';
+import FollowUpPanel from '@/components/FollowUpPanel';
 import { HOSPITALS } from '@/data/hospitals';
 
 // ── 常數 ─────────────────────────────────────────────────
@@ -392,39 +393,10 @@ export default function CustomersPage() {
           );
         })()}
 
-        {/* ── 需跟進客戶（超過拜訪頻率目標）── */}
-        {tab === 'list' && (() => {
-          const today = new Date();
-          const list = doctors
-            .map(d => ({ d, st: visitStatus(d.visitFrequencyDays, lastVisitMap[d.id]?.date, today) }))
-            .filter(x => x.st.state === 'overdue' || x.st.state === 'never')
-            .sort((a, b) => {
-              if (a.st.state !== b.st.state) return a.st.state === 'overdue' ? -1 : 1;
-              return b.st.overdueBy - a.st.overdueBy;
-            });
-          if (list.length === 0) return null;
-          return (
-            <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
-              <h2 className="text-sm font-semibold text-amber-800 mb-3 flex items-center gap-2">
-                ⚠️ 需跟進客戶
-                <span className="text-xs font-normal text-amber-600">{list.length} 位已超過拜訪頻率目標</span>
-              </h2>
-              <div className="flex flex-wrap gap-2">
-                {list.map(({ d, st }) => (
-                  <Link key={d.id} href={`/customers/${d.id}`}
-                    className="flex items-center gap-2 bg-white border border-amber-200 rounded-lg px-3 py-1.5 hover:border-amber-400 transition-colors">
-                    <span className="text-sm font-medium text-gray-800">{d.name}</span>
-                    {d.department && <span className="text-[10px] text-gray-500 bg-gray-100 px-1 rounded">{DEPT_LABEL[d.department] ?? d.department}</span>}
-                    <span className="text-xs font-semibold text-red-500">
-                      {st.state === 'never' ? '從未拜訪' : `逾期 ${st.overdueBy} 天`}
-                    </span>
-                    <span className="text-[10px] text-gray-400">目標{freqLabel(st.freqDays)}</span>
-                  </Link>
-                ))}
-              </div>
-            </div>
-          );
-        })()}
+        {/* ── 需跟進客戶：本週優先＋依醫院分組＋頻率檢視 ── */}
+        {tab === 'list' && mounted && (
+          <FollowUpPanel doctors={doctors} lastVisitMap={lastVisitMap} onChanged={reload} />
+        )}
 
         {/* ── 業績報表對不上客戶資料庫的醫師（多半是打錯字，會漏算業績）── */}
         {unlinkedPerf.length > 0 && (
