@@ -71,6 +71,13 @@ export type TodoItem = {
   currentStatus: string;
   nextAction: string;
   createdAt: string;
+  // 2026-10-26 結構化（Elon 業務秘書用，皆選填以相容舊資料）
+  kind?: 'sample' | 'pm' | 'material' | 'other';
+  product?: string;      // 相關產品
+  notBefore?: string;    // 最早可拜訪日（YYYY-MM-DD，準備期）
+  done?: boolean;
+  doneAt?: string;
+  source?: 'web' | 'elon';
 };
 
 export type Doctor = {
@@ -88,6 +95,7 @@ export type Doctor = {
   attitude: string;
   visitPlan: string;
   visitFrequencyDays?: number;  // 目標拜訪頻率（天數，0/未設=不設定）
+  strategy?: 'focus' | 'maintain' | 'normal' | 'paused';  // 經營策略（見 lib/strategy.ts）
   productTargets: ProductTarget[];
   monthlyInvestment: number;
   extraClinicSlots: ExtraClinicSlot[];

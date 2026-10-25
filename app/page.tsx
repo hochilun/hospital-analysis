@@ -107,7 +107,7 @@ export default function Home() {
 
   // 從雲端拉最新資料覆蓋本機（解決 localStorage 優先、看不到雲端更新的問題）
   const handleSyncFromCloud = async () => {
-    if (!confirm('從雲端拉取最新資料並覆蓋本機？\n（會用雲端資料蓋掉本機；尚未同步到雲端的本機修改會遺失）')) return;
+    if (!confirm('從雲端拉取最新資料並覆蓋本機？\n（本機尚未上傳的修改會先合併上去，不會遺失）')) return;
     setSyncing(true);
     try {
       await syncAllFromCloud();

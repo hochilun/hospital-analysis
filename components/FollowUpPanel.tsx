@@ -8,22 +8,19 @@ import { Doctor, VisitRecord } from '@/types';
 import { visitStatus, freqLabel, VISIT_FREQ_OPTIONS } from '@/lib/visitFrequency';
 import { getHospitalsData, saveDoctor } from '@/lib/storage';
 import { HOSPITALS, DEPT_LABEL } from '@/data/hospitals';
+import { strategyOf, strategyWeight } from '@/lib/strategy';
 
 const PRIORITY_N = 8;
 const SEVERE_RATIO = 3;
-// 等級權重：S/A 主力、B 分用（有成長空間）、C 待開發、D 暫不觸碰
-const GRADE_W: Record<string, number> = { S: 3, A: 2.5, B: 2, C: 1.2, D: 0.5, X: 1, Y: 1, '': 1 };
-const GRADE_BADGE: Record<string, string> = {
-  S: 'bg-amber-100 text-amber-800', A: 'bg-green-100 text-green-700', B: 'bg-blue-100 text-blue-700',
-  C: 'bg-gray-100 text-gray-500', D: 'bg-red-50 text-red-400', X: 'bg-violet-100 text-violet-700', Y: 'bg-slate-100 text-slate-500',
-};
+// 重要性看「經營策略」（Mars 自己設），不看等級 —— 等級已失真（2026-10-26）
+// 有未完成待辦（且已過準備期）再加權 1.3 倍；停損者只有在有待辦時才會出現在優先名單
 const DAY = ['日', '一', '二', '三', '四', '五', '六'];
 const SESSION_ORDER = { 早: 0, 午: 1, 晚: 2 } as const;
 const SESSION_END_HOUR = { 早: 12, 午: 17, 晚: 21 } as const;
 
 type Slot = { dayOfWeek: number; session: '早' | '午' | '晚'; where?: string };
 type Item = {
-  d: Doctor; hospId: string; hospName: string;
+  d: Doctor; hospId: string; hospName: string; todo: string | null;
   daysSince: number | null; never: boolean; ratio: number; score: number;
   next: string | null;
 };
@@ -72,11 +69,15 @@ export default function FollowUpPanel({ doctors, lastVisitMap, onChanged }: {
         ...(slotsByName[d.name] ?? []),
         ...(d.extraClinicSlots ?? []).map(s => ({ dayOfWeek: s.dayOfWeek, session: s.session, where: s.location })),
       ];
+      const soon = new Date(now); soon.setDate(soon.getDate() + 7);
+      const soonIso = soon.toISOString().slice(0, 10);
+      const todo = (d.todos ?? []).find(t => !t.done && (!t.notBefore || t.notBefore <= soonIso));
+      const w = d.strategy === 'paused' ? (todo ? 1 : 0) : strategyWeight(d.strategy);
       return [{
-        d, hospId, hospName: hospName[hospId] ?? d.hospitalName ?? '其他',
+        d, hospId, hospName: hospName[hospId] ?? d.hospitalName ?? '其他', todo: todo?.title ?? null,
         daysSince: st.daysSince, never, ratio,
         // 倍數封頂 3：超過 3 倍的多半是頻率設太密（另列檢視），不該壓過客戶等級
-        score: Math.min(ratio, 3) * (GRADE_W[d.grade ?? ''] ?? 1),
+        score: Math.min(ratio, 3) * w * (todo ? 1.3 : 1),
         next: nextClinic(slots, now),
       }];
     });
@@ -84,7 +85,7 @@ export default function FollowUpPanel({ doctors, lastVisitMap, onChanged }: {
 
   if (!items.length) return null;
 
-  const priority = [...items].filter(i => i.d.grade !== 'D').sort((a, b) => b.score - a.score).slice(0, PRIORITY_N);
+  const priority = [...items].filter(i => i.score > 0).sort((a, b) => b.score - a.score).slice(0, PRIORITY_N);
   const pIds = new Set(priority.map(i => i.d.id));
   const rest = items.filter(i => !pIds.has(i.d.id));
   const order = HOSPITALS.map(h => h.id);
@@ -113,7 +114,7 @@ export default function FollowUpPanel({ doctors, lastVisitMap, onChanged }: {
       <div className="px-5 pt-4 pb-3">
         <h2 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
           🎯 本週優先拜訪
-          <span className="text-xs font-normal text-gray-400">逾期倍數 × 客戶等級，前 {priority.length} 位</span>
+          <span className="text-xs font-normal text-gray-400">逾期倍數 × 經營策略（有待辦再加權），前 {priority.length} 位</span>
         </h2>
         <div className="mt-3 grid sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
           {priority.map(i => (
@@ -121,13 +122,14 @@ export default function FollowUpPanel({ doctors, lastVisitMap, onChanged }: {
               className="block border border-gray-200 rounded-lg px-3 py-2.5 hover:border-gray-400 transition-colors">
               <div className="flex items-center gap-1.5">
                 <span className="font-semibold text-gray-900">{i.d.name}</span>
-                {i.d.grade && <span className={`text-[10px] font-bold px-1.5 rounded ${GRADE_BADGE[i.d.grade] ?? ''}`}>{i.d.grade}</span>}
+                {strategyOf(i.d.strategy) && <span className={`text-[10px] font-semibold px-1.5 rounded ${strategyOf(i.d.strategy)!.cls}`}>{strategyOf(i.d.strategy)!.emoji}</span>}
                 <span className="text-[11px] text-gray-400 truncate">{DEPT_LABEL[i.d.department] ?? i.d.department}・{i.hospName}</span>
               </div>
               <p className="text-xs text-gray-500 mt-1">
                 目標{freqLabel(i.d.visitFrequencyDays)}・{ago(i)}
                 {!i.never && <span className={`ml-1 font-semibold ${ratioCls(i.ratio)}`}>{i.ratio.toFixed(1)}×</span>}
               </p>
+              {i.todo && <p className="text-xs mt-1 text-amber-700 truncate">📌 {i.todo}</p>}
               <p className={`text-xs mt-1 ${i.next ? 'text-blue-700' : 'text-gray-300'}`}>
                 ▸ {i.next ? `下次門診：${i.next}` : '7 天內無門診資料'}
               </p>
@@ -155,7 +157,7 @@ export default function FollowUpPanel({ doctors, lastVisitMap, onChanged }: {
                 <Link key={i.d.id} href={`/customers/${i.d.id}`}
                   className="flex items-center gap-2 border border-gray-200 rounded-lg px-3 py-1.5 hover:border-gray-400">
                   <span className="text-sm font-medium text-gray-800">{i.d.name}</span>
-                  {i.d.grade && <span className={`text-[10px] font-bold px-1 rounded ${GRADE_BADGE[i.d.grade] ?? ''}`}>{i.d.grade}</span>}
+                  {strategyOf(i.d.strategy) && <span className="text-[11px]">{strategyOf(i.d.strategy)!.emoji}</span>}
                   <span className="text-[11px] text-gray-400">{DEPT_LABEL[i.d.department] ?? i.d.department}</span>
                   <span className={`text-xs font-semibold ${i.never ? 'text-gray-500' : ratioCls(i.ratio)}`}>
                     {i.never ? '從未拜訪' : `${i.ratio.toFixed(1)}×`}

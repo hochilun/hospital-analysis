@@ -7,6 +7,7 @@ import { Doctor, DoctorGrade, Product, ProductTarget, ProductCategory, ExtraClin
 import { getDoctors, saveDoctor, getProducts } from '@/lib/storage';
 import { HOSPITALS, DEPT_LABEL } from '@/data/hospitals';
 import { VISIT_FREQ_OPTIONS } from '@/lib/visitFrequency';
+import { STRATEGIES } from '@/lib/strategy';
 
 const DEPT_CODE: Record<string, string> = Object.fromEntries(
   Object.entries(DEPT_LABEL).map(([code, label]) => [label, code])
@@ -30,6 +31,7 @@ export default function EditCustomerPage() {
     name: '', grade: '' as DoctorGrade, department: '', title: '', phone: '',
     habits: '', visitHabit: '', attitude: '', visitPlan: '', monthlyInvestment: '',
     visitFrequencyDays: 0,
+    strategy: '' as string,
   });
   const [hospitalIds, setHospitalIds] = useState<string[]>([]);
   const [targets, setTargets] = useState<ProductTarget[]>([]);
@@ -57,6 +59,7 @@ export default function EditCustomerPage() {
       visitPlan: doc.visitPlan,
       monthlyInvestment: doc.monthlyInvestment ? String(doc.monthlyInvestment) : '',
       visitFrequencyDays: doc.visitFrequencyDays ?? 0,
+      strategy: doc.strategy ?? '',
     });
     setTargets(doc.productTargets.map(t => ({ ...t, monthlyData: t.monthlyData ?? {} })));
     setExtraClinicSlots(doc.extraClinicSlots ?? []);
@@ -111,6 +114,7 @@ export default function EditCustomerPage() {
       attitude: form.attitude,
       visitPlan: form.visitPlan,
       visitFrequencyDays: form.visitFrequencyDays,
+      strategy: (form.strategy || undefined) as Doctor['strategy'],
       productTargets: targets,
       monthlyInvestment: parseFloat(form.monthlyInvestment) || 0,
       extraClinicSlots,
@@ -214,6 +218,13 @@ export default function EditCustomerPage() {
             <div>
               <label className="text-xs text-gray-500">拜訪習慣模式</label>
               <textarea className="input-field mt-1 h-20" value={form.visitHabit} onChange={e => set('visitHabit', e.target.value)} />
+            </div>
+            <div>
+              <label className="text-xs text-gray-500">經營策略</label>
+              <select className="input-field mt-1" value={form.strategy} onChange={e => set('strategy', e.target.value)}>
+                <option value="">未設定</option>
+                {STRATEGIES.map(st => <option key={st.key} value={st.key}>{st.emoji} {st.label} —— {st.desc}</option>)}
+              </select>
             </div>
             <div>
               <label className="text-xs text-gray-500">拜訪頻率目標</label>

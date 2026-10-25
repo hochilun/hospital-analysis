@@ -11,6 +11,7 @@ import { loadClaims, loadDoctors, effectiveMonth } from '@/lib/perfCore';
 import { buildDoctorPerf, linkDoctors, type DocPerf } from '@/lib/doctorPerf';
 import CustomerInsights from '@/components/CustomerInsights';
 import FollowUpPanel from '@/components/FollowUpPanel';
+import { STRATEGIES, strategyOf } from '@/lib/strategy';
 import { HOSPITALS } from '@/data/hospitals';
 
 // ── 常數 ─────────────────────────────────────────────────
@@ -102,6 +103,7 @@ export default function CustomersPage() {
 
   // 篩選狀態
   const [filterGrades, setFilterGrades] = useState<Set<DoctorGrade>>(new Set());
+  const [filterStrategy, setFilterStrategy] = useState<Set<string>>(new Set());
   const [filterHospitals, setFilterHospitals] = useState<Set<string>>(new Set());
   const [filterDepts, setFilterDepts] = useState<Set<string>>(new Set());
   const [filterProducts, setFilterProducts] = useState<Set<string>>(new Set());
@@ -253,6 +255,7 @@ export default function CustomersPage() {
   // 篩選邏輯
   const filtered = doctors.filter(d => {
     if (filterGrades.size > 0 && !filterGrades.has(d.grade)) return false;
+    if (filterStrategy.size > 0 && !filterStrategy.has(d.strategy ?? 'unset')) return false;
     if (filterHospitals.size > 0) {
       const ids = d.hospitalIds ?? (d.hospitalId ? [d.hospitalId] : []);
       if (!ids.some(hid => filterHospitals.has(hid))) return false;
@@ -473,6 +476,26 @@ export default function CustomersPage() {
             ))}
           </div>
 
+          {/* 經營策略 */}
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-xs text-gray-400 w-8 shrink-0">策略</span>
+            <button onClick={() => setFilterStrategy(new Set())}
+              className={`px-3 py-1 rounded-full text-xs font-medium ${filterStrategy.size === 0 ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}>
+              全選
+            </button>
+            {[...STRATEGIES.map(s => ({ key: s.key as string, text: `${s.emoji} ${s.label}`, cls: s.cls })), { key: 'unset', text: '未設定', cls: 'bg-gray-100 text-gray-500' }].map(s => {
+              const n = doctors.filter(d => (d.strategy ?? 'unset') === s.key).length;
+              return (
+                <button key={s.key} onClick={() => setFilterStrategy(prev => toggleSet(prev, s.key))}
+                  className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${
+                    filterStrategy.has(s.key) ? `${s.cls} border-transparent` : 'bg-white border-gray-200 text-gray-500 hover:border-gray-400'
+                  }`}>
+                  {s.text} <span className="opacity-60">{n}</span>
+                </button>
+              );
+            })}
+          </div>
+
           {/* 等級 */}
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-xs text-gray-400 w-8 shrink-0">等級</span>
@@ -674,6 +697,11 @@ function DoctorCard({ doc, lastVisit, clinicSummary, priceMap, perf, periodMonth
           <span className="font-semibold text-gray-900 text-sm">{doc.name}</span>
           {doc.title && <span className="text-xs text-gray-400">{doc.title}</span>}
           {doc.department && <span className="text-xs text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded">{DEPT_LABEL[doc.department] ?? doc.department}</span>}
+          {strategyOf(doc.strategy) && (
+            <span className={`text-xs font-semibold px-1.5 py-0.5 rounded ${strategyOf(doc.strategy)!.cls}`}>
+              {strategyOf(doc.strategy)!.emoji} {strategyOf(doc.strategy)!.label}
+            </span>
+          )}
           {g && (
             <span className={`text-xs font-bold px-1.5 py-0.5 rounded ${g.bg} ${g.text}`}>{doc.grade}</span>
           )}
@@ -766,6 +794,19 @@ function DoctorCard({ doc, lastVisit, clinicSummary, priceMap, perf, periodMonth
         </div>
       </Link>
       <div className="flex items-center gap-3 px-4 shrink-0">
+        <div className="text-center">
+          <select
+            value={doc.strategy ?? ''}
+            onChange={e => { saveDoctor({ ...doc, strategy: (e.target.value || undefined) as Doctor['strategy'] }); onChanged(); }}
+            className={`text-xs border rounded-md px-1.5 py-1 bg-white focus:outline-none focus:ring-1 focus:ring-blue-400 ${
+              doc.strategy ? 'border-gray-300 text-gray-700' : 'border-gray-200 text-gray-400'
+            }`}
+          >
+            <option value="">未設定</option>
+            {STRATEGIES.map(s => <option key={s.key} value={s.key}>{s.emoji} {s.label}</option>)}
+          </select>
+          <div className="text-[10px] text-gray-400 mt-0.5">經營策略</div>
+        </div>
         <div className="text-center">
           <select
             value={doc.visitFrequencyDays ?? 0}

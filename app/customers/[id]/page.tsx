@@ -7,6 +7,7 @@ import { Doctor, VisitRecord, ExtraClinicSlot, ClinicSlot, TodoItem } from '@/ty
 import { getDoctors, saveDoctor, getVisits, saveVisit, deleteVisit, getHospitalsData, getProducts } from '@/lib/storage';
 import { HOSPITALS } from '@/data/hospitals';
 import { visitStatus, freqLabel } from '@/lib/visitFrequency';
+import { STRATEGIES, TODO_KINDS, strategyOf } from '@/lib/strategy';
 
 function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2); }
 
@@ -108,7 +109,9 @@ export default function CustomerDetailPage() {
   const [showClinicForm, setShowClinicForm] = useState(false);
   const [clinicDraft, setClinicDraft] = useState<ExtraClinicSlot>({ location: '', dayOfWeek: 1, session: '早' });
   const [showTodoForm, setShowTodoForm] = useState(false);
-  const [todoDraft, setTodoDraft] = useState({ title: '', currentStatus: '', nextAction: '' });
+  const emptyTodo = { title: '', currentStatus: '', nextAction: '', kind: 'other' as NonNullable<TodoItem['kind']>, product: '', notBefore: '' };
+  const [todoDraft, setTodoDraft] = useState(emptyTodo);
+  const [showDoneTodos, setShowDoneTodos] = useState(false);
   const [editingVisitId, setEditingVisitId] = useState<string | null>(null);
   const [editDraft, setEditDraft] = useState({ date: '', companions: '', content: '', nextAction: '' });
   const [tagInput, setTagInput] = useState('');
@@ -182,11 +185,15 @@ export default function CustomerDetailPage() {
 
   const addTodo = () => {
     if (!doctor || !todoDraft.title.trim()) { alert('請填寫待辦事項'); return; }
-    const item: TodoItem = { id: uid(), ...todoDraft, createdAt: new Date().toISOString() };
+    const item: TodoItem = {
+      id: uid(), title: todoDraft.title.trim(), currentStatus: todoDraft.currentStatus, nextAction: todoDraft.nextAction,
+      kind: todoDraft.kind, product: todoDraft.product.trim() || undefined, notBefore: todoDraft.notBefore || undefined,
+      source: 'web', createdAt: new Date().toISOString(),
+    };
     const updated = { ...doctor, todos: [...(doctor.todos ?? []), item] };
     setDoctor(updated);
     saveDoctor(updated);
-    setTodoDraft({ title: '', currentStatus: '', nextAction: '' });
+    setTodoDraft(emptyTodo);
     setShowTodoForm(false);
   };
 
@@ -196,6 +203,28 @@ export default function CustomerDetailPage() {
     const updated = { ...doctor, todos };
     setDoctor(updated);
     saveDoctor(updated);
+  };
+
+  const toggleTodoDone = (id: string) => {
+    if (!doctor) return;
+    const todos = (doctor.todos ?? []).map(t => t.id === id
+      ? { ...t, done: !t.done, doneAt: !t.done ? new Date().toISOString().slice(0, 10) : undefined } : t);
+    const updated = { ...doctor, todos };
+    setDoctor(updated);
+    saveDoctor(updated);
+  };
+  const setStrategy = (v: string) => {
+    if (!doctor) return;
+    const updated = { ...doctor, strategy: (v || undefined) as Doctor['strategy'] };
+    setDoctor(updated);
+    saveDoctor(updated);
+  };
+  // 準備型待辦預設一週後才排拜訪
+  const pickKind = (kind: NonNullable<TodoItem['kind']>) => {
+    const prep = TODO_KINDS.find(k => k.key === kind)?.prepDays ?? 0;
+    const d = new Date(); d.setDate(d.getDate() + prep);
+    const iso = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    setTodoDraft(t => ({ ...t, kind, notBefore: prep ? iso : '' }));
   };
 
   const removeTodo = (id: string) => {
@@ -288,6 +317,15 @@ export default function CustomerDetailPage() {
           {doctor.visitHabit && <div className="mt-3 pt-3 border-t border-gray-100"><p className="text-xs text-gray-400 mb-1">拜訪習慣模式</p><p className="text-sm text-blue-700 whitespace-pre-wrap font-medium">{doctor.visitHabit}</p></div>}
           {doctor.attitude && <div className="mt-3 pt-3 border-t border-gray-100"><p className="text-xs text-gray-400 mb-1">對產品的態度</p><p className="text-sm text-gray-700 whitespace-pre-wrap">{doctor.attitude}</p></div>}
           {doctor.visitPlan && <div className="mt-3 pt-3 border-t border-gray-100"><p className="text-xs text-gray-400 mb-1">拜訪目標 / 策略</p><p className="text-sm text-gray-700 whitespace-pre-wrap">{doctor.visitPlan}</p></div>}
+          <div className="mt-3 pt-3 border-t border-gray-100 flex items-center gap-3">
+            <p className="text-xs text-gray-400">經營策略</p>
+            <select value={doctor.strategy ?? ''} onChange={e => setStrategy(e.target.value)}
+              className={`text-sm border rounded-lg px-2 py-1 bg-white focus:outline-none ${doctor.strategy ? 'border-gray-300 text-gray-800' : 'border-gray-200 text-gray-400'}`}>
+              <option value="">未設定</option>
+              {STRATEGIES.map(st => <option key={st.key} value={st.key}>{st.emoji} {st.label}</option>)}
+            </select>
+            {strategyOf(doctor.strategy) && <span className="text-xs text-gray-400">{strategyOf(doctor.strategy)!.desc}</span>}
+          </div>
           {(doctor.visitFrequencyDays ?? 0) > 0 && (() => {
             const st = visitStatus(doctor.visitFrequencyDays, visits[0]?.date);
             const tone = st.state === 'overdue' || st.state === 'never' ? 'text-red-600'
@@ -473,10 +511,17 @@ export default function CustomerDetailPage() {
         {/* 待辦事項 */}
         <div className="bg-white rounded-xl border border-gray-200 p-5">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-sm font-semibold text-gray-700">待辦事項（{(doctor.todos ?? []).length}）</h2>
-            <button onClick={() => setShowTodoForm(v => !v)} className="text-xs text-blue-600 hover:underline">
-              {showTodoForm ? '取消' : '＋ 新增'}
-            </button>
+            <h2 className="text-sm font-semibold text-gray-700">待辦事項（{(doctor.todos ?? []).filter(t => !t.done).length}）</h2>
+            <div className="flex items-center gap-3">
+              {(doctor.todos ?? []).some(t => t.done) && (
+                <button onClick={() => setShowDoneTodos(v => !v)} className="text-xs text-gray-400 hover:text-gray-600">
+                  {showDoneTodos ? '隱藏已完成' : `顯示已完成（${(doctor.todos ?? []).filter(t => t.done).length}）`}
+                </button>
+              )}
+              <button onClick={() => setShowTodoForm(v => !v)} className="text-xs text-blue-600 hover:underline">
+                {showTodoForm ? '取消' : '＋ 新增'}
+              </button>
+            </div>
           </div>
 
           {showTodoForm && (
@@ -486,6 +531,26 @@ export default function CustomerDetailPage() {
                 <input value={todoDraft.title} onChange={e => setTodoDraft(d => ({ ...d, title: e.target.value }))}
                   placeholder="例：提送試用申請、跟進審核進度..."
                   className="block mt-1 px-3 py-1.5 border border-gray-200 rounded-lg text-sm text-gray-800 w-full bg-white focus:outline-none" />
+              </div>
+              <div className="grid grid-cols-3 gap-2">
+                <div>
+                  <label className="text-xs text-gray-500">類型</label>
+                  <select value={todoDraft.kind} onChange={e => pickKind(e.target.value as NonNullable<TodoItem['kind']>)}
+                    className="block mt-1 px-2 py-1.5 border border-gray-200 rounded-lg text-sm text-gray-800 w-full bg-white focus:outline-none">
+                    {TODO_KINDS.map(k => <option key={k.key} value={k.key}>{k.label}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-xs text-gray-500">相關產品</label>
+                  <input value={todoDraft.product} onChange={e => setTodoDraft(d => ({ ...d, product: e.target.value }))}
+                    placeholder="例：Arista"
+                    className="block mt-1 px-2 py-1.5 border border-gray-200 rounded-lg text-sm text-gray-800 w-full bg-white focus:outline-none" />
+                </div>
+                <div>
+                  <label className="text-xs text-gray-500">最早拜訪日</label>
+                  <input type="date" value={todoDraft.notBefore} onChange={e => setTodoDraft(d => ({ ...d, notBefore: e.target.value }))}
+                    className="block mt-1 px-2 py-1.5 border border-gray-200 rounded-lg text-sm text-gray-800 w-full bg-white focus:outline-none" />
+                </div>
               </div>
               <div>
                 <label className="text-xs text-gray-500">Current Status（目前狀態）</label>
@@ -503,13 +568,24 @@ export default function CustomerDetailPage() {
             </div>
           )}
 
-          {(doctor.todos ?? []).length === 0 ? (
+          {(doctor.todos ?? []).filter(t => showDoneTodos || !t.done).length === 0 ? (
             <p className="text-sm text-gray-400 text-center py-4">尚無待辦事項</p>
           ) : (
             <div className="space-y-3">
-              {(doctor.todos ?? []).map(t => (
-                <div key={t.id} className="border border-amber-100 rounded-lg p-3 bg-amber-50/50">
+              {(doctor.todos ?? []).filter(t => showDoneTodos || !t.done).map(t => (
+                <div key={t.id} className={`border rounded-lg p-3 ${t.done ? 'border-gray-100 bg-gray-50 opacity-60' : 'border-amber-100 bg-amber-50/50'}`}>
+                  {(t.kind && t.kind !== 'other' || t.product || t.notBefore || t.source === 'elon') && (
+                    <div className="flex flex-wrap gap-1.5 mb-1.5 text-[11px]">
+                      {t.kind && t.kind !== 'other' && <span className="px-1.5 py-0.5 rounded bg-amber-100 text-amber-800">{TODO_KINDS.find(k => k.key === t.kind)?.label}</span>}
+                      {t.product && <span className="px-1.5 py-0.5 rounded bg-blue-50 text-blue-700">{t.product}</span>}
+                      {t.notBefore && <span className="px-1.5 py-0.5 rounded bg-gray-100 text-gray-600">{t.notBefore.slice(5).replace('-', '/')} 後拜訪</span>}
+                      {t.source === 'elon' && <span className="px-1.5 py-0.5 rounded bg-violet-50 text-violet-700">Elon</span>}
+                      {t.done && t.doneAt && <span className="px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700">✓ {t.doneAt.slice(5).replace('-', '/')} 完成</span>}
+                    </div>
+                  )}
                   <div className="flex items-start justify-between gap-2 mb-2">
+                    <input type="checkbox" checked={!!t.done} onChange={() => toggleTodoDone(t.id)}
+                      className="mt-1 w-4 h-4 accent-emerald-600 shrink-0" title="完成" />
                     <input value={t.title}
                       onChange={e => updateTodo(t.id, 'title', e.target.value)}
                       className="flex-1 text-sm font-semibold text-gray-800 bg-transparent border-b border-dashed border-gray-300 focus:outline-none focus:border-amber-400 pb-0.5" />
