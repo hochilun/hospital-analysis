@@ -605,19 +605,24 @@ export const SHARED_AUTO: Record<string, Record<string, HospProdEntry[]>> = {
   },
   // 2026-09：主管 1008 更正檔 `20260901-30Mars -1008更正.xlsx`
   '2026-09': {
-    // 3DMAX LIGHT ×5、速巴定 ×2（發票日 9/8、9/15）由 10 月 1022 報表補登；1008 更正檔未列，
-    // 但九月整院檔沒有這兩個品項 → 不重疊、屬本人業績，歸九月（同 7 月 3DMAX 前例）。
-    '台北慈濟': [ // 本人業績 應收 164,495 / 加權 153,259
+    '台北慈濟': [ // 本人業績 應收 114,250 / 加權 108,810
       { name: '止血顆粒 3g', category: 'Hemostasis', qty: 4, rev: 58800, weighted: 56000 },
-      { name: '3DMAX LIGHT', category: 'Hernia', qty: 5, rev: 32380, weighted: 30838 },
       { name: '止血顆粒 5g', category: 'Hemostasis', qty: 1, rev: 24500, weighted: 23333 },
       { name: '宮安康 10ML', category: 'Adhesion Prevention', qty: 1, rev: 22500, weighted: 21429 },
-      { name: '速巴定', category: 'Hernia', qty: 2, rev: 17865, weighted: 13611 },
       { name: '止血顆粒 1g', category: 'Hemostasis', qty: 1, rev: 8450, weighted: 8048 },
     ],
     '長庚土城': [ // 本人業績 應收 51,848 / 加權 46,437
       { name: '止血顆粒 1g', category: 'Hemostasis', qty: 5, rev: 36400, weighted: 34667 },
       { name: '速巴定', category: 'Hernia', qty: 2, rev: 15448, weighted: 11770 },
+    ],
+  },
+  // 2026-10：個人報表 `20261001-22Mars.xlsx` 的共跑列（未定案）
+  '2026-10': {
+    // 3DMAX LIGHT ×5、速巴定 ×2 是 9 月使用、9/8・9/15 發票，但慈濟這兩項供貨合約在原廠，
+    // 公司較晚收到訂單 → 公司算 Q4（10 月報表）業績，故歸 10 月，不回填 9 月。
+    '台北慈濟': [ // 本人業績 應收 50,245 / 加權 44,449
+      { name: '3DMAX LIGHT', category: 'Hernia', qty: 5, rev: 32380, weighted: 30838 },
+      { name: '速巴定', category: 'Hernia', qty: 2, rev: 17865, weighted: 13611 },
     ],
   },
 };
