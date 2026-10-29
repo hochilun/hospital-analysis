@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Hospital, Department, ClinicSlot, WeeklyAbsence } from '@/types';
 import { HOSPITALS, TARGET_DEPARTMENTS, DEPT_LABEL, DAY_LABELS, SESSION_LABELS } from '@/data/hospitals';
 import Link from 'next/link';
@@ -8,7 +8,7 @@ import HospitalCard from '@/components/HospitalCard';
 import WeeklyView from '@/components/WeeklyView';
 import PersonalCalendar from '@/components/PersonalCalendar';
 import { getDoctors } from '@/lib/storage';
-import { pullFromCloud, syncAllFromCloud } from '@/lib/supabase';
+import { pullFromCloud, syncAllFromCloud, pushToCloud } from '@/lib/supabase';
 import GlobalTodosPanel from '@/components/GlobalTodosPanel';
 
 const VALID_DEPTS = new Set(['GYN', 'GU', 'GS', 'ENT', 'TS', 'BS']);
@@ -59,6 +59,9 @@ function buildExtraHospitals(hospitals: Hospital[]): Hospital[] {
 
 export default function Home() {
   const [hospitals, setHospitals] = useState<Hospital[]>(HOSPITALS);
+  // 「全部更新」會連續呼叫 handleUpdate，要讀最新一份，否則每次都從舊清單改、只留下最後一間
+  const hospitalsRef = useRef<Hospital[]>(HOSPITALS);
+  useEffect(() => { hospitalsRef.current = hospitals; }, [hospitals]);
   const [selectedDepts, setSelectedDepts] = useState<Set<Department>>(new Set(TARGET_DEPARTMENTS));
   const [selectedHospitals, setSelectedHospitals] = useState<Set<string>>(new Set());
   const [view, setView] = useState<'hospitals' | 'weekly'>('weekly');
@@ -122,7 +125,11 @@ export default function Home() {
     // 只存真正的醫院資料，過濾掉 extra_xxx 的院外門診假醫院
     const baseOnly = data.filter(h => !h.id.startsWith('extra_'));
     localStorage.setItem('hospitals-data', JSON.stringify(baseOnly));
-    setHospitals(buildExtraHospitals(baseOnly));
+    // 雲端為準：沒推上去的話，下次開站會被雲端舊資料蓋掉
+    pushToCloud('hospitals-data', baseOnly);
+    const next = buildExtraHospitals(baseOnly);
+    hospitalsRef.current = next;
+    setHospitals(next);
   };
 
   const toggleDept = (dept: Department) => {
@@ -222,7 +229,7 @@ export default function Home() {
         // tucheng 用合併模式（長庚掛號頁只顯示未來7天，取代會漏掉請假那週的固定班次）
         // fju 輔大 API 也只回未來 4 週，同樣用合併模式，免得請假整月的醫師被洗掉
         const mergeMode = hospitalId === 'tucheng' || hospitalId === 'fju';
-        const updated = hospitals.map(h => {
+        const updated = hospitalsRef.current.map(h => {
           if (h.id !== hospitalId) return h;
           let clinics = data.clinics as ClinicSlot[];
           let weeklyAbsences: WeeklyAbsence[] | undefined;
@@ -249,7 +256,7 @@ export default function Home() {
   };
 
   const handleUpdateAll = async () => {
-    for (const h of hospitals) await handleUpdate(h.id);
+    for (const h of hospitalsRef.current.filter(h => !h.id.startsWith('extra_'))) await handleUpdate(h.id);
   };
 
   return (
