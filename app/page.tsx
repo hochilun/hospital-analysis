@@ -278,6 +278,7 @@ export default function Home() {
             <Link href="/seminars" className="text-sm text-gray-600 hover:text-blue-600 font-medium">活動</Link>
             <Link href="/performance" className="text-sm text-blue-600 font-semibold hover:text-blue-700">我的</Link>
             <Link href="/sponsorship" className="text-sm text-gray-600 hover:text-blue-600 font-medium">學贊</Link>
+            <Link href="/bonus" className="text-sm text-gray-600 hover:text-blue-600 font-medium">獎金</Link>
             <button
               onClick={handleUpdateAll}
               disabled={!!updating}
