@@ -100,3 +100,8 @@ export const DEPT_LABEL: Record<string, string> = {
 };
 export const DAY_LABELS = ['日', '一', '二', '三', '四', '五', '六'];
 export const SESSION_LABELS = ['早', '午', '晚'];
+
+// 已離職／即將離職的醫師：抓門診時排除，更新時也會清掉已存的時段（醫院官網可能還掛著）
+export const DEPARTED_DOCTORS: Record<string, string[]> = {
+  fju: ['李書萍'],   // 2026-10-29 Mars 告知要離職
+};

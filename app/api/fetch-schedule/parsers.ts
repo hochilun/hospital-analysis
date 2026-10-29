@@ -1,3 +1,4 @@
+import { DEPARTED_DOCTORS } from '@/data/hospitals';
 // 所有醫院的門診時刻表解析器（JavaScript 版，可在 Vercel 執行）
 
 type Clinic = { doctor: string; department: string; dayOfWeek: number; session: '早' | '午' | '晚' };
@@ -486,6 +487,13 @@ export async function parseWgh(): Promise<ParseResult> {
 
 // ── dispatch ──────────────────────────────────────────────────────────────
 export async function parseHospital(hospitalId: string): Promise<ParseResult> {
+  const result = await parseHospitalRaw(hospitalId);
+  const departed = DEPARTED_DOCTORS[hospitalId];
+  if (!departed?.length) return result;
+  return { ...result, clinics: result.clinics.filter(c => !departed.includes(c.doctor)) };
+}
+
+async function parseHospitalRaw(hospitalId: string): Promise<ParseResult> {
   switch (hospitalId) {
     case 'tmuh':    return parseTmuh();
     case 'clinic':  return parseClinic();

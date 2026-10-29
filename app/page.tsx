@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { Hospital, Department, ClinicSlot, WeeklyAbsence } from '@/types';
-import { HOSPITALS, TARGET_DEPARTMENTS, DEPT_LABEL, DAY_LABELS, SESSION_LABELS } from '@/data/hospitals';
+import { HOSPITALS, TARGET_DEPARTMENTS, DEPT_LABEL, DAY_LABELS, SESSION_LABELS, DEPARTED_DOCTORS } from '@/data/hospitals';
 import Link from 'next/link';
 import HospitalCard from '@/components/HospitalCard';
 import WeeklyView from '@/components/WeeklyView';
@@ -234,6 +234,9 @@ export default function Home() {
           let clinics = data.clinics as ClinicSlot[];
           let weeklyAbsences: WeeklyAbsence[] | undefined;
           if (mergeMode) {
+            // 合併模式會保留舊班次，離職醫師要在這裡清掉
+            const departed = DEPARTED_DOCTORS[hospitalId] ?? [];
+            h = { ...h, clinics: h.clinics.filter((c: ClinicSlot) => !departed.includes(c.doctor)) };
             const existingKeys = new Set(h.clinics.map((c: ClinicSlot) => `${c.doctor}_${c.dayOfWeek}_${c.session}`));
             const extra = clinics.filter(c => !existingKeys.has(`${c.doctor}_${c.dayOfWeek}_${c.session}`));
             clinics = [...h.clinics, ...extra];
