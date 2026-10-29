@@ -84,6 +84,19 @@ const DEPT_COLOR_MAP: Record<string, string> = {
 const ALL = '__all__';
 
 
+// 同一格裡同一位醫師（科別＋姓名）合併成一筆：支數相加、備註串起來
+function mergeSameDoctor(list: DoctorEntry[]): DoctorEntry[] {
+  const map = new Map<string, DoctorEntry>();
+  for (const d of list) {
+    const k = `${d.dept}|${d.name}`;
+    const m = map.get(k);
+    if (!m) { map.set(k, { ...d }); continue; }
+    m.qty += d.qty;
+    if (d.note && !m.note?.includes(d.note)) m.note = m.note ? `${m.note}；${d.note}` : d.note;
+  }
+  return [...map.values()];
+}
+
 export default function PerformancePage() {
   const data = MY_PERFORMANCE;
   const latest = data[data.length - 1];
@@ -101,7 +114,8 @@ export default function PerformancePage() {
   const [claimTick, forceUpdate] = useState(0);
   const [addingTo, setAddingTo] = useState<{ prod: string } | null>(null);
   const [form, setForm] = useState<{ dept: string; name: string; qty: number | string; note: string }>({ dept: 'GYN', name: '', qty: 1, note: '' });
-  const [editingIdx, setEditingIdx] = useState<number | null>(null);
+  // 編輯中的醫師以「科別＋姓名」辨識：畫面清單是排序＋同名合併過的，用索引會對不到存檔裡的那一筆
+  const [editingDoc, setEditingDoc] = useState<{ dept: string; name: string } | null>(null);
   const [mounted, setMounted] = useState(false);  // 避免 localStorage 造成 SSR/client hydration 不一致
   const refresh = useCallback(() => forceUpdate(n => n + 1), []);
 
@@ -534,29 +548,28 @@ export default function PerformancePage() {
   const handleAdd = (prod: string) => {
     const qty = Number(form.qty);
     if (!form.name.trim() || qty < 1) return;
-    const existing = loadDoctors(activeMonthKey, selectedHosp, prod);
-    if (editingIdx !== null) {
-      existing[editingIdx] = { dept: form.dept, name: form.name.trim(), qty, ...(form.note.trim() ? { note: form.note.trim() } : {}) };
-    } else {
-      existing.push({ dept: form.dept, name: form.name.trim(), qty, ...(form.note.trim() ? { note: form.note.trim() } : {}) });
-    }
-    saveDoctors(activeMonthKey, selectedHosp, prod, existing);
+    const entry: DoctorEntry = { dept: form.dept, name: form.name.trim(), qty, ...(form.note.trim() ? { note: form.note.trim() } : {}) };
+    let existing = loadDoctors(activeMonthKey, selectedHosp, prod);
+    // 編輯＝把這位醫師（可能存成好幾筆）整個換成新的一筆
+    if (editingDoc) existing = existing.filter(d => !(d.dept === editingDoc.dept && d.name === editingDoc.name));
+    existing.push(entry);
+    saveDoctors(activeMonthKey, selectedHosp, prod, mergeSameDoctor(existing));
     setAddingTo(null);
-    setEditingIdx(null);
+    setEditingDoc(null);
     setForm({ dept: 'GYN', name: '', qty: 1, note: '' });
     refresh();
   };
 
-  const handleDelete = (prod: string, idx: number) => {
-    const existing = loadDoctors(activeMonthKey, selectedHosp, prod);
-    existing.splice(idx, 1);
+  const handleDelete = (prod: string, doc: { dept: string; name: string }) => {
+    const existing = loadDoctors(activeMonthKey, selectedHosp, prod)
+      .filter(d => !(d.dept === doc.dept && d.name === doc.name));
     saveDoctors(activeMonthKey, selectedHosp, prod, existing);
     refresh();
   };
 
-  const openEdit = (prod: string, idx: number, entry: DoctorEntry) => {
+  const openEdit = (prod: string, entry: DoctorEntry) => {
     setAddingTo({ prod });
-    setEditingIdx(idx);
+    setEditingDoc({ dept: entry.dept, name: entry.name });
     setForm({ dept: entry.dept, name: entry.name, qty: entry.qty, note: entry.note ?? '' });
   };
 
@@ -1098,8 +1111,8 @@ export default function PerformancePage() {
                       {!isAll && singleMonth && (
                         <button
                           onClick={() => {
-                            if (isAddingThis) { setAddingTo(null); setEditingIdx(null); }
-                            else { setAddingTo({ prod: prod.name }); setEditingIdx(null); setForm({ dept: 'GYN', name: '', qty: prod.qty - usedQty > 0 ? prod.qty - usedQty : 1, note: '' }); }
+                            if (isAddingThis) { setAddingTo(null); setEditingDoc(null); }
+                            else { setAddingTo({ prod: prod.name }); setEditingDoc(null); setForm({ dept: 'GYN', name: '', qty: prod.qty - usedQty > 0 ? prod.qty - usedQty : 1, note: '' }); }
                           }}
                           className="text-xs px-3 py-1 rounded-lg border border-blue-200 text-blue-600 hover:bg-blue-50 font-medium whitespace-nowrap"
                         >
@@ -1121,8 +1134,8 @@ export default function PerformancePage() {
                             <span className="ml-1 max-w-[13rem] truncate text-[11px] text-amber-700 bg-amber-100 rounded px-1.5 py-0.5"
                               title={d.note}>📝 {d.note}</span>
                           )}
-                          {singleMonth && <button onClick={() => openEdit(prod.name, i, d)} className="ml-1 opacity-50 hover:opacity-100">✎</button>}
-                          {singleMonth && <button onClick={() => handleDelete(prod.name, i)} className="opacity-40 hover:opacity-100">×</button>}
+                          {singleMonth && <button onClick={() => openEdit(prod.name, d)} className="ml-1 opacity-50 hover:opacity-100">✎</button>}
+                          {singleMonth && <button onClick={() => handleDelete(prod.name, d)} className="opacity-40 hover:opacity-100">×</button>}
                         </div>
                       ))}
                       {usedQty < prod.qty && (
@@ -1204,7 +1217,7 @@ export default function PerformancePage() {
                       </div>
                       <button onClick={() => handleAdd(prod.name)}
                         className="px-4 py-1.5 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 font-medium">
-                        {editingIdx !== null ? '更新' : '確認'}
+                        {editingDoc ? '更新' : '確認'}
                       </button>
                     </div>
                   )}
