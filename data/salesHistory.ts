@@ -27,6 +27,8 @@ export const HOSPITAL_PRODUCT_IDS: Record<string, string[]> = {
   eck:     ['seed_宮安康', 'seed_止血顆粒', 'seed_速巴定', 'seed_3DMAX', 'seed_3DMAX_light', ...APIS_IDS, 'seed_ventralight', 'seed_ventrio_st'],
   tmuh:    ['seed_宮安康', 'seed_止血顆粒', 'seed_賀邁補', 'seed_速巴定', 'seed_3DMAX', 'seed_3DMAX_light', ...APIS_IDS],
   clinic:  ['seed_宮安康', 'seed_止血顆粒', 'seed_賀邁補', 'seed_塞納斯', ...APIS_IDS],
+  fju:     ['seed_宮安康', 'seed_塞納斯', 'seed_止血顆粒', 'seed_賀邁補', 'seed_速巴定', 'seed_3DMAX', 'seed_3DMAX_light', ...APIS_IDS, 'seed_ventralight', 'seed_凡提拉斯特'],
+  wgh:     ['seed_宮安康', 'seed_塞納斯', 'seed_止血顆粒', 'seed_賀邁補', 'seed_愛沛斯_sling', 'seed_愛沛斯_pelvi'],
 };
 
 export const HOSPITAL_ID_MAP: Record<string, string> = {

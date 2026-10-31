@@ -81,6 +81,7 @@ export const getProducts = (): Product[] => {
   if (typeof window === 'undefined') return [];
   try { return JSON.parse(localStorage.getItem('products-db') || '[]'); } catch { return []; }
 };
+export const saveAllProducts = (all: Product[]) => syncProducts(all);
 const syncProducts = (all: Product[]) => {
   localStorage.setItem('products-db', JSON.stringify(all));
   pushToCloud('products-db', all);

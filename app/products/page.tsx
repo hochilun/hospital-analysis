@@ -3,7 +3,8 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Product, ProductCategory } from '@/types';
-import { getProducts, deleteProduct, saveProduct } from '@/lib/storage';
+import { getProducts, deleteProduct, saveProduct, saveAllProducts } from '@/lib/storage';
+import { applyHospitalInfoPatch } from '@/data/hospitalInfoPatch';
 import { HOSPITALS } from '@/data/hospitals';
 import { SEED_PRODUCTS } from '@/data/seedProducts';
 import { HOSPITAL_PRODUCT_IDS } from '@/data/salesHistory';
@@ -24,7 +25,13 @@ export default function ProductsPage() {
 
   useEffect(() => {
     setProducts(getProducts());
-    forceSync('products-db').then(ok => { if (ok) setProducts(getProducts()); });
+    forceSync('products-db').then(ok => {
+      if (!ok) return;
+      // 雲端同步完才套各院資訊更新，避免用舊的本機資料覆蓋雲端
+      const { products: patched, changed } = applyHospitalInfoPatch(getProducts());
+      if (changed) saveAllProducts(patched);
+      setProducts(getProducts());
+    });
   }, []);
 
   const toggle = (cat: string) =>
