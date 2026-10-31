@@ -3,7 +3,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { MY_PERFORMANCE } from '@/data/myPerformance';
-import { SALES_BY_YEAR } from '@/data/salesHistory';
 import { TAKEOVER_ROWS } from '@/data/takeoverHistory';
 import { monthWorkdays, elapsedWorkdays, isFixedMonthly } from '@/data/workdays';
 import { effectiveMonth, loadClaims, type ClaimsMap } from '@/lib/perfCore';
@@ -30,22 +29,12 @@ const TAKEOVER_MONTHLY: Record<string, number> = (() => {
 
 type MonthActual = { weighted: number; byHospital: Record<string, number> };
 
-/** 某月實際加權業績（有效業績）：5 月起用業績頁同一套計算，1–4 月用 salesHistory（只有獨跑） */
+/** 某月實際加權業績（有效業績），跟業績頁同一套計算。Mars 2026-05 才到職，之前的月份沒有業績、不算 */
 function monthActual(mk: string, claims: ClaimsMap): MonthActual | null {
   const m = MY_PERFORMANCE.find(x => x.month === mk);
-  if (m) {
-    const e = effectiveMonth(m, claims);
-    return { weighted: e.weighted, byHospital: e.byHospital };
-  }
-  if (!mk.startsWith(YEAR)) return null;
-  const label = `${monthNum(mk)}月`;
-  const y = SALES_BY_YEAR[YEAR];
-  const rev = y.MONTHLY_REV.find(r => r.month === label);
-  if (!rev) return null;
-  const row = y.MONTHLY_BY_HOSPITAL.find(r => r.month === label) ?? {};
-  const byHospital: Record<string, number> = {};
-  for (const [k, v] of Object.entries(row)) if (k !== 'month' && typeof v === 'number') byHospital[k] = v;
-  return { weighted: rev.rev, byHospital };
+  if (!m) return null;
+  const e = effectiveMonth(m, claims);
+  return { weighted: e.weighted, byHospital: e.byHospital };
 }
 
 export default function BonusPage() {
@@ -293,7 +282,7 @@ export default function BonusPage() {
             </tbody>
           </table>
           <p className="text-xs text-gray-400 mt-3">
-            1–4 月只有獨跑醫院的資料；5 月起含共跑醫院本人／認領部分。年度獎金（0.5%）規則未確認，未計入。
+            5 月到職，業績從 5 月起算（含共跑醫院本人／認領部分）。年度獎金（0.5%）規則未確認，未計入。
           </p>
         </div>
       </div>
