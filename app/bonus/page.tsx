@@ -128,12 +128,12 @@ export default function BonusPage() {
   const maxBar = Math.max(6_500_000, curBasis * 1.1);
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 text-gray-900">
       <div className="bg-white border-b border-gray-200">
         <div className="max-w-5xl mx-auto px-6 py-5 flex items-center justify-between">
           <div>
             <h1 className="text-xl font-bold text-gray-900">業務獎金</h1>
-            <p className="text-sm text-gray-500 mt-0.5">
+            <p className="text-sm text-gray-600 mt-0.5">
               季獎金累進計算 · 加權業績（共跑只算本人／認領） · 資料更新至 {latest.asOf ? shortDate(latest.asOf) : `${monthNum(latest.month)}月底`}
             </p>
           </div>
@@ -150,21 +150,21 @@ export default function BonusPage() {
         <div className="bg-white rounded-2xl border border-gray-200 p-6 space-y-5">
           <div className="flex items-start justify-between flex-wrap gap-4">
             <div>
-              <div className="text-sm text-gray-500">Q{curQ} 本季（{monthNum(cur.keys[0])}–{monthNum(cur.keys[2])} 月）{cur.forecast ? '預估獎金' : '獎金'}</div>
+              <div className="text-sm text-gray-600">Q{curQ} 本季（{monthNum(cur.keys[0])}–{monthNum(cur.keys[2])} 月）{cur.forecast ? '預估獎金' : '獎金'}</div>
               <div className="text-4xl font-bold text-gray-900 mt-1">{fmtMoney(cur.bonus.total)}</div>
               {cur.forecast && (
-                <div className="text-sm text-gray-500 mt-1">
+                <div className="text-sm text-gray-600 mt-1">
                   若停在目前累積：{fmtMoney(cur.bonusActual)}
                 </div>
               )}
             </div>
             <div className="grid grid-cols-2 gap-x-8 gap-y-1 text-sm">
-              <span className="text-gray-500">目前累積</span>
+              <span className="text-gray-600">目前累積</span>
               <span className="text-right font-semibold text-gray-900">{fmtMoney(cur.actual)}</span>
               {cur.forecast && <>
-                <span className="text-gray-500">預估整季</span>
+                <span className="text-gray-600">預估整季</span>
                 <span className="text-right font-semibold text-blue-700">{fmtMoney(cur.forecast.value)}</span>
-                <span className="text-gray-500">季內工作天</span>
+                <span className="text-gray-600">季內工作天</span>
                 <span className="text-right text-gray-700">已過 {cur.forecast.elapsed}／{cur.forecast.total} 天</span>
               </>}
             </div>
@@ -182,14 +182,14 @@ export default function BonusPage() {
                 <div key={t.from} className="absolute inset-y-0 w-px bg-gray-700" style={{ left: `${(t.from / maxBar) * 100}%` }} />
               ))}
             </div>
-            <div className="relative h-5 mt-1 text-[11px] text-gray-500">
+            <div className="relative h-5 mt-1 text-[11px] text-gray-600">
               {BONUS_TIERS.slice(1).map(t => (
                 <span key={t.from} className="absolute -translate-x-1/2" style={{ left: `${(t.from / maxBar) * 100}%` }}>
                   {fmtWan(t.from)}・{pctLabel(t.rate)}
                 </span>
               ))}
             </div>
-            <div className="flex gap-4 text-xs text-gray-500 mt-1">
+            <div className="flex gap-4 text-xs text-gray-600 mt-1">
               <span className="flex items-center gap-1.5"><span className="w-3 h-2 rounded-sm bg-gray-400" />目前累積</span>
               {cur.forecast && <span className="flex items-center gap-1.5"><span className="w-3 h-2 rounded-sm bg-blue-300" />預估到季末</span>}
             </div>
@@ -202,7 +202,7 @@ export default function BonusPage() {
           {/* 級距拆解 */}
           <table className="w-full text-sm">
             <thead>
-              <tr className="text-gray-500 border-b border-gray-100">
+              <tr className="text-gray-600 border-b border-gray-100">
                 <th className="text-left font-medium py-2">級距</th>
                 <th className="text-right font-medium py-2">比率</th>
                 <th className="text-right font-medium py-2">落在這段的業績</th>
@@ -211,7 +211,7 @@ export default function BonusPage() {
             </thead>
             <tbody>
               {cur.bonus.parts.map(p => (
-                <tr key={p.from} className={`border-b border-gray-50 ${p.amount > 0 ? 'text-gray-900' : 'text-gray-300'}`}>
+                <tr key={p.from} className={`border-b border-gray-50 ${p.amount > 0 ? 'text-gray-900' : 'text-gray-400'}`}>
                   <td className="py-2">{fmtWan(p.from)} – {p.to ? fmtWan(p.to) : '以上'}</td>
                   <td className="text-right py-2">{pctLabel(p.rate)}</td>
                   <td className="text-right py-2">{fmtMoney(p.amount)}</td>
@@ -249,11 +249,11 @@ export default function BonusPage() {
         <div className="bg-white rounded-2xl border border-gray-200 p-6">
           <div className="flex items-baseline justify-between mb-3">
             <h2 className="font-semibold text-gray-900">{YEAR} 各季</h2>
-            <div className="text-sm text-gray-500">全年季獎金合計 <b className="text-gray-900 text-base">{fmtMoney(yearBonus)}</b></div>
+            <div className="text-sm text-gray-600">全年季獎金合計 <b className="text-gray-900 text-base">{fmtMoney(yearBonus)}</b></div>
           </div>
           <table className="w-full text-sm">
             <thead>
-              <tr className="text-gray-500 border-b border-gray-100">
+              <tr className="text-gray-600 border-b border-gray-100">
                 <th className="text-left font-medium py-2">季</th>
                 <th className="text-right font-medium py-2">各月加權業績</th>
                 <th className="text-right font-medium py-2">季業績</th>
@@ -263,17 +263,17 @@ export default function BonusPage() {
             </thead>
             <tbody>
               {quarters.map(x => (
-                <tr key={x.q} className={`border-b border-gray-50 ${x.hasData ? '' : 'text-gray-300'}`}>
+                <tr key={x.q} className={`border-b border-gray-50 ${x.hasData ? '' : 'text-gray-400'}`}>
                   <td className="py-2.5">
                     Q{x.q}
                     {x.forecast && <span className="ml-2 text-[11px] px-1.5 py-0.5 rounded bg-blue-100 text-blue-700">預估</span>}
                   </td>
-                  <td className="text-right py-2.5 text-gray-500 text-xs">
+                  <td className="text-right py-2.5 text-gray-600 text-xs">
                     {x.keys.map((k, i) => `${monthNum(k)}月 ${x.actuals[i] ? fmtWan(x.actuals[i]!.weighted) : '—'}`).join('　')}
                   </td>
                   <td className="text-right py-2.5">
                     {x.hasData ? fmtMoney(x.basis) : '—'}
-                    {x.forecast && <div className="text-[11px] text-gray-400">目前 {fmtMoney(x.actual)}</div>}
+                    {x.forecast && <div className="text-[11px] text-gray-500">目前 {fmtMoney(x.actual)}</div>}
                   </td>
                   <td className="text-right py-2.5">{x.hasData ? pctLabel(nextTier(x.basis).current.rate) : '—'}</td>
                   <td className="text-right py-2.5 font-semibold">{x.hasData ? fmtMoney(x.bonus.total) : '—'}</td>
@@ -281,7 +281,7 @@ export default function BonusPage() {
               ))}
             </tbody>
           </table>
-          <p className="text-xs text-gray-400 mt-3">
+          <p className="text-xs text-gray-500 mt-3">
             5 月到職，業績從 5 月起算（含共跑醫院本人／認領部分）。年度獎金（0.5%）規則未確認，未計入。
           </p>
         </div>

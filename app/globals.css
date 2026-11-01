@@ -12,12 +12,7 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
+/* 版面全部照淺色設計：不跟系統深色模式切換，否則沒指定顏色的字會變成白底淺灰字 */
 
 body {
   background: var(--background);
