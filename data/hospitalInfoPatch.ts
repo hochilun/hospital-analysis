@@ -7,6 +7,7 @@ import { Product, HospitalVariantInfo } from '@/types';
 type Patch = { hospitalCode?: string; purchasePrice: number; patientPrice?: number };
 
 // 來源：farmlands/MARS醫材產品價-輔大西園部北格202610.xlsx（2026-10-31）
+// 輔大自費價（Arista／塗佈器／宮安康）：2026-11-02 Mars 提供院方計價表截圖
 // 輔大 塞納斯 經沛宇供貨；輔大 Ventralight 8"×10" 表上為 NA 未列；西園 P-STOP-8、Hermesh 表上無院內碼
 export const HOSPITAL_INFO_PATCH: Record<string, Record<string, Patch>> = {
   // 宮安康、塞納斯
@@ -19,11 +20,11 @@ export const HOSPITAL_INFO_PATCH: Record<string, Record<string, Patch>> = {
     wgh: { hospitalCode: '52687',      purchasePrice: 12000, patientPrice: 17000 },
   },
   // Arista
-  'SM0005-USA':   { fju: { hospitalCode: 'MTTZ03BAH1', purchasePrice: 7875 },  wgh: { hospitalCode: '53191', purchasePrice: 8000,  patientPrice: 10500 } },
-  'SM0002-USA':   { fju: { hospitalCode: 'MTTZ03BAH3', purchasePrice: 15750 }, wgh: { hospitalCode: '53192', purchasePrice: 16000, patientPrice: 21000 } },
-  'SM0007-USA':   { fju: { hospitalCode: 'MTTZ03BAH5', purchasePrice: 25700 }, wgh: { hospitalCode: '53193', purchasePrice: 26500, patientPrice: 35000 } },
-  'TTZ030696004': { fju: { hospitalCode: 'MTTZ03BA14', purchasePrice: 2250 },  wgh: { hospitalCode: '53194', purchasePrice: 2300,  patientPrice: 2900 } },
-  'AM0005':       { fju: { hospitalCode: 'MTTZ03AA38', purchasePrice: 2250 },  wgh: { hospitalCode: '53195', purchasePrice: 2300,  patientPrice: 2900 } },
+  'SM0005-USA':   { fju: { hospitalCode: 'MTTZ03BAH1', purchasePrice: 7875,  patientPrice: 10500 },  wgh: { hospitalCode: '53191', purchasePrice: 8000,  patientPrice: 10500 } },
+  'SM0002-USA':   { fju: { hospitalCode: 'MTTZ03BAH3', purchasePrice: 15750, patientPrice: 21000 }, wgh: { hospitalCode: '53192', purchasePrice: 16000, patientPrice: 21000 } },
+  'SM0007-USA':   { fju: { hospitalCode: 'MTTZ03BAH5', purchasePrice: 25700, patientPrice: 34500 }, wgh: { hospitalCode: '53193', purchasePrice: 26500, patientPrice: 35000 } },
+  'TTZ030696004': { fju: { hospitalCode: 'MTTZ03BA14', purchasePrice: 2250,  patientPrice: 3000 },  wgh: { hospitalCode: '53194', purchasePrice: 2300,  patientPrice: 2900 } },
+  'AM0005':       { fju: { hospitalCode: 'MTTZ03AA38', purchasePrice: 2250,  patientPrice: 3000 },  wgh: { hospitalCode: '53195', purchasePrice: 2300,  patientPrice: 2900 } },
   // 3DMAX Light
   '0117310': { fju: { hospitalCode: 'MFSZ02BL53', purchasePrice: 6800 } },
   '0117320': { fju: { hospitalCode: 'MFSZ02BR53', purchasePrice: 6800 } },
