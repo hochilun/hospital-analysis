@@ -1,9 +1,9 @@
 // 輔大醫院、西園醫院 交接前歷史業績（前任業務 郭茗涵）
 // 來源：farmlands/sales/2025年9~2026年9月銷售報表-西園、輔大.xls（工作表「202501~12明細」），依發票月彙整
-// 由腳本產生，勿手改；資料截止 2026-09-21
+// 由腳本產生，勿手改；9–10 月以 farmlands/sales/2026MM01-DD輔大、西園業績.xlsx 補齊；資料截止 2026-10-31
 export type TakeoverRow = { hosp: string; month: string; product: string; qty: number; rev: number; weighted: number };
 
-export const TAKEOVER_AS_OF = '2026-09-21';
+export const TAKEOVER_AS_OF = '2026-10-31';
 export const TAKEOVER_PREV_REP = '郭茗涵';
 
 export const TAKEOVER_CATEGORY: Record<string, string> = {"3DMAX LIGHT": "Hernia", "Arista 塗佈器": "Hemostasis", "Arista 3g": "Hemostasis", "塞納斯": "Adhesion Prevention", "Arista 5g": "Hemostasis", "Arista 1g": "Hemostasis", "IS-HELICO": "Urinary Incontinence", "宮安康": "Adhesion Prevention", "Ventralex ST": "Hernia", "Ventralight ST": "Hernia", "IS-M1": "Urinary Incontinence"};
@@ -45,6 +45,8 @@ export const TAKEOVER_ROWS: TakeoverRow[] = [
   { hosp: '西園醫院', month: '2026-08', product: 'Arista 塗佈器', qty: 17, rev: 39100, weighted: 37238 },
   { hosp: '西園醫院', month: '2026-09', product: 'Arista 5g', qty: 15, rev: 397500, weighted: 378571 },
   { hosp: '西園醫院', month: '2026-09', product: 'Arista 塗佈器', qty: 15, rev: 34500, weighted: 32857 },
+  { hosp: '西園醫院', month: '2026-10', product: 'Arista 5g', qty: 12, rev: 318000, weighted: 302857 },
+  { hosp: '西園醫院', month: '2026-10', product: 'Arista 塗佈器', qty: 12, rev: 27600, weighted: 26286 },
   { hosp: '輔大醫院', month: '2025-09', product: '3DMAX LIGHT', qty: 2, rev: 13600, weighted: 12952 },
   { hosp: '輔大醫院', month: '2025-09', product: 'Arista 3g', qty: 1, rev: 15750, weighted: 15000 },
   { hosp: '輔大醫院', month: '2025-09', product: 'Arista 塗佈器', qty: 1, rev: 2250, weighted: 2143 },
@@ -120,4 +122,11 @@ export const TAKEOVER_ROWS: TakeoverRow[] = [
   { hosp: '輔大醫院', month: '2026-09', product: 'Arista 塗佈器', qty: 5, rev: 11250, weighted: 10714 },
   { hosp: '輔大醫院', month: '2026-09', product: '塞納斯', qty: 2, rev: 22800, weighted: 21714 },
   { hosp: '輔大醫院', month: '2026-09', product: '宮安康', qty: 4, rev: 51600, weighted: 49143 },
+  { hosp: '輔大醫院', month: '2026-10', product: 'Arista 1g', qty: 2, rev: 15750, weighted: 15000 },
+  { hosp: '輔大醫院', month: '2026-10', product: 'Arista 3g', qty: 10, rev: 157500, weighted: 150000 },
+  { hosp: '輔大醫院', month: '2026-10', product: 'Arista 塗佈器', qty: 9, rev: 20250, weighted: 19286 },
+  { hosp: '輔大醫院', month: '2026-10', product: 'Ventralex ST', qty: 1, rev: 11795, weighted: 11233 },
+  { hosp: '輔大醫院', month: '2026-10', product: 'Ventralight ST', qty: 2, rev: 41268, weighted: 39303 },
+  { hosp: '輔大醫院', month: '2026-10', product: '塞納斯', qty: 8, rev: 91200, weighted: 86857 },
+  { hosp: '輔大醫院', month: '2026-10', product: '宮安康', qty: 2, rev: 25800, weighted: 24571 },
 ];

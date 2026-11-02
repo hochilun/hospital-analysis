@@ -6,7 +6,7 @@ import { sponsorRate } from '@/data/sponsorship';
 import { effectiveMonth, loadAllDoctors, loadClaims, subKey } from '@/lib/perfCore';
 import { pushToCloud } from '@/lib/supabase';
 
-export const DELAYED_HOSPITALS = ['台北醫學'];   // 發票延後一個月的醫院
+export const DELAYED_HOSPITALS = ['台北醫學', '輔大醫院'];   // 發票延後一個月的醫院（輔大：10/12 發票＝9 月出貨）
 export const SETTLED_MONTHS: Record<string, string> = {   // 已對帳結清的使用月（唯讀）
   '2026-07': '2026-09-04 對帳結清',
   '2026-08': '2026-09-04 對帳結清',

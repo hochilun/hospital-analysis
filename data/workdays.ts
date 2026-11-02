@@ -81,6 +81,6 @@ export function monthPace(monthKey: string, asOf?: string): MonthPace | null {
  * 開完當月就不會再動。所以這些醫院**當月數字已經是定案值，不能跟著工作天放大**。
  * 佐證（台北醫學逐月唯一一筆發票日）：5/11、6/4、7/6、8/7、9/7。
  */
-export const FIXED_MONTHLY_HOSPITALS: readonly string[] = ['台北醫學'];
+export const FIXED_MONTHLY_HOSPITALS: readonly string[] = ['台北醫學', '輔大醫院'];   // 輔大：每月約 10 號一次開上月出貨的發票
 
 export const isFixedMonthly = (hosp: string) => FIXED_MONTHLY_HOSPITALS.includes(hosp);

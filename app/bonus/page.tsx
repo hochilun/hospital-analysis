@@ -16,9 +16,9 @@ const pctLabel = (r: number) => `${(r * 100).toLocaleString('zh-TW', { maximumFr
 const monthNum = (mk: string) => Number(mk.slice(5, 7));
 const shortDate = (s: string) => `${Number(s.slice(5, 7))}/${Number(s.slice(8, 10))}`;
 
-// 輔大・西園 11 月起由 Mars 接手：還沒有實際業績的月份，用前任最近三個完整月（6–8 月）的平均月加權業績頂著
+// 輔大・西園 11 月起由 Mars 接手：還沒有實際業績的月份，用前任最近三個完整月（8–10 月）的平均月加權業績頂著
 const TAKEOVER_START = '2026-11';
-const TAKEOVER_BASE_MONTHS = ['2026-06', '2026-07', '2026-08'];
+const TAKEOVER_BASE_MONTHS = ['2026-08', '2026-09', '2026-10'];
 const TAKEOVER_MONTHLY: Record<string, number> = (() => {
   const sum: Record<string, number> = {};
   for (const r of TAKEOVER_ROWS) {
@@ -236,7 +236,7 @@ export default function BonusPage() {
               <label className="flex items-start gap-2 cursor-pointer pt-1">
                 <input type="checkbox" className="mt-1" checked={withTakeover} onChange={e => setWithTakeover(e.target.checked)} />
                 <span>
-                  加上輔大・西園（11 月起接手，還沒有實際業績的月份用前任 6–8 月平均：
+                  加上輔大・西園（11 月起接手，還沒有實際業績的月份用前任 8–10 月平均：
                   {Object.entries(TAKEOVER_MONTHLY).map(([h, v]) => `${h} ${fmtWan(v)}／月`).join('、')}）
                   {withTakeover && cur.forecast.takeover > 0 && <> ＝ {fmtMoney(cur.forecast.takeover)}</>}
                 </span>
