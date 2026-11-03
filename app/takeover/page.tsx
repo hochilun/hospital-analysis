@@ -7,6 +7,7 @@ import {
 } from 'recharts';
 import { TAKEOVER_ROWS, TAKEOVER_AS_OF, TAKEOVER_PREV_REP, TAKEOVER_CATEGORY } from '@/data/takeoverHistory';
 import { HOSP_COLOR, CAT_ZH } from '@/data/myPerformance';
+import DoctorUsage from './DoctorUsage';
 
 const HOSPS = ['輔大醫院', '西園醫院'] as const;
 type Sel = 'all' | typeof HOSPS[number];
@@ -76,7 +77,7 @@ export default function TakeoverPage() {
   const singleColor = sel === 'all' ? null : HOSP_COLOR[sel];
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 text-gray-900">
       <div className="bg-white border-b border-gray-200">
         <div className="max-w-6xl mx-auto px-6 py-5 flex items-center justify-between">
           <div>
@@ -220,6 +221,9 @@ export default function TakeoverPage() {
             </table>
           </div>
         </div>
+
+        {/* 醫師使用（目前只有輔大的資料） */}
+        {sel !== '西園醫院' && <DoctorUsage />}
 
         {/* 交接重點 */}
         <div className="grid md:grid-cols-2 gap-4">
