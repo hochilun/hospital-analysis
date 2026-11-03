@@ -2,7 +2,7 @@
 
 import { useMemo } from 'react';
 import { TAKEOVER_ROWS } from '@/data/takeoverHistory';
-import { FJU_DOCTOR_USES, FJU_DOCTOR_AS_OF, FJU_DOCTOR_DEPT } from '@/data/takeoverDoctors';
+import { FJU_DOCTOR_USES, FJU_DOCTOR_AS_OF, FJU_DOCTOR_DEPT, FJU_DOCTOR_NOTE } from '@/data/takeoverDoctors';
 
 const fmtK = (n: number) => n >= 1_000 ? `${Math.round(n / 1_000)}K` : String(Math.round(n));
 const monthLabel = (ym: string) => `${Number(ym.slice(5))}月`;
@@ -88,6 +88,7 @@ export default function DoctorUsage() {
                   <td className="py-2.5 whitespace-nowrap">
                     <span className="font-medium text-gray-900">{d.name}</span>
                     <span className="ml-1.5 text-xs text-gray-500">{FJU_DOCTOR_DEPT[d.name] ?? ''}</span>
+                    {FJU_DOCTOR_NOTE[d.name] && <div className="text-xs text-gray-500 mt-0.5">{FJU_DOCTOR_NOTE[d.name]}</div>}
                   </td>
                   <td className="py-2.5">
                     <div className="flex flex-wrap gap-1">
