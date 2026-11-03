@@ -1,13 +1,13 @@
 // 輔大醫院 各醫師使用紀錄（依「使用日」，不是發票日）
 // 來源：Mars 提供的 輔大.xlsx（2026-11-03），2026/1/7–10/28 共 195 筆（拆品項後）。
 // 換算：「Arista Xg+tip」＝Xg ×1＋塗佈器 ×1；「mesh／3D mesh light」＝3DMAX LIGHT；5950xxx＝Ventralex ST、5954xxx＝Ventralight ST
-// 「Ventralight （5950007）」依型號算 Ventralex ST；「游浩鈞」視為游皓鈞。
+// 「Ventralight （5950007）」依型號算 Ventralex ST；「游浩鈞」視為游皓鈞；「呂彥峰」依官網改為呂彥鋒。
 export type DoctorUse = { date: string; doctor: string; product: string; qty: number; raw: string };
 
 export const FJU_DOCTOR_AS_OF = '2026-10-28';
 
 // 科別：取自輔大官網門診表（CRS＝大腸直腸外科）；查不到的留空
-export const FJU_DOCTOR_DEPT: Record<string, string> = { '胡皓淳': 'ENT', '張邦彥': 'ENT', '巫清隆': 'ENT', '林聖傑': 'GS', '黃家偉': 'GS', '劉惠珊': 'GYN', '廖守富': 'CRS', '蔡易展': 'CRS', '陳相智': 'CRS' };
+export const FJU_DOCTOR_DEPT: Record<string, string> = { '胡皓淳': 'ENT', '張邦彥': 'ENT', '巫清隆': 'ENT', '林聖傑': 'GS', '黃家偉': 'GS', '劉惠珊': 'GYN', '廖守富': 'CRS', '蔡易展': 'CRS', '陳相智': 'CRS', '呂彥鋒': 'GYN' };
 
 export const FJU_DOCTOR_USES: DoctorUse[] = [
   { date: '2026-01-07', doctor: '胡皓淳', product: 'Arista 3g', qty: 1, raw: 'Arista 3g' },
@@ -68,7 +68,7 @@ export const FJU_DOCTOR_USES: DoctorUse[] = [
   { date: '2026-04-15', doctor: '胡皓淳', product: 'Arista 塗佈器', qty: 1, raw: 'Arista 3g+ tip' },
   { date: '2026-04-16', doctor: '黃家偉', product: 'Ventralex ST', qty: 1, raw: '5950008.0' },
   { date: '2026-04-17', doctor: '廖守富', product: 'Ventralight ST', qty: 1, raw: '5954460.0' },
-  { date: '2026-04-26', doctor: '呂彥峰', product: 'IS-M1', qty: 1, raw: 'mini sling' },
+  { date: '2026-04-26', doctor: '呂彥鋒', product: 'IS-M1', qty: 1, raw: 'mini sling' },
   { date: '2026-04-29', doctor: '胡皓淳', product: 'Arista 3g', qty: 1, raw: 'Arista 3g' },
   { date: '2026-05-01', doctor: '黃家偉', product: 'Ventralex ST', qty: 1, raw: '5950008.0' },
   { date: '2026-05-06', doctor: '胡皓淳', product: '塞納斯', qty: 1, raw: 'pureregen' },
@@ -156,8 +156,8 @@ export const FJU_DOCTOR_USES: DoctorUse[] = [
   { date: '2026-09-09', doctor: '胡皓淳', product: 'Arista 3g', qty: 1, raw: 'Arista 3g' },
   { date: '2026-09-09', doctor: '胡皓淳', product: '塞納斯', qty: 1, raw: 'pureregen' },
   { date: '2026-09-10', doctor: '黃家偉', product: 'Ventralight ST', qty: 1, raw: '5954460.0' },
-  { date: '2026-09-11', doctor: '呂彥峰', product: 'Arista 3g', qty: 1, raw: 'Arista 3g+ tip' },
-  { date: '2026-09-11', doctor: '呂彥峰', product: 'Arista 塗佈器', qty: 1, raw: 'Arista 3g+ tip' },
+  { date: '2026-09-11', doctor: '呂彥鋒', product: 'Arista 3g', qty: 1, raw: 'Arista 3g+ tip' },
+  { date: '2026-09-11', doctor: '呂彥鋒', product: 'Arista 塗佈器', qty: 1, raw: 'Arista 3g+ tip' },
   { date: '2026-09-11', doctor: '張邦彥', product: 'Arista 3g', qty: 1, raw: 'Arista 3g+ tip' },
   { date: '2026-09-11', doctor: '張邦彥', product: 'Arista 塗佈器', qty: 1, raw: 'Arista 3g+ tip' },
   { date: '2026-09-16', doctor: '胡皓淳', product: 'Arista 3g', qty: 1, raw: 'Arista 3g+ tip' },
@@ -166,8 +166,8 @@ export const FJU_DOCTOR_USES: DoctorUse[] = [
   { date: '2026-09-16', doctor: '胡皓淳', product: 'Arista 塗佈器', qty: 1, raw: 'Arista 3g+ tip' },
   { date: '2026-09-16', doctor: '胡皓淳', product: 'Arista 塗佈器', qty: 1, raw: 'Arista 3g+ tip' },
   { date: '2026-09-16', doctor: '胡皓淳', product: 'Arista 塗佈器', qty: 1, raw: 'Arista 3g+ tip' },
-  { date: '2026-09-17', doctor: '呂彥峰', product: 'Arista 3g', qty: 1, raw: 'Arista 3g+ tip' },
-  { date: '2026-09-17', doctor: '呂彥峰', product: 'Arista 塗佈器', qty: 1, raw: 'Arista 3g+ tip' },
+  { date: '2026-09-17', doctor: '呂彥鋒', product: 'Arista 3g', qty: 1, raw: 'Arista 3g+ tip' },
+  { date: '2026-09-17', doctor: '呂彥鋒', product: 'Arista 塗佈器', qty: 1, raw: 'Arista 3g+ tip' },
   { date: '2026-09-18', doctor: '張邦彥', product: 'Arista 1g', qty: 1, raw: 'Arista 1g+ tip' },
   { date: '2026-09-18', doctor: '張邦彥', product: 'Arista 塗佈器', qty: 1, raw: 'Arista 1g+ tip' },
   { date: '2026-09-22', doctor: '游皓鈞', product: 'Arista 1g', qty: 1, raw: 'Arista 1g' },
@@ -175,8 +175,8 @@ export const FJU_DOCTOR_USES: DoctorUse[] = [
   { date: '2026-09-24', doctor: '黃家偉', product: 'Ventralex ST', qty: 1, raw: '5950009.0' },
   { date: '2026-09-30', doctor: '劉惠珊', product: 'Arista 3g', qty: 1, raw: 'Arista 3g' },
   { date: '2026-09-30', doctor: '胡皓淳', product: '塞納斯', qty: 1, raw: 'Pureregen' },
-  { date: '2026-10-02', doctor: '呂彥峰', product: 'Arista 3g', qty: 1, raw: 'Arista 3g+ tip' },
-  { date: '2026-10-02', doctor: '呂彥峰', product: 'Arista 塗佈器', qty: 1, raw: 'Arista 3g+ tip' },
+  { date: '2026-10-02', doctor: '呂彥鋒', product: 'Arista 3g', qty: 1, raw: 'Arista 3g+ tip' },
+  { date: '2026-10-02', doctor: '呂彥鋒', product: 'Arista 塗佈器', qty: 1, raw: 'Arista 3g+ tip' },
   { date: '2026-10-02', doctor: '張邦彥', product: 'Arista 3g', qty: 1, raw: 'Arista 3g+ tip' },
   { date: '2026-10-02', doctor: '張邦彥', product: 'Arista 3g', qty: 1, raw: 'Arista 3g+ tip' },
   { date: '2026-10-02', doctor: '張邦彥', product: 'Arista 3g', qty: 1, raw: 'Arista 3g+ tip' },
@@ -185,17 +185,17 @@ export const FJU_DOCTOR_USES: DoctorUse[] = [
   { date: '2026-10-02', doctor: '張邦彥', product: 'Arista 塗佈器', qty: 1, raw: 'Arista 3g+ tip' },
   { date: '2026-10-07', doctor: '胡皓淳', product: 'Arista 5g', qty: 1, raw: 'Arista 5g' },
   { date: '2026-10-08', doctor: '陳相智', product: '3DMAX LIGHT', qty: 1, raw: '3D mesh light' },
-  { date: '2026-10-09', doctor: '呂彥峰', product: 'Arista 3g', qty: 1, raw: 'Arista 3g' },
-  { date: '2026-10-09', doctor: '呂彥峰', product: 'Arista 3g', qty: 1, raw: 'Arista 3g+ tip' },
-  { date: '2026-10-09', doctor: '呂彥峰', product: 'Arista 塗佈器', qty: 1, raw: 'Arista 3g+ tip' },
+  { date: '2026-10-09', doctor: '呂彥鋒', product: 'Arista 3g', qty: 1, raw: 'Arista 3g' },
+  { date: '2026-10-09', doctor: '呂彥鋒', product: 'Arista 3g', qty: 1, raw: 'Arista 3g+ tip' },
+  { date: '2026-10-09', doctor: '呂彥鋒', product: 'Arista 塗佈器', qty: 1, raw: 'Arista 3g+ tip' },
   { date: '2026-10-09', doctor: '廖守富', product: 'Ventralight ST', qty: 1, raw: '5954680.0' },
   { date: '2026-10-09', doctor: '張邦彥', product: 'Arista 3g', qty: 1, raw: 'Arista 3g+ tip' },
   { date: '2026-10-09', doctor: '張邦彥', product: 'Arista 塗佈器', qty: 1, raw: 'Arista 3g+ tip' },
   { date: '2026-10-14', doctor: '胡皓淳', product: 'Arista 3g', qty: 1, raw: 'Arista 3g' },
   { date: '2026-10-14', doctor: '胡皓淳', product: 'Arista 3g', qty: 1, raw: 'Arista 3g+ tip' },
   { date: '2026-10-14', doctor: '胡皓淳', product: 'Arista 塗佈器', qty: 1, raw: 'Arista 3g+ tip' },
-  { date: '2026-10-16', doctor: '呂彥峰', product: 'Arista 3g', qty: 1, raw: 'Arista 3g+ tip' },
-  { date: '2026-10-16', doctor: '呂彥峰', product: 'Arista 塗佈器', qty: 1, raw: 'Arista 3g+ tip' },
+  { date: '2026-10-16', doctor: '呂彥鋒', product: 'Arista 3g', qty: 1, raw: 'Arista 3g+ tip' },
+  { date: '2026-10-16', doctor: '呂彥鋒', product: 'Arista 塗佈器', qty: 1, raw: 'Arista 3g+ tip' },
   { date: '2026-10-16', doctor: '張邦彥', product: 'Arista 3g', qty: 1, raw: 'Arista 3g+ tip' },
   { date: '2026-10-16', doctor: '張邦彥', product: 'Arista 3g', qty: 1, raw: 'Arista 3g+ tip' },
   { date: '2026-10-16', doctor: '張邦彥', product: 'Arista 塗佈器', qty: 1, raw: 'Arista 3g+ tip' },
