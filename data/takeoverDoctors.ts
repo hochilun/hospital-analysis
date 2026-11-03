@@ -6,8 +6,8 @@ export type DoctorUse = { date: string; doctor: string; product: string; qty: nu
 
 export const FJU_DOCTOR_AS_OF = '2026-10-28';
 
-// 科別：取自 CRM 輔大門診表；查不到的留空
-export const FJU_DOCTOR_DEPT: Record<string, string> = { '胡皓淳': 'ENT', '張邦彥': 'ENT', '巫清隆': 'ENT', '林聖傑': 'GS', '黃家偉': 'GS', '劉惠珊': 'GYN' };
+// 科別：取自輔大官網門診表（CRS＝大腸直腸外科）；查不到的留空
+export const FJU_DOCTOR_DEPT: Record<string, string> = { '胡皓淳': 'ENT', '張邦彥': 'ENT', '巫清隆': 'ENT', '林聖傑': 'GS', '黃家偉': 'GS', '劉惠珊': 'GYN', '廖守富': 'CRS', '蔡易展': 'CRS', '陳相智': 'CRS' };
 
 export const FJU_DOCTOR_USES: DoctorUse[] = [
   { date: '2026-01-07', doctor: '胡皓淳', product: 'Arista 3g', qty: 1, raw: 'Arista 3g' },

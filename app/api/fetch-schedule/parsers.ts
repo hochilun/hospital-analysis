@@ -396,6 +396,7 @@ export async function parseEck(): Promise<ParseResult> {
 // 以每筆資料自身的 OPDSECTION 判斷科別（GS 先抓，seen 去重）。
 const FJU_DEPTS: [string, string][] = [
   ['OBGY', 'GYN'], ['GU', 'GU'], ['GS', 'GS'], ['ENT', 'ENT'], ['CS', 'TS'], ['BS', 'BS'],
+  ['CRS', 'GS'],   // 大腸直腸外科（廖守富、蔡易展、陳相智…）歸一般外科
 ];
 const FJU_CODE_MAP: Record<string, string> = Object.fromEntries(FJU_DEPTS);
 const FJU_SESSION: Record<string, '早' | '午' | '晚'> = { A: '早', P: '午', N: '晚' };
