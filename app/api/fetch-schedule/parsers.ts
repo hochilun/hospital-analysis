@@ -397,6 +397,7 @@ export async function parseEck(): Promise<ParseResult> {
 const FJU_DEPTS: [string, string][] = [
   ['OBGY', 'GYN'], ['GU', 'GU'], ['GS', 'GS'], ['ENT', 'ENT'], ['CS', 'TS'], ['BS', 'BS'],
   ['CRS', 'GS'],   // 大腸直腸外科（廖守富、蔡易展、陳相智…）歸一般外科
+  ['CVS', 'TS'],   // 心臟血管外科（游皓鈞…）歸胸腔外科
 ];
 const FJU_CODE_MAP: Record<string, string> = Object.fromEntries(FJU_DEPTS);
 const FJU_SESSION: Record<string, '早' | '午' | '晚'> = { A: '早', P: '午', N: '晚' };
