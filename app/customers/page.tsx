@@ -212,6 +212,16 @@ export default function CustomersPage() {
     return { perfById: byId, unlinkedPerf: unmatched };
   }, [mounted, periodMonths, doctors]);
 
+  // 本週優先拜訪用：固定看最近 3 個月的業績貢獻（不跟著上方期間篩選變動）
+  const recentRevById = useMemo(() => {
+    if (!mounted) return {} as Record<string, number>;
+    const perf = buildDoctorPerf(MY_PERFORMANCE.slice(-3), loadClaims());
+    const { byName } = linkDoctors(perf, doctors);
+    const out: Record<string, number> = {};
+    for (const p of perf) { const doc = byName[p.name]; if (doc) out[doc.id] = (out[doc.id] ?? 0) + p.rev; }
+    return out;
+  }, [mounted, doctors]);
+
   const reload = () => setDoctors(getDoctors());
 
   const handleDelete = (id: string, name: string) => {
@@ -398,7 +408,7 @@ export default function CustomersPage() {
 
         {/* ── 需跟進客戶：本週優先＋依醫院分組＋頻率檢視 ── */}
         {tab === 'list' && mounted && (
-          <FollowUpPanel doctors={doctors} lastVisitMap={lastVisitMap} onChanged={reload} />
+          <FollowUpPanel doctors={doctors} lastVisitMap={lastVisitMap} recentRevById={recentRevById} onChanged={reload} />
         )}
 
         {/* ── 業績報表對不上客戶資料庫的醫師（多半是打錯字，會漏算業績）── */}
