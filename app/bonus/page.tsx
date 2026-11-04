@@ -17,7 +17,8 @@ const monthNum = (mk: string) => Number(mk.slice(5, 7));
 const shortDate = (s: string) => `${Number(s.slice(5, 7))}/${Number(s.slice(8, 10))}`;
 
 // 輔大・西園 11 月起由 Mars 接手：還沒有實際業績的月份，用前任最近三個完整月（8–10 月）的平均月加權業績頂著
-const TAKEOVER_START = '2026-11';
+// 輔大月結、發票晚一個月（11 月發票＝10 月前任的使用量，不算 Mars），所以從 12 月發票才起算
+const TAKEOVER_START: Record<string, string> = { '西園醫院': '2026-11', '輔大醫院': '2026-12' };
 const TAKEOVER_BASE_MONTHS = ['2026-08', '2026-09', '2026-10'];
 const TAKEOVER_MONTHLY: Record<string, number> = (() => {
   const sum: Record<string, number> = {};
@@ -101,8 +102,9 @@ export default function BonusPage() {
         let takeover = 0;
         if (withTakeover) {
           keys.forEach((k, i) => {
-            if (k >= TAKEOVER_START && !actuals[i]) {
-              takeover += Object.values(TAKEOVER_MONTHLY).reduce((s, v) => s + v, 0);
+            if (actuals[i]) return;
+            for (const [h, v] of Object.entries(TAKEOVER_MONTHLY)) {
+              if (k >= (TAKEOVER_START[h] ?? '9999')) takeover += v;
             }
           });
         }
@@ -236,7 +238,7 @@ export default function BonusPage() {
               <label className="flex items-start gap-2 cursor-pointer pt-1">
                 <input type="checkbox" className="mt-1" checked={withTakeover} onChange={e => setWithTakeover(e.target.checked)} />
                 <span>
-                  加上輔大・西園（11 月起接手，還沒有實際業績的月份用前任 8–10 月平均：
+                  加上輔大・西園（西園 11 月起、輔大 12 月發票起算——11 月發票是前任 10 月的使用量；還沒有實際業績的月份用前任 8–10 月平均：
                   {Object.entries(TAKEOVER_MONTHLY).map(([h, v]) => `${h} ${fmtWan(v)}／月`).join('、')}）
                   {withTakeover && cur.forecast.takeover > 0 && <> ＝ {fmtMoney(cur.forecast.takeover)}</>}
                 </span>
