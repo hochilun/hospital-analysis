@@ -7,7 +7,7 @@ import { Product, HospitalVariantInfo } from '@/types';
 type Patch = { hospitalCode?: string; purchasePrice: number; patientPrice?: number };
 
 // 來源：farmlands/MARS醫材產品價-輔大西園部北格202610.xlsx（2026-10-31）
-// 輔大自費價（Arista／塗佈器／宮安康）：2026-11-02 Mars 提供院方計價表截圖
+// 輔大自費價（Arista／塗佈器／宮安康）：2026-11-02 Mars 提供院方計價表截圖；塞納斯 17,000（2026-11-04 Mars 告知）
 // 輔大 塞納斯 經沛宇供貨；輔大 Ventralight 8"×10" 表上為 NA 未列；西園 P-STOP-8、Hermesh 表上無院內碼
 export const HOSPITAL_INFO_PATCH: Record<string, Record<string, Patch>> = {
   // 宮安康、塞納斯
@@ -16,7 +16,7 @@ export const HOSPITAL_INFO_PATCH: Record<string, Record<string, Patch>> = {
     wgh: { hospitalCode: '52702',      purchasePrice: 12000, patientPrice: 17000 },
   },
   'PureRegen Gel Sinus': {
-    fju: { hospitalCode: 'MWDZ030059', purchasePrice: 11400 },
+    fju: { hospitalCode: 'MWDZ030059', purchasePrice: 11400, patientPrice: 17000 },
     wgh: { hospitalCode: '52687',      purchasePrice: 12000, patientPrice: 17000 },
   },
   // Arista
