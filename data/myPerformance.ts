@@ -531,7 +531,7 @@ export const SHARED_PERFORMANCE: Record<string, Record<string, HospProdEntry[]>>
       { name: '速巴定', category: 'Hernia', qty: 2, rev: 15448, weighted: 11770 },
     ],
   },
-  '2026-10': {  // 10/1–10/31 完整月（未定案）
+  '2026-10': {  // 10/1–10/31 完整月（1104 已定案）
     '台北慈濟': [ // 整院 應收 637,350 / 加權 607,000
       { name: '止血顆粒 3g', category: 'Hemostasis', qty: 17, rev: 249900, weighted: 238000 },
       { name: '宮安康', category: 'Adhesion Prevention', qty: 14, rev: 182000, weighted: 173333 },
@@ -618,13 +618,20 @@ export const SHARED_AUTO: Record<string, Record<string, HospProdEntry[]>> = {
       { name: '速巴定', category: 'Hernia', qty: 2, rev: 15448, weighted: 11770 },
     ],
   },
-  // 2026-10：個人報表 `20261001-31Mars.xlsx` 的共跑列（未定案）
+  // 2026-10：主管 1104 更新檔 `20261001-31Mars-1104更新北慈、土長業績.xlsx`（與 Mars 手動認領完全一致）
   '2026-10': {
     // 3DMAX LIGHT ×5、速巴定 ×2 是 9 月使用、9/8・9/15 發票，但慈濟這兩項供貨合約在原廠，
     // 公司較晚收到訂單 → 公司算 Q4（10 月報表）業績，故歸 10 月，不回填 9 月。
-    '台北慈濟': [ // 本人業績 應收 50,245 / 加權 44,449
+    '台北慈濟': [ // 本人業績 應收 256,195 / 加權 240,592
+      { name: '止血顆粒 3g', category: 'Hemostasis', qty: 10, rev: 147000, weighted: 140000 },
       { name: '3DMAX LIGHT', category: 'Hernia', qty: 5, rev: 32380, weighted: 30838 },
+      { name: '宮安康', category: 'Adhesion Prevention', qty: 2, rev: 26000, weighted: 24762 },
+      { name: '止血顆粒 5g', category: 'Hemostasis', qty: 1, rev: 24500, weighted: 23333 },
       { name: '速巴定', category: 'Hernia', qty: 2, rev: 17865, weighted: 13611 },
+      { name: '止血顆粒 1g', category: 'Hemostasis', qty: 1, rev: 8450, weighted: 8048 },
+    ],
+    '長庚土城': [ // 本人業績 應收 50,960 / 加權 48,533
+      { name: '止血顆粒 1g', category: 'Hemostasis', qty: 7, rev: 50960, weighted: 48533 },
     ],
   },
 };
@@ -640,6 +647,7 @@ export const SETTLED_SHARED: Record<string, string> = {
   '2026-07': '1008 更正檔',
   '2026-08': '0923 更正檔',
   '2026-09': '1008 更正檔',
+  '2026-10': '1104 更新檔',
 };
 export const SETTLED_SHARED_MONTHS: readonly string[] = Object.keys(SETTLED_SHARED);
 export const isSettledMonth = (monthKey: string) => SETTLED_SHARED_MONTHS.includes(monthKey);
