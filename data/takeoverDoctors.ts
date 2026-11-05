@@ -2,9 +2,16 @@
 // 來源：Mars 提供的 輔大.xlsx（2026-11-03），2026/1/7–10/28 共 195 筆（拆品項後）。
 // 換算：「Arista Xg+tip」＝Xg ×1＋塗佈器 ×1；「mesh／3D mesh light」＝3DMAX LIGHT；5950xxx＝Ventralex ST、5954xxx＝Ventralight ST
 // 「Ventralight （5950007）」依型號算 Ventralex ST；「游浩鈞」視為游皓鈞；「呂彥峰」依官網改為呂彥鋒。
+// 2026-11 起為 Mars 接手後的使用：Mars 截院內耗材系統畫面提供（MTTZ03BAH3＝Arista 3g、MTTZ03AA38＝塗佈器），不記病患資料。
 export type DoctorUse = { date: string; doctor: string; product: string; qty: number; raw: string };
 
-export const FJU_DOCTOR_AS_OF = '2026-10-28';
+export const FJU_DOCTOR_AS_OF = '2026-11-04';
+
+// Mars 接手後的使用從這天算；輔大月結、發票晚一個月（11 月使用＝12 月發票）
+export const FJU_MINE_FROM = '2026-11-01';
+
+// 發票月 → 產品 → 支數，等輔大業績檔進來時填，用來跟上面的使用紀錄媒合
+export const FJU_INVOICED: Record<string, Record<string, number>> = {};
 
 // 科別：取自輔大官網門診表（CRS＝大腸直腸外科、CVS＝心臟血管外科）；查不到的留空
 export const FJU_DOCTOR_DEPT: Record<string, string> = { '胡皓淳': 'ENT', '張邦彥': 'ENT', '巫清隆': 'ENT', '林聖傑': 'GS', '黃家偉': 'GS', '劉惠珊': 'GYN', '廖守富': 'CRS', '蔡易展': 'CRS', '陳相智': 'CRS', '呂彥鋒': 'GYN', '游皓鈞': 'CVS', '張文君': 'GYN' };
@@ -208,4 +215,8 @@ export const FJU_DOCTOR_USES: DoctorUse[] = [
   { date: '2026-10-21', doctor: '胡皓淳', product: 'Arista 3g', qty: 1, raw: 'Arista 3g' },
   { date: '2026-10-27', doctor: '游皓鈞', product: 'Arista 1g', qty: 1, raw: 'Arista 1g' },
   { date: '2026-10-28', doctor: '胡皓淳', product: 'Arista 3g', qty: 1, raw: 'Arista 3g' },
+  // ── Mars 接手後 ──
+  { date: '2026-11-04', doctor: '胡皓淳', product: 'Arista 3g', qty: 1, raw: 'MTTZ03BAH3' },
+  { date: '2026-11-04', doctor: '張文君', product: 'Arista 3g', qty: 1, raw: 'MTTZ03BAH3' },
+  { date: '2026-11-04', doctor: '張文君', product: 'Arista 塗佈器', qty: 1, raw: 'MTTZ03AA38' },
 ];

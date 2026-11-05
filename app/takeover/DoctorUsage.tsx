@@ -2,14 +2,18 @@
 
 import { useMemo } from 'react';
 import { TAKEOVER_ROWS } from '@/data/takeoverHistory';
-import { FJU_DOCTOR_USES, FJU_DOCTOR_AS_OF, FJU_DOCTOR_DEPT, FJU_DOCTOR_NOTE } from '@/data/takeoverDoctors';
+import { FJU_DOCTOR_USES, FJU_DOCTOR_AS_OF, FJU_DOCTOR_DEPT, FJU_DOCTOR_NOTE, FJU_MINE_FROM, FJU_INVOICED } from '@/data/takeoverDoctors';
 
 const fmtK = (n: number) => n >= 1_000 ? `${Math.round(n / 1_000)}K` : String(Math.round(n));
 const monthLabel = (ym: string) => `${Number(ym.slice(5))}月`;
 const TIP = 'Arista 塗佈器';
 
 const MONTHS = [...new Set(FJU_DOCTOR_USES.map(u => u.date.slice(0, 7)))].sort();
-const LAST3 = MONTHS.slice(-3), PREV3 = MONTHS.slice(-6, -3);
+// 趨勢只比完整月：資料截止日不是月底的話，那個月還沒過完，不拿來比
+const nextDay = new Date(Date.parse(FJU_DOCTOR_AS_OF) + 86_400_000).toISOString().slice(0, 7);
+const FULL_MONTHS = nextDay === FJU_DOCTOR_AS_OF.slice(0, 7) ? MONTHS.filter(m => m < nextDay) : MONTHS;
+const LAST3 = FULL_MONTHS.slice(-3), PREV3 = FULL_MONTHS.slice(-6, -3);
+const nextMonth = (ym: string) => { const [y, m] = ym.split('-').map(Number); return m === 12 ? `${y + 1}-01` : `${y}-${String(m + 1).padStart(2, '0')}`; };
 
 // 各產品平均每單位加權業績（輔大發票資料）→ 估算醫師貢獻
 const UNIT_W: Record<string, number> = (() => {
@@ -43,6 +47,20 @@ export default function DoctorUsage() {
       if (PREV3.includes(m)) d.prev3 += u.qty;
     }
     return Object.values(map).sort((a, b) => b.w - a.w);
+  }, []);
+
+  // Mars 接手後：每個使用月 × 產品，跟下個月的發票支數媒合
+  const recon = useMemo(() => {
+    const byMonth: Record<string, Record<string, { qty: number; who: Record<string, number> }>> = {};
+    for (const u of FJU_DOCTOR_USES) if (u.date >= FJU_MINE_FROM) {
+      const e = ((byMonth[u.date.slice(0, 7)] ??= {})[u.product] ??= { qty: 0, who: {} });
+      e.qty += u.qty; e.who[u.doctor] = (e.who[u.doctor] ?? 0) + u.qty;
+    }
+    return Object.entries(byMonth).sort().map(([m, prods]) => {
+      const inv = FJU_INVOICED[nextMonth(m)];
+      const names = [...new Set([...Object.keys(prods), ...Object.keys(inv ?? {})])];
+      return { m, invMonth: nextMonth(m), hasInv: !!inv, rows: names.map(p => ({ p, used: prods[p]?.qty ?? 0, who: prods[p]?.who ?? {}, inv: inv?.[p] })) };
+    });
   }, []);
 
   const totalW = doctors.reduce((s, d) => s + d.w, 0);
@@ -110,6 +128,38 @@ export default function DoctorUsage() {
           </tbody>
         </table>
       </div>
+
+      {recon.map(r => (
+        <div key={r.m} className="mt-6">
+          <h3 className="text-sm font-semibold text-gray-700 mb-1">Mars 接手 · {monthLabel(r.m)}使用 vs {monthLabel(r.invMonth)}發票</h3>
+          <p className="text-xs text-gray-500 mb-2">{r.hasInv ? '已對上發票檔' : `等 ${monthLabel(r.invMonth)}輔大業績檔進來再媒合`}</p>
+          <table className="text-sm">
+            <thead>
+              <tr className="text-xs text-gray-500 border-b border-gray-100">
+                <th className="text-left font-normal py-1.5 pr-6">產品</th>
+                <th className="text-left font-normal py-1.5 pr-6">使用醫師</th>
+                <th className="text-right font-normal py-1.5 pr-4">使用</th>
+                <th className="text-right font-normal py-1.5 pr-4">發票</th>
+                <th className="text-right font-normal py-1.5">差</th>
+              </tr>
+            </thead>
+            <tbody>
+              {r.rows.map(x => {
+                const diff = x.inv === undefined ? null : x.inv - x.used;
+                return (
+                  <tr key={x.p} className="border-b border-gray-50">
+                    <td className="py-1.5 pr-6 text-gray-900 whitespace-nowrap">{x.p}</td>
+                    <td className="py-1.5 pr-6 text-gray-700">{Object.entries(x.who).map(([n, q]) => `${n} ${q}`).join('、') || '—'}</td>
+                    <td className="py-1.5 pr-4 text-right tabular-nums text-gray-900">{x.used}</td>
+                    <td className="py-1.5 pr-4 text-right tabular-nums text-gray-700">{x.inv ?? '—'}</td>
+                    <td className={`py-1.5 text-right tabular-nums ${diff ? 'text-red-700 font-semibold' : 'text-gray-500'}`}>{diff === null ? '' : diff === 0 ? '✓' : diff > 0 ? `+${diff}` : diff}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      ))}
 
       <h3 className="text-sm font-semibold text-gray-700 mt-6 mb-2">每月用量（支／片，不含塗佈器）</h3>
       <div className="overflow-x-auto">
