@@ -3,6 +3,8 @@
 // 換算：「Arista Xg+tip」＝Xg ×1＋塗佈器 ×1；「mesh／3D mesh light」＝3DMAX LIGHT；5950xxx＝Ventralex ST、5954xxx＝Ventralight ST
 // 「Ventralight （5950007）」依型號算 Ventralex ST；「游浩鈞」視為游皓鈞；「呂彥峰」依官網改為呂彥鋒。
 // 2026-11 起為 Mars 接手後的使用：Mars 截院內耗材系統畫面提供（MTTZ03BAH3＝Arista 3g、MTTZ03AA38＝塗佈器），不記病患資料。
+import { TAKEOVER_ROWS } from './takeoverHistory';
+
 export type DoctorUse = { date: string; doctor: string; product: string; qty: number; raw: string };
 
 export const FJU_DOCTOR_AS_OF = '2026-11-04';
@@ -12,6 +14,25 @@ export const FJU_MINE_FROM = '2026-11-01';
 
 // 發票月 → 產品 → 支數，等輔大業績檔進來時填，用來跟上面的使用紀錄媒合
 export const FJU_INVOICED: Record<string, Record<string, number>> = {};
+
+// 接手醫院：業績從哪個「發票月」開始算 Mars 的（輔大 11 月發票＝前任 10 月使用，不算）
+export const TAKEOVER_START: Record<string, string> = { '西園醫院': '2026-11', '輔大醫院': '2026-12' };
+
+// 輔大各產品平均每單位加權業績（前任發票資料）→ 用來估算還沒開發票的使用量
+export const FJU_UNIT_W: Record<string, number> = (() => {
+  const s: Record<string, [number, number]> = {};
+  for (const r of TAKEOVER_ROWS) if (r.hosp === '輔大醫院') {
+    const e = (s[r.product] ??= [0, 0]); e[0] += r.weighted; e[1] += r.qty;
+  }
+  return Object.fromEntries(Object.entries(s).map(([k, [w, q]]) => [k, w / q]));
+})();
+
+/** Mars 接手後某個使用月（YYYY-MM）的輔大估算加權業績，會開在下個月的發票 */
+export function fjuPendingWeighted(month: string): number {
+  return FJU_DOCTOR_USES
+    .filter(u => u.date >= FJU_MINE_FROM && u.date.startsWith(month))
+    .reduce((s, u) => s + (FJU_UNIT_W[u.product] ?? 0) * u.qty, 0);
+}
 
 // 科別：取自輔大官網門診表（CRS＝大腸直腸外科、CVS＝心臟血管外科）；查不到的留空
 export const FJU_DOCTOR_DEPT: Record<string, string> = { '胡皓淳': 'ENT', '張邦彥': 'ENT', '巫清隆': 'ENT', '林聖傑': 'GS', '黃家偉': 'GS', '劉惠珊': 'GYN', '廖守富': 'CRS', '蔡易展': 'CRS', '陳相智': 'CRS', '呂彥鋒': 'GYN', '游皓鈞': 'CVS', '張文君': 'GYN' };

@@ -1,8 +1,7 @@
 'use client';
 
 import { useMemo } from 'react';
-import { TAKEOVER_ROWS } from '@/data/takeoverHistory';
-import { FJU_DOCTOR_USES, FJU_DOCTOR_AS_OF, FJU_DOCTOR_DEPT, FJU_DOCTOR_NOTE, FJU_MINE_FROM, FJU_INVOICED } from '@/data/takeoverDoctors';
+import { FJU_DOCTOR_USES, FJU_DOCTOR_AS_OF, FJU_DOCTOR_DEPT, FJU_DOCTOR_NOTE, FJU_MINE_FROM, FJU_INVOICED, FJU_UNIT_W as UNIT_W } from '@/data/takeoverDoctors';
 
 const fmtK = (n: number) => n >= 1_000 ? `${Math.round(n / 1_000)}K` : String(Math.round(n));
 const monthLabel = (ym: string) => `${Number(ym.slice(5))}月`;
@@ -14,15 +13,6 @@ const nextDay = new Date(Date.parse(FJU_DOCTOR_AS_OF) + 86_400_000).toISOString(
 const FULL_MONTHS = nextDay === FJU_DOCTOR_AS_OF.slice(0, 7) ? MONTHS.filter(m => m < nextDay) : MONTHS;
 const LAST3 = FULL_MONTHS.slice(-3), PREV3 = FULL_MONTHS.slice(-6, -3);
 const nextMonth = (ym: string) => { const [y, m] = ym.split('-').map(Number); return m === 12 ? `${y + 1}-01` : `${y}-${String(m + 1).padStart(2, '0')}`; };
-
-// 各產品平均每單位加權業績（輔大發票資料）→ 估算醫師貢獻
-const UNIT_W: Record<string, number> = (() => {
-  const s: Record<string, [number, number]> = {};
-  for (const r of TAKEOVER_ROWS) if (r.hosp === '輔大醫院') {
-    const e = (s[r.product] ??= [0, 0]); e[0] += r.weighted; e[1] += r.qty;
-  }
-  return Object.fromEntries(Object.entries(s).map(([k, [w, q]]) => [k, w / q]));
-})();
 
 const daysBetween = (a: string, b: string) => Math.round((Date.parse(b) - Date.parse(a)) / 86_400_000);
 

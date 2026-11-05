@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { MY_PERFORMANCE } from '@/data/myPerformance';
 import { TAKEOVER_ROWS } from '@/data/takeoverHistory';
+import { TAKEOVER_START } from '@/data/takeoverDoctors';
 import { monthWorkdays, elapsedWorkdays, isFixedMonthly } from '@/data/workdays';
 import { effectiveMonth, loadClaims, type ClaimsMap } from '@/lib/perfCore';
 import { forceSync } from '@/lib/supabase';
@@ -17,8 +18,7 @@ const monthNum = (mk: string) => Number(mk.slice(5, 7));
 const shortDate = (s: string) => `${Number(s.slice(5, 7))}/${Number(s.slice(8, 10))}`;
 
 // 輔大・西園 11 月起由 Mars 接手：還沒有實際業績的月份，用前任最近三個完整月（8–10 月）的平均月加權業績頂著
-// 輔大月結、發票晚一個月（11 月發票＝10 月前任的使用量，不算 Mars），所以從 12 月發票才起算
-const TAKEOVER_START: Record<string, string> = { '西園醫院': '2026-11', '輔大醫院': '2026-12' };
+// 輔大月結、發票晚一個月（11 月發票＝10 月前任的使用量，不算 Mars），所以從 12 月發票才起算（TAKEOVER_START）
 const TAKEOVER_BASE_MONTHS = ['2026-08', '2026-09', '2026-10'];
 const TAKEOVER_MONTHLY: Record<string, number> = (() => {
   const sum: Record<string, number> = {};

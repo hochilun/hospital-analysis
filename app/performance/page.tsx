@@ -23,6 +23,7 @@ import {
 } from '@/lib/perfCore';
 import { buildDoctorPerf, loadDoctorsForPeriod, linkDoctors, type DocPerf } from '@/lib/doctorPerf';
 import { getDoctors } from '@/lib/storage';
+import { TAKEOVER_START, fjuPendingWeighted } from '@/data/takeoverDoctors';
 import ProductGroupPanel from '@/components/ProductGroupPanel';
 import DoctorRankBoard from '@/components/DoctorRankBoard';
 
@@ -95,6 +96,24 @@ function mergeSameDoctor(list: DoctorEntry[]): DoctorEntry[] {
     if (d.note && !m.note?.includes(d.note)) m.note = m.note ? `${m.note}；${d.note}` : d.note;
   }
   return [...map.values()];
+}
+
+const ymLabel = (ym: string) => `${Number(ym.slice(5))}月`;
+const prevYm = (ym: string) => { const [y, m] = ym.split('-').map(Number); return m === 1 ? `${y - 1}-12` : `${y}-${String(m - 1).padStart(2, '0')}`; };
+
+/** 接手醫院名稱下的小字：還沒起算前說明從哪個月開始；輔大另外顯示「已使用、待下月發票」的估算 */
+function TakeoverNote({ hosp, month }: { hosp: string; month: string }) {
+  const start = TAKEOVER_START[hosp];
+  const notes: string[] = [];
+  if (month < start) notes.push(hosp === '輔大醫院' ? `${ymLabel(start)}發票起算（月結晚一個月）` : `${ymLabel(start)}起接手`);
+  if (hosp === '輔大醫院') {
+    // 最新業績月的使用 → 下個月發票；若最新月還在接手前，就看接手第一個使用月
+    const useMonth = month < prevYm(start) ? prevYm(start) : month;
+    const w = fjuPendingWeighted(useMonth);
+    if (w > 0) notes.push(`${ymLabel(useMonth)}已用 約 ${Math.round(w / 1000)}K 待開發票`);
+  }
+  if (!notes.length) return null;
+  return <div className="text-xs text-gray-500 mt-0.5 ml-4">{notes.join(' · ')}</div>;
 }
 
 export default function PerformancePage() {
@@ -313,7 +332,8 @@ export default function PerformancePage() {
 
   // 各醫院：本月／上月、本季／上季
   const hospPeriodRows = useMemo(() => {
-    const hs = HOSP_ORDER.filter(h => periods.labels.some(l => (effByLabel[l]?.byHospital[h] ?? 0) > 0));
+    // 輔大・西園（接手醫院）就算還沒有業績也列出來，10 月以前是前任的、不算
+    const hs = HOSP_ORDER.filter(h => h in TAKEOVER_START || periods.labels.some(l => (effByLabel[l]?.byHospital[h] ?? 0) > 0));
     return hs.map(h => {
       const m = sumOf([periods.curM], h), mPrev = periods.prevM ? sumOf([periods.prevM], h) : 0;
       const q = sumOf(periods.curQ, h), qPrev = sumOf(periods.prevQ, h);
@@ -723,6 +743,7 @@ export default function PerformancePage() {
                         <span className="w-2 h-2 rounded-full" style={{ background: HOSP_COLOR[r.hosp] }} />
                         <span className="font-medium text-gray-800">{r.hosp}</span>
                       </span>
+                      {r.hosp in TAKEOVER_START && <TakeoverNote hosp={r.hosp} month={latest.month} />}
                     </td>
                     <td className="py-2.5 px-3 text-right font-semibold text-gray-900">{r.m.toLocaleString('zh-TW')}</td>
                     {pace && (
