@@ -113,12 +113,12 @@ export function claimedSharedMonth(monthKey: string, claims: ClaimsMap) {
         autoByName.delete(p.name);
         const aw = a ? (a.weighted ?? a.rev) : 0;
         views.push({ name: p.name, category: p.category, qty: a?.qty ?? 0, rev: aw, weighted: aw,
-          gross: p.weighted ?? p.rev, grossQty: p.qty, mine: a?.qty ?? 0, shared: true, auto: false, confirmed: true });
+          gross: p.weighted ?? p.rev, grossQty: p.qty, mine: a?.qty ?? 0, shared: true, auto: false, confirmed: true, note: a?.note });
         if (a) addAgg(hosp, a.category, a.name, aw, a.rev, a.qty);
       }
       for (const a of autoByName.values()) {
         const aw = a.weighted ?? a.rev;
-        views.push({ name: a.name, category: a.category, qty: a.qty, rev: aw, weighted: aw, gross: aw, grossQty: a.qty, mine: a.qty, shared: true, auto: true });
+        views.push({ name: a.name, category: a.category, qty: a.qty, rev: aw, weighted: aw, gross: aw, grossQty: a.qty, mine: a.qty, shared: true, auto: true, note: a.note });
         addAgg(hosp, a.category, a.name, aw, a.rev, a.qty);
       }
       hospitalProducts[hosp] = views;
@@ -127,7 +127,7 @@ export function claimedSharedMonth(monthKey: string, claims: ClaimsMap) {
     // 本人業績（Mars 檔）→ 全計，不需認領
     for (const p of (auto[hosp] ?? [])) {
       const aw = p.weighted ?? p.rev;
-      views.push({ name: p.name, category: p.category, qty: p.qty, rev: aw, weighted: aw, gross: aw, grossQty: p.qty, mine: p.qty, shared: true, auto: true });
+      views.push({ name: p.name, category: p.category, qty: p.qty, rev: aw, weighted: aw, gross: aw, grossQty: p.qty, mine: p.qty, shared: true, auto: true, note: p.note });
       addAgg(hosp, p.category, p.name, aw, p.rev, p.qty);
     }
     // 整院認領池 → 依認領支數比例

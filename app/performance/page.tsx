@@ -1098,6 +1098,9 @@ export default function PerformancePage() {
                       {isAutoRow && (
                         <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 font-semibold">本人</span>
                       )}
+                      {prod.note && (
+                        <span className="text-[11px] px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 font-medium">{prod.note}</span>
+                      )}
                       <span className="text-gray-400 text-sm">
                         {isAutoRow ? `本人 ${prod.qty} 件` : isPoolRow ? `整院 ${sv.grossQty} 件` : `${prod.qty} 件`}
                       </span>
