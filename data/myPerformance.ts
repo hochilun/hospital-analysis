@@ -427,6 +427,53 @@ export const MY_PERFORMANCE: MonthPerf[] = [
       ],
     },
   },
+  {
+    month: '2026-11',
+    label: '11月',
+    asOf: '2026-11-05',
+    revenue: 266_271,
+    weighted: 251_696,
+    byHospital: {
+      '台北醫學': 193_126,
+      '恩主公':    39_150,
+      '沙爾德聖':  33_995,
+    },
+    byCategory: {
+      'Adhesion Prevention':  129_000,
+      'Hernia':               101_595,
+      'Hemostasis':            25_750,
+      'Urinary Incontinence':   9_926,
+    },
+    byProduct: [
+      { name: '宮安康', category: 'Adhesion Prevention', qty: 11, rev: 129_000 },
+      { name: '3DMAX LIGHT', category: 'Hernia', qty: 14, rev: 91_400 },
+      { name: '止血顆粒 3g', category: 'Hemostasis', qty: 1, rev: 16_000 },
+      { name: 'IS-6', category: 'Urinary Incontinence', qty: 1, rev: 9_926 },
+      { name: '速巴定', category: 'Hernia', qty: 1, rev: 8_000 },
+      { name: '止血顆粒 1g', category: 'Hemostasis', qty: 1, rev: 7_800 },
+      { name: '賀邁補', category: 'Hernia', qty: 2, rev: 2_195 },
+      { name: '止血塗佈器', category: 'Hemostasis', qty: 1, rev: 1_950 },
+    ],
+    hospitalProducts: {
+      '台北醫學': [
+        { name: '宮安康', category: 'Adhesion Prevention', qty: 8, rev: 96_000 },
+        { name: '3DMAX LIGHT', category: 'Hernia', qty: 12, rev: 78_000 },
+        { name: 'IS-6', category: 'Urinary Incontinence', qty: 1, rev: 9_926 },
+        { name: '速巴定', category: 'Hernia', qty: 1, rev: 8_000 },
+        { name: '賀邁補', category: 'Hernia', qty: 1, rev: 1_200 },
+      ],
+      '恩主公': [
+        { name: '止血顆粒 3g', category: 'Hemostasis', qty: 1, rev: 16_000 },
+        { name: '3DMAX LIGHT', category: 'Hernia', qty: 2, rev: 13_400 },
+        { name: '止血顆粒 1g', category: 'Hemostasis', qty: 1, rev: 7_800 },
+        { name: '止血塗佈器', category: 'Hemostasis', qty: 1, rev: 1_950 },
+      ],
+      '沙爾德聖': [
+        { name: '宮安康', category: 'Adhesion Prevention', qty: 3, rev: 33_000 },
+        { name: '賀邁補', category: 'Hernia', qty: 1, rev: 995 },
+      ],
+    },
+  },
   // 後續月份在此追加 ↓
 ];
 
@@ -550,6 +597,18 @@ export const SHARED_PERFORMANCE: Record<string, Record<string, HospProdEntry[]>>
       { name: 'IS-HELICO', category: 'Urinary Incontinence', qty: 2, rev: 18874, weighted: 17975 },
     ],
   },
+  '2026-11': {  // 11/1–11/5（未定案）
+    '台北慈濟': [ // 整院 應收 190,000 / 加權 180,954
+      { name: '宮安康', category: 'Adhesion Prevention', qty: 9, rev: 117000, weighted: 111429 },
+      { name: '止血顆粒 3g', category: 'Hemostasis', qty: 3, rev: 44100, weighted: 42000 },
+      { name: '止血顆粒 1g', category: 'Hemostasis', qty: 2, rev: 16900, weighted: 16096 },
+      { name: '塞納斯', category: 'Adhesion Prevention', qty: 1, rev: 12000, weighted: 11429 },
+    ],
+    '長庚土城': [ // 整院 應收 140,200 / 加權 125,409
+      { name: '止血顆粒 3g', category: 'Hemostasis', qty: 6, rev: 85200, weighted: 73028 },
+      { name: '宮安康', category: 'Adhesion Prevention', qty: 5, rev: 55000, weighted: 52381 },
+    ],
+  },
 };
 
 // 共跑醫院的「本人業績」：來自檔名含 Mars 的個人報表中，台北慈濟／長庚土城的紀錄。
@@ -622,13 +681,17 @@ export const SHARED_AUTO: Record<string, Record<string, HospProdEntry[]>> = {
   '2026-10': {
     // 3DMAX LIGHT ×5、速巴定 ×2 是 9 月使用、9/8・9/15 發票，但慈濟這兩項供貨合約在原廠，
     // 公司較晚收到訂單 → 公司算 Q4（10 月報表）業績，故歸 10 月，不回填 9 月。
-    '台北慈濟': [ // 本人業績 應收 256,195 / 加權 240,592
+    '台北慈濟': [ // 本人業績 應收 256,195 / 加權 240,592（1104 更新檔）＋晚到 29,763 / 28,346
       { name: '止血顆粒 3g', category: 'Hemostasis', qty: 10, rev: 147000, weighted: 140000 },
       { name: '3DMAX LIGHT', category: 'Hernia', qty: 5, rev: 32380, weighted: 30838 },
       { name: '宮安康', category: 'Adhesion Prevention', qty: 2, rev: 26000, weighted: 24762 },
       { name: '止血顆粒 5g', category: 'Hemostasis', qty: 1, rev: 24500, weighted: 23333 },
       { name: '速巴定', category: 'Hernia', qty: 2, rev: 17865, weighted: 13611 },
       { name: '止血顆粒 1g', category: 'Hemostasis', qty: 1, rev: 8450, weighted: 8048 },
+      // 以下 2 筆是 10 月發票（10/13、10/28）晚到、出現在 11 月個人報表 `20261101-05Mars.xlsx`，
+      // 同季內 → 歸發票月 10 月；10 月整院檔沒有這兩項，不重疊
+      { name: 'Ventralex ST', category: 'Hernia', qty: 2, rev: 23287, weighted: 22178 },
+      { name: '3DMAX LIGHT', category: 'Hernia', qty: 1, rev: 6476, weighted: 6168 },
     ],
     '長庚土城': [ // 本人業績 應收 50,960 / 加權 48,533
       { name: '止血顆粒 1g', category: 'Hemostasis', qty: 7, rev: 50960, weighted: 48533 },
