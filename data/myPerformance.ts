@@ -605,16 +605,20 @@ export const SHARED_PERFORMANCE: Record<string, Record<string, HospProdEntry[]>>
       { name: 'IS-HELICO', category: 'Urinary Incontinence', qty: 2, rev: 18874, weighted: 17975 },
     ],
   },
-  '2026-11': {  // 11/1–11/5（未定案）
-    '台北慈濟': [ // 整院 應收 190,000 / 加權 180,954
-      { name: '宮安康', category: 'Adhesion Prevention', qty: 9, rev: 117000, weighted: 111429 },
-      { name: '止血顆粒 3g', category: 'Hemostasis', qty: 3, rev: 44100, weighted: 42000 },
-      { name: '止血顆粒 1g', category: 'Hemostasis', qty: 2, rev: 16900, weighted: 16096 },
-      { name: '塞納斯', category: 'Adhesion Prevention', qty: 1, rev: 12000, weighted: 11429 },
+  '2026-11': {  // 11/1–11/12（未定案）
+    '台北慈濟': [ // 整院 應收 311,650 / 加權 296,810
+      { name: '宮安康', category: 'Adhesion Prevention', qty: 13, rev: 169000, weighted: 160952 },
+      { name: '止血顆粒 3g', category: 'Hemostasis', qty: 4, rev: 58800, weighted: 56000 },
+      { name: '塞納斯', category: 'Adhesion Prevention', qty: 3, rev: 36000, weighted: 34286 },
+      { name: '止血顆粒 1g', category: 'Hemostasis', qty: 3, rev: 25350, weighted: 24143 },
+      { name: '宮安康 10ML', category: 'Adhesion Prevention', qty: 1, rev: 22500, weighted: 21429 },
     ],
-    '長庚土城': [ // 整院 應收 140,200 / 加權 125,409
-      { name: '止血顆粒 3g', category: 'Hemostasis', qty: 6, rev: 85200, weighted: 73028 },
-      { name: '宮安康', category: 'Adhesion Prevention', qty: 5, rev: 55000, weighted: 52381 },
+    '長庚土城': [ // 整院 應收 262,275 / 加權 237,614
+      { name: '止血顆粒 3g', category: 'Hemostasis', qty: 9, rev: 127800, weighted: 109543 },
+      { name: '宮安康', category: 'Adhesion Prevention', qty: 8, rev: 88000, weighted: 83810 },
+      { name: 'P-STOP-8', category: 'Urinary Incontinence', qty: 1, rev: 38200, weighted: 36381 },
+      { name: '止血顆粒 1g', category: 'Hemostasis', qty: 1, rev: 7280, weighted: 6933 },
+      { name: '賀邁補', category: 'Hernia', qty: 1, rev: 995, weighted: 948 },
     ],
   },
 };
