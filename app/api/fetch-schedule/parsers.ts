@@ -23,22 +23,14 @@ function stripTags(html: string) {
 }
 
 // ── TMUH 北醫附醫 ────────────────────────────────────────────────────────
-const TMUH_DEPT_PAGES: [string, string][] = [['08', 'GU']];
-const TMUH_ENT: [string, string][] = [
-  ['林哲玄','09/090227'],['李飛鵬','09/090132'],['張廷碩','09/090233'],
-  ['陳彥均','09/090238'],['陳資穎','09/090137'],['葉啟偉','09/090135'],
-  ['薛如茵','09/090004'],['林飛麟','09/090123'],['趙品植','09/090209'],['周揚','09/090011'],
-];
-const TMUH_GS: [string, string][] = [
-  ['黃昱閔','BW/030042'],['王偉','BW/031009'],['湯堯舜','BW/030087'],
-  ['林雨寧','BW/030114'],['陳瑞杰','BW/031023'],['周大鈞','BW/031032'],
-  ['黃彥鈞','BA/032044'],['魏柏立','BA/031008'],['郭立人','BA/030032'],['王偉林','BA/030085'],
-];
+// 各科都直接掃科別掛號頁（不再寫死醫師名單逐一抓個人頁，新進醫師才不會漏）。
 // 婦產科橫跨三個掛號科別：052 婦科、053 產科、054 生殖醫學科。
 // 同一位醫師可能同時掛在多科，而且**各科頁面列出的診次不一定相同**
 // （例：傅皓聲的週一晚診只出現在 053 產科頁），所以要三頁都抓、取聯集。
-// 原本寫死醫師名單逐一抓個人頁，會漏掉沒列進名單的科別 → 改為直接掃科別頁。
-const TMUH_GYN_PAGES = ['052', '053', '054'];
+const TMUH_DEPT_PAGES: [string, string][] = [
+  ['08', 'GU'], ['09', 'ENT'], ['BW', 'GS'],
+  ['052', 'GYN'], ['053', 'GYN'], ['054', 'GYN'],
+];
 
 /**
  * 解析北醫「科別掛號頁」。以 <a name="doc_XXXX"> 切出每位醫師的區塊，
@@ -53,7 +45,7 @@ function parseTmuhDeptPage(html: string, dept: string, seen: Set<string>): Clini
     const nm = seg.match(/<p class="doctor_name">\s*([\s\S]*?)\s*(?:<a |<!--)/);
     if (!nm) continue;
     const raw = nm[1].replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim();
-    const doctor = raw.split(/[(（\-]/)[0].trim().replace(/　| /g, '');
+    const doctor = raw.split(/[(（\-]/)[0].trim().replace(/　| /g, '').replace(/(副院長|院長|主任|醫師)$/, '');
     if (doctor.length < 2) continue;
 
     const days = [...seg.slice(0, 4500).matchAll(/星期([一二三四五六日])/g)]
@@ -75,83 +67,16 @@ function parseTmuhDeptPage(html: string, dept: string, seen: Set<string>): Clini
   return clinics;
 }
 
-function parseTmuhIndividual(html: string, doctorName: string, dept: string, seen: Set<string>): Clinic[] {
-  const cells: string[] = [];
-  const re = /class="col-sm-2 col-xs-2 col-1_4"[^>]*>([\s\S]*?)<\/div>/g;
-  let m;
-  while ((m = re.exec(html)) !== null) {
-    cells.push(stripTags(m[1]));
-  }
-  if (cells.length < 8) return [];
-  const dayHeaders = cells.slice(0, 7).map(cell => {
-    const dm = cell.match(/星期([一二三四五六日])/);
-    return dm ? (DAY_CN[dm[1]] ?? -1) : -1;
-  });
-  const sessions = ['早', '午', '晚'] as const;
-  const clinics: Clinic[] = [];
-  const sessionCells = cells.slice(7);
-  for (let si = 0; si < 3; si++) {
-    const session = sessions[si];
-    const group = sessionCells.slice(si * 7, (si + 1) * 7);
-    for (let col = 0; col < dayHeaders.length; col++) {
-      const dow = dayHeaders[col];
-      if (dow < 0) continue;
-      let rem = group[col] ?? '';
-      for (const s of sessions) rem = rem.replace(s, '').trim();
-      if (rem.length >= 2) {
-        const key = `${doctorName}_${dow}_${session}`;
-        if (!seen.has(key)) { seen.add(key); clinics.push({ doctor: doctorName, department: dept, dayOfWeek: dow, session }); }
-      }
-    }
-  }
-  return clinics;
-}
-
-function parseTmuhDept(html: string, dept: string, seen: Set<string>): Clinic[] {
-  const clinics: Clinic[] = [];
-  const blocks = html.split(/<p class="doctor_name">/);
-  for (const block of blocks) {
-    const nm = block.match(/^\s*([一-鿿 ()（）]{2,8})\s*(?:醫師\s*)?<!--[\s\S]*?-->\s*<\/p>/s);
-    if (!nm) continue;
-    const raw = nm[1].trim();
-    const doctor = raw.replace(/[（(].+/, '').trim().replace(/　| /g, '');
-    if (doctor.length < 2) continue;
-    const calM = block.match(/d_calandar">([\s\S]*?)(?=<p class="doctor_name">|$)/s);
-    if (!calM) continue;
-    clinics.push(...parseTmuhIndividual(calM[1], doctor, dept, seen));
-  }
-  return clinics;
-}
-
 export async function parseTmuh(): Promise<ParseResult> {
   const seen = new Set<string>();
   const all: Clinic[] = [];
-  const BASE = 'https://www.tmuh.org.tw/service/regist';
-  const REF = 'https://www.tmuh.org.tw/';
-
-  // GU dept page
-  for (const [code, dept] of TMUH_DEPT_PAGES) {
-    const html = await fetchHtml(`${BASE}/${code}`, REF);
-    if (html) all.push(...parseTmuhDept(html, dept, seen));
-  }
-  // 婦產科：三個科別頁取聯集（seen 會自動去重）
-  for (const code of TMUH_GYN_PAGES) {
-    const html = await fetchHtml(`${BASE}/${code}`, REF);
-    if (html) all.push(...parseTmuhDeptPage(html, 'GYN', seen));
-  }
-  // Individual pages (parallel batches of 5)
-  const allDocs: [string, string, string][] = [
-    ...TMUH_ENT.map(([n, p]) => [n, p, 'ENT'] as [string, string, string]),
-    ...TMUH_GS.map(([n, p]) => [n, p, 'GS'] as [string, string, string]),
-  ];
-  for (let i = 0; i < allDocs.length; i += 5) {
-    const batch = allDocs.slice(i, i + 5);
-    const htmls = await Promise.all(batch.map(([, path]) => fetchHtml(`${BASE}/${path}`, REF)));
-    for (let j = 0; j < batch.length; j++) {
-      const [name, , dept] = batch[j];
-      if (htmls[j]) all.push(...parseTmuhIndividual(htmls[j], name, dept, seen));
-    }
-  }
+  const htmls = await Promise.all(TMUH_DEPT_PAGES.map(([code]) =>
+    fetchHtml(`https://www.tmuh.org.tw/service/regist/${code}`, 'https://www.tmuh.org.tw/')
+  ));
+  // 依序解析，seen 去重（同一診次在婦產三頁重複出現只算一次）
+  TMUH_DEPT_PAGES.forEach(([, dept], i) => {
+    if (htmls[i]) all.push(...parseTmuhDeptPage(htmls[i], dept, seen));
+  });
   return { clinics: all, news: [] };
 }
 
@@ -244,43 +169,40 @@ export async function parseTucheng(): Promise<ParseResult> {
 }
 
 // ── 聖保祿 ────────────────────────────────────────────────────────────────
-const SPH_DEPTS: Record<string, string[]> = {
-  GYN: ['婦產科','婦產'], GU: ['泌尿\n外科','泌尿外科','泌尿'],
-  GS:  ['一\n般\n外\n科','一般外科','一般\n外科'], ENT: ['耳鼻喉科','耳鼻喉'],
-};
+// 掛號系統 rms.sph.org.tw（跟長庚同一套）：每科一頁、約一個月逐日的上午／下午／夜間，
+// 醫師名前有 5 碼編號（例：11034丘建新）。取聯集當每週固定班表，停診照樣算固定診。
+const SPH_DEPTS: Record<string, string> = { S7000A: 'GYN', S2100A: 'GS', S2600A: 'GU', S3500A: 'ENT' };
 
-export async function parseSph(): Promise<ParseResult> {
-  const html = await fetchHtml('https://www.sph.org.tw/registration/registration-online-home.html');
-  if (!html) return { clinics: [], news: [] };
-  const seen = new Set<string>();
-  const all: Clinic[] = [];
-  // find department sections in the HTML table structure
-  const rows = [...html.matchAll(/<tr[^>]*>([\s\S]*?)<\/tr>/gi)].map(r => stripTags(r[1]));
-  let currentDept = '';
-  let currentDoc = '';
-  const DOW_MAP: Record<string, number> = { '一': 1, '二': 2, '三': 3, '四': 4, '五': 5, '六': 6, '日': 0 };
-  for (const row of rows) {
-    // Check if this row contains a department name
-    for (const [dept, patterns] of Object.entries(SPH_DEPTS)) {
-      if (patterns.some(p => row.includes(p.replace(/\n/g, '')))) { currentDept = dept; break; }
-    }
-    if (!currentDept) continue;
-    // Doctor name pattern
-    const docM = row.match(/^([一-鿿]{2,5})\s/);
-    if (docM) currentDoc = docM[1];
-    if (!currentDoc) continue;
-    // Day + session
-    const dayM = row.match(/([一二三四五六日])[^\s]*(早|上午|午|下午|晚)/);
-    if (dayM) {
-      const dow = DOW_MAP[dayM[1]] ?? -1;
-      const sessRaw = dayM[2];
-      const session: '早'|'午'|'晚' = sessRaw === '早' || sessRaw === '上午' ? '早' : sessRaw === '午' || sessRaw === '下午' ? '午' : '晚';
-      if (dow >= 0) {
-        const key = `${currentDoc}_${dow}_${session}`;
-        if (!seen.has(key)) { seen.add(key); all.push({ doctor: currentDoc, department: currentDept, dayOfWeek: dow, session }); }
+function parseSphPage(html: string, dept: string, seen: Set<string>): Clinic[] {
+  const clinics: Clinic[] = [];
+  const i = html.indexOf('class="tableStyle"');
+  if (i < 0) return clinics;
+  for (const row of html.slice(i).matchAll(/<tr[^>]*>([\s\S]*?)<\/tr>/gi)) {
+    const tds = [...row[1].matchAll(/<td[^>]*>([\s\S]*?)<\/td>/gi)].map(m => m[1]);
+    const dayM = stripTags(tds[0] ?? '').match(/星期([一二三四五六日])/);
+    if (!dayM || tds.length < 4) continue;
+    const dow = DAY_CN[dayM[1]];
+    for (let col = 0; col < 3; col++) {
+      const session = (['早', '午', '晚'] as const)[col];
+      for (const m of stripTags(tds[col + 1]).matchAll(/\d{5}([一-鿿]{2,4})/g)) {
+        const key = `${m[1]}_${dow}_${session}`;
+        if (!seen.has(key)) { seen.add(key); clinics.push({ doctor: m[1], department: dept, dayOfWeek: dow, session }); }
       }
     }
   }
+  return clinics;
+}
+
+export async function parseSph(): Promise<ParseResult> {
+  const seen = new Set<string>();
+  const all: Clinic[] = [];
+  const entries = Object.entries(SPH_DEPTS);
+  const htmls = await Promise.all(entries.map(([code]) =>
+    fetchHtml(`https://rms.sph.org.tw/RMSTimeTable.aspx?dpt=${code}`)
+  ));
+  entries.forEach(([, dept], i) => {
+    if (htmls[i]) all.push(...parseSphPage(htmls[i], dept, seen));
+  });
   return { clinics: all, news: [] };
 }
 
