@@ -337,31 +337,28 @@ export async function parseGrace(): Promise<ParseResult> {
 }
 
 // ── 台北慈濟 ────────────────────────────────────────────────────────────
-const TZUCHI_DEPTS: Record<string, string> = { '15': 'GU', '03': 'GS' };
+// 新掛號系統 reg-prod：每科一頁，列出約一個月每天的上午／下午／夜間，取聯集當每週固定班表。
+// 停診照樣算固定診（只是那週臨時沒看）；（代診）是別人頂班，不算代診醫師的固定診。
+const TZUCHI_DEPTS: Record<string, string> = { '03': 'GS', '15': 'GU', '52': 'TS', '0020': 'BS' };
+const TZUCHI_PERIOD: Record<string, '早' | '午' | '晚'> = { 上午: '早', 下午: '午', 夜間: '晚' };
 
-async function parseTzuchiBreast(seen: Set<string>): Promise<Clinic[]> {
-  const html = await fetchHtml('https://reg-prod.tzuchi-healthcare.org.tw/tchw/HIS5OpdReg/OpdTimeShow?Pass=XD;0020');
-  if (!html) return [];
+function parseTzuchiDept(html: string, dept: string, seen: Set<string>): Clinic[] {
   const clinics: Clinic[] = [];
   const tableMatch = html.match(/id="MainContent_gvOpdList"[^>]*>([\s\S]*?)<\/table>/);
   if (!tableMatch) return [];
-  const rows = [...tableMatch[1].matchAll(/<tr[^>]*>([\s\S]*?)<\/tr>/gi)].map(r => r[1]);
-  const SESSIONS: ('早' | '午' | '晚')[] = ['早', '午', '晚'];
-  for (const row of rows.slice(1)) {
-    const cells = [...row.matchAll(/<td[^>]*>([\s\S]*?)<\/td>/gi)]
-      .map(c => c[1].replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ').trim());
-    if (cells.length < 2) continue;
-    const dayMatch = cells[0].match(/星期([一二三四五六日])/);
+  for (const row of tableMatch[1].matchAll(/<tr[^>]*>([\s\S]*?)<\/tr>/gi)) {
+    const dayMatch = stripTags(row[1]).match(/星期([一二三四五六日])/);
     if (!dayMatch) continue;
     const dow = DAY_CN[dayMatch[1]];
-    if (dow === undefined) continue;
-    for (let si = 0; si < 3; si++) {
-      const cell = cells[si + 1] ?? '';
-      const session = SESSIONS[si];
-      for (const dm of cell.matchAll(/([一-鿿]{2,4})\s*[（(]/g)) {
-        const name = dm[1];
-        const key = `${name}_${dow}_${session}`;
-        if (!seen.has(key)) { seen.add(key); clinics.push({ doctor: name, department: 'BS', dayOfWeek: dow, session }); }
+    for (const td of row[1].matchAll(/<td data-period="([^"]+)"[^>]*>([\s\S]*?)<\/td>/gi)) {
+      const session = TZUCHI_PERIOD[td[1]];
+      if (!session) continue;
+      for (const entry of td[2].matchAll(/<div class='opd-schedule-entry'>([\s\S]*?)<\/div>/gi)) {
+        if (entry[1].includes('代診')) continue;
+        const nameM = stripTags(entry[1].split('<span')[0]).match(/^[一-鿿]{2,4}/);
+        if (!nameM) continue;
+        const key = `${nameM[0]}_${dow}_${session}`;
+        if (!seen.has(key)) { seen.add(key); clinics.push({ doctor: nameM[0], department: dept, dayOfWeek: dow, session }); }
       }
     }
   }
@@ -371,12 +368,10 @@ async function parseTzuchiBreast(seen: Set<string>): Promise<Clinic[]> {
 export async function parseTzuchi(): Promise<ParseResult> {
   const seen = new Set<string>();
   const all: Clinic[] = [];
-  for (const [divNo, dept] of Object.entries(TZUCHI_DEPTS)) {
-    const url = `http://59.120.35.134/NetReg/KReg/DoctorList.aspx?Func=Query&DivInfo=${divNo}`;
-    const html = await fetchHtml(url);
-    if (html) all.push(...parseClinicTable(html, dept, seen));
+  for (const [code, dept] of Object.entries(TZUCHI_DEPTS)) {
+    const html = await fetchHtml(`https://reg-prod.tzuchi-healthcare.org.tw/tchw/HIS5OpdReg/OpdTimeShow?Pass=XD;${code}`);
+    if (html) all.push(...parseTzuchiDept(html, dept, seen));
   }
-  all.push(...await parseTzuchiBreast(seen));
   return { clinics: all, news: [] };
 }
 
