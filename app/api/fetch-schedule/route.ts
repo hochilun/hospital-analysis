@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { parseHospital } from './parsers';
 
-// 北醫、北慈的掛號網站擋國外 IP，Vercel 預設美國機房抓回來是空的 → 指定在亞洲機房跑
-export const preferredRegion = ['hkg1', 'hnd1'];
 export const maxDuration = 60;
 
 export async function POST(req: NextRequest) {
