@@ -13,7 +13,13 @@ const RATES: Record<string, Record<string, number>> = {
   'P-STOP-8':      { [ALL]: 12000 },
   '3DMAX LIGHT':   { [ALL]: 2000 },
   '3DMax':         { [ALL]: 2000 },
+  // ST 系列疝氣網片一律 2,000／片（2026-11-20 Mars 確認）
   '凡萃拉':        { [ALL]: 2000 },   // Ventralight ST
+  'Ventralight ST': { [ALL]: 2000 },
+  'Ventralex ST':  { [ALL]: 2000 },
+  '凡提拉斯特':    { [ALL]: 2000 },   // Ventralex ST
+  'Ventrio ST':    { [ALL]: 2000 },
+  '凡萃歐絲提':    { [ALL]: 2000 },   // Ventrio ST
   '止血顆粒 1g':   { [ALL]: 2500 },
   '止血顆粒 5g':   { [ALL]: 7500 },
   // 止血顆粒 3g：沙爾德聖（聖保祿）與長庚土城為 4,500 的例外院價
@@ -24,7 +30,7 @@ const RATES: Record<string, Record<string, number>> = {
   '止血塗佈器 14cm': { '恩主公': 1500, '宏恩醫療': 1500, '中心診所': 1500 },
 };
 
-// 無贊助：賀邁補、速巴定、IS-1、IS-6、IS-HELICO、IS-TOMS、凡提拉斯特、凡萃歐絲提
+// 無贊助：賀邁補、速巴定、IS-1、IS-6、IS-HELICO、IS-TOMS
 
 // 醫師別例外單價（優先於醫院／通用單價）
 const DOCTOR_RATES: Record<string, Record<string, number>> = {
