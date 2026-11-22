@@ -12,7 +12,8 @@ import { TODO_KINDS } from '@/lib/strategy';
 const SHOW_N = 8;
 const HOSP_SHORT = Object.fromEntries(HOSPITALS.map(h => [h.id, h.shortName]));
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2);
-const todayIso = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
+const localIso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+const todayIso = () => localIso(new Date());
 const daysFromToday = (iso: string) => Math.round((new Date(iso + 'T00:00:00').getTime() - new Date(todayIso() + 'T00:00:00').getTime()) / 86_400_000);
 
 function dueLabel(due?: string): { text: string; cls: string } | null {
@@ -113,7 +114,7 @@ export default function CustomerTodosPanel({ onChanged, className = '' }: { onCh
           {list.map(r => {
             const dl = dueLabel(r.t.due);
             const kind = r.t.kind && r.t.kind !== 'other' ? TODO_KINDS.find(k => k.key === r.t.kind)?.label : null;
-            const age = -daysFromToday(r.t.createdAt.slice(0, 10));
+            const age = -daysFromToday(localIso(new Date(r.t.createdAt)));   // createdAt 是 UTC，換回本地日期
             return (
               <li key={r.t.id} className="flex items-start gap-2.5 py-2">
                 <input type="checkbox" onChange={() => done(r)} title="完成" className="mt-1 w-4 h-4 accent-emerald-600 shrink-0" />
