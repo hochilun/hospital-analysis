@@ -109,7 +109,7 @@ export default function CustomerDetailPage() {
   const [showClinicForm, setShowClinicForm] = useState(false);
   const [clinicDraft, setClinicDraft] = useState<ExtraClinicSlot>({ location: '', dayOfWeek: 1, session: '早' });
   const [showTodoForm, setShowTodoForm] = useState(false);
-  const emptyTodo = { title: '', currentStatus: '', nextAction: '', kind: 'other' as NonNullable<TodoItem['kind']>, product: '', notBefore: '' };
+  const emptyTodo = { title: '', currentStatus: '', nextAction: '', kind: 'other' as NonNullable<TodoItem['kind']>, product: '', notBefore: '', due: '' };
   const [todoDraft, setTodoDraft] = useState(emptyTodo);
   const [showDoneTodos, setShowDoneTodos] = useState(false);
   const [editingVisitId, setEditingVisitId] = useState<string | null>(null);
@@ -187,7 +187,7 @@ export default function CustomerDetailPage() {
     if (!doctor || !todoDraft.title.trim()) { alert('請填寫待辦事項'); return; }
     const item: TodoItem = {
       id: uid(), title: todoDraft.title.trim(), currentStatus: todoDraft.currentStatus, nextAction: todoDraft.nextAction,
-      kind: todoDraft.kind, product: todoDraft.product.trim() || undefined, notBefore: todoDraft.notBefore || undefined,
+      kind: todoDraft.kind, product: todoDraft.product.trim() || undefined, notBefore: todoDraft.notBefore || undefined, due: todoDraft.due || undefined,
       source: 'web', createdAt: new Date().toISOString(),
     };
     const updated = { ...doctor, todos: [...(doctor.todos ?? []), item] };
@@ -532,7 +532,7 @@ export default function CustomerDetailPage() {
                   placeholder="例：提送試用申請、跟進審核進度..."
                   className="block mt-1 px-3 py-1.5 border border-gray-200 rounded-lg text-sm text-gray-800 w-full bg-white focus:outline-none" />
               </div>
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-4 gap-2">
                 <div>
                   <label className="text-xs text-gray-500">類型</label>
                   <select value={todoDraft.kind} onChange={e => pickKind(e.target.value as NonNullable<TodoItem['kind']>)}
@@ -549,6 +549,11 @@ export default function CustomerDetailPage() {
                 <div>
                   <label className="text-xs text-gray-500">最早拜訪日</label>
                   <input type="date" value={todoDraft.notBefore} onChange={e => setTodoDraft(d => ({ ...d, notBefore: e.target.value }))}
+                    className="block mt-1 px-2 py-1.5 border border-gray-200 rounded-lg text-sm text-gray-800 w-full bg-white focus:outline-none" />
+                </div>
+                <div>
+                  <label className="text-xs text-gray-500">期限</label>
+                  <input type="date" value={todoDraft.due} onChange={e => setTodoDraft(d => ({ ...d, due: e.target.value }))}
                     className="block mt-1 px-2 py-1.5 border border-gray-200 rounded-lg text-sm text-gray-800 w-full bg-white focus:outline-none" />
                 </div>
               </div>
@@ -574,10 +579,11 @@ export default function CustomerDetailPage() {
             <div className="space-y-3">
               {(doctor.todos ?? []).filter(t => showDoneTodos || !t.done).map(t => (
                 <div key={t.id} className={`border rounded-lg p-3 ${t.done ? 'border-gray-100 bg-gray-50 opacity-60' : 'border-amber-100 bg-amber-50/50'}`}>
-                  {(t.kind && t.kind !== 'other' || t.product || t.notBefore || t.source === 'elon') && (
+                  {(t.kind && t.kind !== 'other' || t.product || t.notBefore || t.due || t.source === 'elon') && (
                     <div className="flex flex-wrap gap-1.5 mb-1.5 text-[11px]">
                       {t.kind && t.kind !== 'other' && <span className="px-1.5 py-0.5 rounded bg-amber-100 text-amber-800">{TODO_KINDS.find(k => k.key === t.kind)?.label}</span>}
                       {t.product && <span className="px-1.5 py-0.5 rounded bg-blue-50 text-blue-700">{t.product}</span>}
+                      {t.due && <span className={`px-1.5 py-0.5 rounded ${!t.done && t.due <= new Date().toISOString().slice(0, 10) ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-600'}`}>{t.due.slice(5).replace('-', '/')} 到期</span>}
                       {t.notBefore && <span className="px-1.5 py-0.5 rounded bg-gray-100 text-gray-600">{t.notBefore.slice(5).replace('-', '/')} 後拜訪</span>}
                       {t.source === 'elon' && <span className="px-1.5 py-0.5 rounded bg-violet-50 text-violet-700">Elon</span>}
                       {t.done && t.doneAt && <span className="px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700">✓ {t.doneAt.slice(5).replace('-', '/')} 完成</span>}

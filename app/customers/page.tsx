@@ -4,13 +4,15 @@ import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { Doctor, DoctorGrade, VisitRecord, ClinicSlot } from '@/types';
 import { visitStatus, freqLabel, VISIT_FREQ_OPTIONS } from '@/lib/visitFrequency';
-import { getDoctors, deleteDoctor, getHospitalStrategies, saveHospitalStrategy, getProducts, getVisits, getHospitalsData, saveDoctor } from '@/lib/storage';
+import { getDoctors, deleteDoctor, getProducts, getVisits, getHospitalsData, saveDoctor } from '@/lib/storage';
 import { DEPT_LABEL } from '@/data/hospitals';
 import { MY_PERFORMANCE, CAT_COLOR } from '@/data/myPerformance';
 import { loadClaims, loadDoctors, effectiveMonth } from '@/lib/perfCore';
 import { buildDoctorPerf, linkDoctors, type DocPerf } from '@/lib/doctorPerf';
 import CustomerInsights from '@/components/CustomerInsights';
 import FollowUpPanel from '@/components/FollowUpPanel';
+import CustomerTodosPanel from '@/components/CustomerTodosPanel';
+import VisitInsightsPanel from '@/components/VisitInsightsPanel';
 import { STRATEGIES, strategyOf } from '@/lib/strategy';
 import { HOSPITALS } from '@/data/hospitals';
 
@@ -73,23 +75,10 @@ function monthlyTotal(monthlyData?: Record<string, number>): number {
 
 // ── 子元件 ────────────────────────────────────────────────
 
-function StrategyField({ hospitalId, initial }: { hospitalId: string; initial: string }) {
-  const [val, setVal] = useState(initial);
-  return (
-    <textarea value={val} onChange={e => setVal(e.target.value)}
-      onBlur={() => saveHospitalStrategy(hospitalId, val.trim())}
-      placeholder="輸入目前對此醫院的主要策略..."
-      rows={2}
-      className="w-full text-sm text-gray-700 placeholder-gray-300 border border-dashed border-gray-200 rounded-lg px-3 py-2 resize-none focus:outline-none focus:border-blue-400 bg-white" />
-  );
-}
-
 // ── 主元件 ────────────────────────────────────────────────
 
 export default function CustomersPage() {
   const [doctors, setDoctors] = useState<Doctor[]>([]);
-  const [strategies, setStrategies] = useState<Record<string, string>>({});
-  const [allProducts, setAllProducts] = useState<{ id: string; name: string }[]>([]);
   const [priceMap, setPriceMap] = useState<Record<string, { base: number; byHosp: Record<string, number> }>>({});
   const [lastVisitMap, setLastVisitMap] = useState<Record<string, VisitRecord>>({});
   const [clinicMap, setClinicMap] = useState<Record<string, string>>({});  // doctorName -> 門診摘要
@@ -106,19 +95,13 @@ export default function CustomersPage() {
   const [filterStrategy, setFilterStrategy] = useState<Set<string>>(new Set());
   const [filterHospitals, setFilterHospitals] = useState<Set<string>>(new Set());
   const [filterDepts, setFilterDepts] = useState<Set<string>>(new Set());
-  const [filterProducts, setFilterProducts] = useState<Set<string>>(new Set());
   const [filterTags, setFilterTags] = useState<Set<string>>(new Set());
   const [search, setSearch] = useState('');
   const [sortBy, setSortBy] = useState<'hospital' | 'revenue' | 'real' | 'visit_desc' | 'visit_asc'>('hospital');
-  const [perDay, setPerDay] = useState(6);  // 每天可拜訪客戶數（產能規劃用，存 localStorage）
 
   useEffect(() => {
-    const pd = localStorage.getItem('visit-capacity-per-day');
-    if (pd) setPerDay(Number(pd) || 6);
     setDoctors(getDoctors());
-    setStrategies(getHospitalStrategies());
     const prods = getProducts();
-    setAllProducts(prods.map(p => ({ id: p.id, name: p.name })));
     const pm: Record<string, { base: number; byHosp: Record<string, number> }> = {};
     for (const p of prods) {
       const v = p.variants[0];
@@ -271,7 +254,6 @@ export default function CustomersPage() {
       if (!ids.some(hid => filterHospitals.has(hid))) return false;
     }
     if (filterDepts.size > 0 && !filterDepts.has(normDept(d.department))) return false;
-    if (filterProducts.size > 0 && !d.productTargets.some(t => filterProducts.has(t.productId))) return false;
     if (filterTags.size > 0 && !([...(d.tags ?? [])].some(tag => filterTags.has(tag)))) return false;
     if (search.trim() && !d.name.includes(search) && !d.hospitalName.includes(search) && !d.department.includes(search)) return false;
     return true;
@@ -301,8 +283,6 @@ export default function CustomersPage() {
     next.has(val) ? next.delete(val) : next.add(val);
     return next;
   }
-
-  const [showStrategies, setShowStrategies] = useState(false);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -336,75 +316,9 @@ export default function CustomersPage() {
           ))}
         </div>
 
-        {/* ── 拜訪頻率規劃儀表板（產能評估）── */}
-        {tab === 'list' && (() => {
-          const FREQS: { days: number; label: string; color: string }[] = [
-            { days: 7,  label: '每週',   color: 'text-red-600' },
-            { days: 14, label: '每兩週', color: 'text-orange-600' },
-            { days: 30, label: '每月',   color: 'text-blue-600' },
-            { days: 90, label: '每季',   color: 'text-violet-600' },
-          ];
-          const countBy = (d: number) => doctors.filter(x => (x.visitFrequencyDays ?? 0) === d).length;
-          const unset = doctors.filter(x => !(x.visitFrequencyDays ?? 0)).length;
-          const weeklyLoad = FREQS.reduce((s, f) => s + countBy(f.days) * (7 / f.days), 0);
-          const capacity = Math.max(perDay, 0) * 5;
-          const util = capacity > 0 ? Math.round((weeklyLoad / capacity) * 100) : 0;
-          const over = weeklyLoad > capacity;
-          const barColor = over ? 'bg-red-500' : util >= 80 ? 'bg-yellow-400' : 'bg-emerald-500';
-          return (
-            <div className="bg-white rounded-xl border border-gray-200 p-5">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-sm font-semibold text-gray-700">拜訪頻率規劃</h2>
-                <div className="flex items-center gap-2 text-xs text-gray-500">
-                  每天可拜訪
-                  <input type="number" min={1} value={perDay}
-                    onChange={e => { const n = Number(e.target.value) || 0; setPerDay(n); localStorage.setItem('visit-capacity-per-day', String(n)); }}
-                    className="w-14 border border-gray-300 rounded-md px-2 py-1 text-center text-gray-800 focus:outline-none focus:ring-1 focus:ring-blue-400" />
-                  位 → 每週量能 <span className="font-bold text-gray-700">{capacity}</span> 位
-                </div>
-              </div>
-
-              <div className="grid grid-cols-5 gap-3 mb-4">
-                {FREQS.map(f => {
-                  const n = countBy(f.days);
-                  const load = n * (7 / f.days);
-                  return (
-                    <div key={f.days} className="rounded-lg border border-gray-100 bg-gray-50/60 p-3 text-center">
-                      <div className="text-xs text-gray-400">{f.label}</div>
-                      <div className={`text-2xl font-black ${f.color}`}>{n}</div>
-                      <div className="text-[11px] text-gray-400 mt-0.5">≈ {load.toFixed(1)} 次/週</div>
-                    </div>
-                  );
-                })}
-                <div className="rounded-lg border border-gray-100 bg-gray-50/60 p-3 text-center">
-                  <div className="text-xs text-gray-400">未設定</div>
-                  <div className="text-2xl font-black text-gray-300">{unset}</div>
-                  <div className="text-[11px] text-gray-300 mt-0.5">未納入規劃</div>
-                </div>
-              </div>
-
-              <div>
-                <div className="flex items-baseline justify-between mb-1.5">
-                  <span className="text-xs text-gray-500">每週所需拜訪量</span>
-                  <span className="text-sm">
-                    <span className={`font-black ${over ? 'text-red-600' : 'text-gray-800'}`}>{weeklyLoad.toFixed(1)}</span>
-                    <span className="text-gray-400"> / {capacity} 位　({util}%)</span>
-                  </span>
-                </div>
-                <div className="h-3 bg-gray-100 rounded-full overflow-hidden">
-                  <div className={`h-full rounded-full transition-all ${barColor}`} style={{ width: `${Math.min(util, 100)}%` }} />
-                </div>
-                <p className={`text-xs mt-1.5 font-medium ${over ? 'text-red-600' : util >= 80 ? 'text-yellow-600' : 'text-emerald-600'}`}>
-                  {over
-                    ? `⚠️ 已超過量能 ${(weeklyLoad - capacity).toFixed(1)} 位／週，建議降低部分客戶頻率或減少客戶數`
-                    : util >= 80
-                      ? `接近滿載，量能還剩 ${(capacity - weeklyLoad).toFixed(1)} 位／週`
-                      : `✓ 規劃合理，量能還有 ${(capacity - weeklyLoad).toFixed(1)} 位／週`}
-                </p>
-              </div>
-            </div>
-          );
-        })()}
+        {/* ── 客戶待辦（秘書）＋ 拜訪洞察 ── */}
+        {tab === 'list' && mounted && <CustomerTodosPanel onChanged={reload} />}
+        {tab === 'list' && mounted && <VisitInsightsPanel doctors={doctors} visits={allVisits} onChanged={reload} />}
 
         {/* ── 需跟進客戶：本週優先＋依醫院分組＋頻率檢視 ── */}
         {tab === 'list' && mounted && (
@@ -427,31 +341,6 @@ export default function CustomersPage() {
               通常是業績頁輸入醫師時選錯字。到 <Link href="/performance" className="underline">業績報表</Link> 把名字改成與這裡一致即可。
             </p>
           </div>
-        )}
-
-        {/* ── 醫院策略 (可折疊) ── */}
-        {tab === 'list' && (
-        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-          <button onClick={() => setShowStrategies(v => !v)}
-            className="w-full flex items-center justify-between px-5 py-3 text-sm font-semibold text-gray-700 hover:bg-gray-50">
-            醫院策略
-            <span className="text-gray-400 text-xs">{showStrategies ? '▲ 收起' : '▼ 展開'}</span>
-          </button>
-          {showStrategies && (
-            <div className="border-t border-gray-100 divide-y divide-gray-100">
-              {HOSPITALS.map(hospital => (
-                <div key={hospital.id} className="px-5 py-3">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm font-medium text-gray-700">{hospital.name}</span>
-                    <Link href={`/customers/new?hospitalId=${hospital.id}`}
-                      className="text-xs text-blue-600 hover:underline">＋ 新增醫師</Link>
-                  </div>
-                  <StrategyField hospitalId={hospital.id} initial={strategies[hospital.id] ?? ''} />
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
         )}
 
         {/* ── 篩選器（兩個分頁共用，圖表與清單吃同一組條件）── */}
@@ -557,25 +446,6 @@ export default function CustomersPage() {
                     filterDepts.has(d) ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
                   }`}>
                   {DEPT_LABEL[d] ?? d}
-                </button>
-              ))}
-            </div>
-          )}
-
-          {/* 產品 */}
-          {allProducts.length > 0 && (
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="text-xs text-gray-400 w-8 shrink-0">產品</span>
-              <button onClick={() => setFilterProducts(new Set())}
-                className={`px-3 py-1 rounded-full text-xs font-medium ${filterProducts.size === 0 ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}>
-                全選
-              </button>
-              {allProducts.map(p => (
-                <button key={p.id} onClick={() => setFilterProducts(prev => toggleSet(prev, p.id))}
-                  className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
-                    filterProducts.has(p.id) ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
-                  }`}>
-                  {p.name}
                 </button>
               ))}
             </div>

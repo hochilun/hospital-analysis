@@ -10,6 +10,7 @@ import PersonalCalendar from '@/components/PersonalCalendar';
 import { getDoctors } from '@/lib/storage';
 import { pullFromCloud, syncAllFromCloud, pushToCloud } from '@/lib/supabase';
 import GlobalTodosPanel from '@/components/GlobalTodosPanel';
+import CustomerTodosPanel from '@/components/CustomerTodosPanel';
 
 const VALID_DEPTS = new Set(['GYN', 'GU', 'GS', 'ENT', 'TS', 'BS']);
 
@@ -299,6 +300,7 @@ export default function Home() {
       </div>
 
       <div className="max-w-6xl mx-auto px-6 py-6">
+        <CustomerTodosPanel className="mb-6" />
         <GlobalTodosPanel />
 
         {/* 科別複選 */}

@@ -75,6 +75,7 @@ export type TodoItem = {
   kind?: 'sample' | 'pm' | 'material' | 'other';
   product?: string;      // 相關產品
   notBefore?: string;    // 最早可拜訪日（YYYY-MM-DD，準備期）
+  due?: string;          // 期限（YYYY-MM-DD，選填；客戶待辦面板依此排序）
   done?: boolean;
   doneAt?: string;
   source?: 'web' | 'elon';
