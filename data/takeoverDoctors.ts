@@ -2,7 +2,7 @@
 // 來源：Mars 提供的 輔大.xlsx（2026-11-03），2026/1/7–10/28 共 195 筆（拆品項後）。
 // 換算：「Arista Xg+tip」＝Xg ×1＋塗佈器 ×1；「mesh／3D mesh light」＝3DMAX LIGHT；5950xxx＝Ventralex ST、5954xxx＝Ventralight ST
 // 「Ventralight （5950007）」依型號算 Ventralex ST；「游浩鈞」視為游皓鈞；「呂彥峰」依官網改為呂彥鋒。
-// 2026-11 起為 Mars 接手後的使用：Mars 截院內耗材系統畫面提供（MTTZ03BAH1＝Arista 1g、MTTZ03BAH3＝Arista 3g、MTTZ03BA14／MTTZ03AA38＝塗佈器 14／38cm、MFSZ02BL53＝3DMAX LIGHT），不記病患資料。
+// 2026-11 起為 Mars 接手後的使用：Mars 截院內耗材系統畫面提供（MTTZ03BAH1＝Arista 1g、MTTZ03BAH3＝Arista 3g、MTTZ03BA14／MTTZ03AA38＝塗佈器 14／38cm、MFSZ02BL53／BR53＝3DMAX LIGHT 左／右），不記病患資料。
 import { TAKEOVER_ROWS } from './takeoverHistory';
 
 export type DoctorUse = { date: string; doctor: string; product: string; qty: number; raw: string };
@@ -240,6 +240,7 @@ export const FJU_DOCTOR_USES: DoctorUse[] = [
   { date: '2026-11-04', doctor: '胡皓淳', product: 'Arista 3g', qty: 1, raw: 'MTTZ03BAH3' },
   { date: '2026-11-04', doctor: '張文君', product: 'Arista 3g', qty: 1, raw: 'MTTZ03BAH3' },
   { date: '2026-11-04', doctor: '張文君', product: 'Arista 塗佈器', qty: 1, raw: 'MTTZ03AA38' },
+  { date: '2026-11-10', doctor: '蔡易展', product: '3DMAX LIGHT', qty: 1, raw: 'MFSZ02BR53' },
   { date: '2026-11-11', doctor: '胡皓淳', product: 'Arista 3g', qty: 1, raw: 'MTTZ03BAH3' },
   { date: '2026-11-11', doctor: '胡皓淳', product: 'Arista 塗佈器', qty: 1, raw: 'MTTZ03BA14' },
   { date: '2026-11-11', doctor: '游皓鈞', product: 'Arista 1g', qty: 1, raw: 'MTTZ03BAH1' },
