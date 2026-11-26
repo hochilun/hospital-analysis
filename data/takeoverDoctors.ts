@@ -2,12 +2,12 @@
 // 來源：Mars 提供的 輔大.xlsx（2026-11-03），2026/1/7–10/28 共 195 筆（拆品項後）。
 // 換算：「Arista Xg+tip」＝Xg ×1＋塗佈器 ×1；「mesh／3D mesh light」＝3DMAX LIGHT；5950xxx＝Ventralex ST、5954xxx＝Ventralight ST
 // 「Ventralight （5950007）」依型號算 Ventralex ST；「游浩鈞」視為游皓鈞；「呂彥峰」依官網改為呂彥鋒。
-// 2026-11 起為 Mars 接手後的使用：Mars 截院內耗材系統畫面提供（MTTZ03BAH3＝Arista 3g、MTTZ03AA38＝塗佈器），不記病患資料。
+// 2026-11 起為 Mars 接手後的使用：Mars 截院內耗材系統畫面提供（MTTZ03BAH1＝Arista 1g、MTTZ03BAH3＝Arista 3g、MTTZ03BA14／MTTZ03AA38＝塗佈器 14／38cm、MFSZ02BL53＝3DMAX LIGHT），不記病患資料。
 import { TAKEOVER_ROWS } from './takeoverHistory';
 
 export type DoctorUse = { date: string; doctor: string; product: string; qty: number; raw: string };
 
-export const FJU_DOCTOR_AS_OF = '2026-11-04';
+export const FJU_DOCTOR_AS_OF = '2026-11-25';
 
 // Mars 接手後的使用從這天算；輔大月結、發票晚一個月（11 月使用＝12 月發票）
 export const FJU_MINE_FROM = '2026-11-01';
@@ -35,7 +35,7 @@ export function fjuPendingWeighted(month: string): number {
 }
 
 // 科別：取自輔大官網門診表（CRS＝大腸直腸外科、CVS＝心臟血管外科）；查不到的留空
-export const FJU_DOCTOR_DEPT: Record<string, string> = { '胡皓淳': 'ENT', '張邦彥': 'ENT', '巫清隆': 'ENT', '林聖傑': 'GS', '黃家偉': 'GS', '劉惠珊': 'GYN', '廖守富': 'CRS', '蔡易展': 'CRS', '陳相智': 'CRS', '呂彥鋒': 'GYN', '游皓鈞': 'CVS', '張文君': 'GYN' };
+export const FJU_DOCTOR_DEPT: Record<string, string> = { '胡皓淳': 'ENT', '張邦彥': 'ENT', '巫清隆': 'ENT', '林聖傑': 'GS', '黃家偉': 'GS', '劉惠珊': 'GYN', '廖守富': 'CRS', '蔡易展': 'CRS', '陳相智': 'CRS', '呂彥鋒': 'GYN', '游皓鈞': 'CVS', '張文君': 'GYN', '藍祺昀': 'GU', '余育明': 'CVS' };
 
 // 醫師備註（顯示在姓名旁）
 export const FJU_DOCTOR_NOTE: Record<string, string> = { '張文君': '台大醫院婦產科，偶爾來輔大開刀' };
@@ -240,4 +240,18 @@ export const FJU_DOCTOR_USES: DoctorUse[] = [
   { date: '2026-11-04', doctor: '胡皓淳', product: 'Arista 3g', qty: 1, raw: 'MTTZ03BAH3' },
   { date: '2026-11-04', doctor: '張文君', product: 'Arista 3g', qty: 1, raw: 'MTTZ03BAH3' },
   { date: '2026-11-04', doctor: '張文君', product: 'Arista 塗佈器', qty: 1, raw: 'MTTZ03AA38' },
+  { date: '2026-11-11', doctor: '胡皓淳', product: 'Arista 3g', qty: 1, raw: 'MTTZ03BAH3' },
+  { date: '2026-11-11', doctor: '胡皓淳', product: 'Arista 塗佈器', qty: 1, raw: 'MTTZ03BA14' },
+  { date: '2026-11-11', doctor: '游皓鈞', product: 'Arista 1g', qty: 1, raw: 'MTTZ03BAH1' },
+  { date: '2026-11-13', doctor: '余育明', product: 'Arista 1g', qty: 1, raw: 'MTTZ03BAH1' },
+  { date: '2026-11-13', doctor: '張邦彥', product: 'Arista 3g', qty: 1, raw: 'MTTZ03BAH3' },
+  { date: '2026-11-13', doctor: '張邦彥', product: 'Arista 塗佈器', qty: 1, raw: 'MTTZ03BA14' },
+  { date: '2026-11-18', doctor: '胡皓淳', product: 'Arista 3g', qty: 1, raw: 'MTTZ03BAH3' },
+  { date: '2026-11-18', doctor: '胡皓淳', product: 'Arista 塗佈器', qty: 1, raw: 'MTTZ03BA14' },
+  { date: '2026-11-18', doctor: '張文君', product: 'Arista 3g', qty: 1, raw: 'MTTZ03BAH3' },
+  { date: '2026-11-18', doctor: '張文君', product: 'Arista 塗佈器', qty: 1, raw: 'MTTZ03AA38' },
+  { date: '2026-11-24', doctor: '藍祺昀', product: 'Arista 1g', qty: 1, raw: 'MTTZ03BAH1' },
+  { date: '2026-11-24', doctor: '蔡易展', product: '3DMAX LIGHT', qty: 1, raw: 'MFSZ02BL53' },
+  { date: '2026-11-25', doctor: '胡皓淳', product: 'Arista 3g', qty: 1, raw: 'MTTZ03BAH3' },
+  { date: '2026-11-25', doctor: '胡皓淳', product: 'Arista 塗佈器', qty: 1, raw: 'MTTZ03BA14' },
 ];
