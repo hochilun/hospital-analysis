@@ -8,6 +8,7 @@ import { MY_PERFORMANCE } from '@/data/myPerformance';
 import { DEPT_LABEL } from '@/data/hospitals';
 import { loadClaims } from '@/lib/perfCore';
 import { saveDoctor } from '@/lib/storage';
+import { syncAllFromCloud } from '@/lib/supabase';
 import { strategyOf } from '@/lib/strategy';
 import { buildInsightInput, computeInsights, type Insight, type InsightKind } from '@/lib/visitInsights';
 
@@ -24,6 +25,24 @@ export default function VisitInsightsPanel({ doctors, visits, onChanged }: {
   doctors: Doctor[]; visits: VisitRecord[]; onChanged: () => void;
 }) {
   const [expanded, setExpanded] = useState<Set<InsightKind>>(new Set());
+  const [busy, setBusy] = useState(false);
+  const [at, setAt] = useState(() => new Date());
+
+  // 每次載入頁面、或拜訪紀錄／醫師資料變動都會重算；按鈕是給「別處（手機、Elon）剛記了拜訪」時，不用整頁重整就拉雲端最新
+  const refresh = async () => {
+    setBusy(true);
+    await syncAllFromCloud();
+    onChanged();
+    setAt(new Date());
+    setBusy(false);
+  };
+
+  // 每位醫師最近一次拜訪的內容（近況）
+  const lastNote = useMemo(() => {
+    const m: Record<string, VisitRecord> = {};
+    for (const v of visits) if (v.content?.trim() && (!m[v.doctorId] || v.date > m[v.doctorId].date)) m[v.doctorId] = v;
+    return m;
+  }, [visits]);
 
   const byKind = useMemo(() => {
     const input = buildInsightInput(MY_PERFORMANCE, loadClaims(), doctors);
@@ -45,7 +64,14 @@ export default function VisitInsightsPanel({ doctors, visits, onChanged }: {
     <div className="bg-white rounded-xl border border-gray-200 p-5">
       <div className="flex items-baseline justify-between mb-3">
         <h2 className="text-sm font-semibold text-gray-900">🔎 拜訪洞察</h2>
-        <span className="text-[11px] text-gray-400">拜訪紀錄 × 醫師業績，月為單位；當月醫師歸屬未填完的不算「沒業績」</span>
+        <div className="flex items-center gap-2">
+          <span className="text-[11px] text-gray-400 hidden sm:inline">拜訪紀錄 × 醫師業績，月為單位；當月醫師歸屬未填完的不算「沒業績」</span>
+          <span className="text-[11px] text-gray-400">依 {visits.length} 筆拜訪・{String(at.getHours()).padStart(2, '0')}:{String(at.getMinutes()).padStart(2, '0')} 更新</span>
+          <button onClick={refresh} disabled={busy}
+            className="text-xs px-2 py-0.5 border border-gray-200 rounded-md text-gray-600 hover:border-gray-400 disabled:opacity-50">
+            {busy ? '更新中…' : '↻ 更新'}
+          </button>
+        </div>
       </div>
       <div className="grid sm:grid-cols-2 gap-3">
         {KINDS.map(k => {
@@ -77,6 +103,11 @@ export default function VisitInsightsPanel({ doctors, visits, onChanged }: {
                         )}
                       </div>
                       <p className="text-xs text-gray-600 mt-0.5">{i.reason}</p>
+                      {lastNote[i.doctor.id] && (
+                        <p className="text-[11px] text-gray-400 mt-0.5 line-clamp-1" title={lastNote[i.doctor.id].content}>
+                          💬 {lastNote[i.doctor.id].date.slice(5).replace('-', '/')}：{lastNote[i.doctor.id].content}
+                        </p>
+                      )}
                     </li>
                   ))}
                 </ul>
